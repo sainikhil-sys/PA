@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowClockwise, FlaskConical, Lightning, Play, Plus, Warning } from "@phosphor-icons/react";
+import { ArrowClockwise, Flask, Lightning, Play, Plus, Warning } from "@phosphor-icons/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import * as React from "react";
@@ -176,7 +176,7 @@ export function AutomationList({ items, paused, deadRuns, deadJobs, templates }:
                   </div>
                   <div className="mt-auto flex gap-2">
                     <Button size="sm" disabled={pending} onClick={() => run(a.id, true)}>
-                      <FlaskConical /> Dry run
+                      <Flask /> Dry run
                     </Button>
                     <Button size="sm" variant="ghost" disabled={pending} onClick={() => run(a.id, false)}>
                       <Play /> Test run
