@@ -1,16 +1,39 @@
-// Starts a production server for the Playwright smoke run on a fresh embedded
-// PGlite database. OTP test mode + the in-app mock AI endpoint mean no real
-// secrets or external services are needed. Never use these settings in production.
+// Starts a production server for the Playwright smoke run against a SEPARATE
+// Supabase test database. The test DB is migrated and reset (all PA rows removed)
+// before each run, so it must never be your real database: this script refuses
+// to run if the e2e URLs match DATABASE_URL / DATABASE_URL_UNPOOLED.
 import { spawn, spawnSync } from "node:child_process";
-import { rmSync } from "node:fs";
+import { config } from "dotenv";
 
-const dir = ".pglite-e2e";
-rmSync(dir, { recursive: true, force: true });
-const env = { ...process.env, DATABASE_URL: `pglite:./${dir}` };
-const mig = spawnSync(process.execPath, ["scripts/migrate.mjs"], { env, stdio: "inherit" });
-if (mig.status !== 0) process.exit(mig.status ?? 1);
+config({ path: ".env.local", quiet: true });
+config({ quiet: true });
+
+const appUrl = process.env.E2E_DATABASE_URL;
+const directUrl = process.env.E2E_DATABASE_URL_UNPOOLED || appUrl;
+if (!appUrl) {
+  console.error("Set E2E_DATABASE_URL (and E2E_DATABASE_URL_UNPOOLED) to a separate Supabase project for end-to-end tests.");
+  process.exit(1);
+}
+const real = [process.env.DATABASE_URL, process.env.DATABASE_URL_UNPOOLED].filter(Boolean);
+if (real.includes(appUrl) || real.includes(directUrl)) {
+  console.error("Refusing to run: the e2e database URL is the same as your real DATABASE_URL. Use a separate test project.");
+  process.exit(1);
+}
+
+const migrate = spawnSync(process.execPath, ["scripts/migrate.mjs"], { env: { ...process.env, DATABASE_URL: appUrl, DATABASE_URL_UNPOOLED: directUrl }, stdio: "inherit" });
+if (migrate.status !== 0) process.exit(migrate.status ?? 1);
+
+// Reset the TEST database: every user-scoped table cascades from users.
+const postgres = (await import("postgres")).default;
+const sql = postgres(directUrl, { max: 1, ssl: "require", onnotice: () => {} });
+await sql`truncate table users, oauth_clients, otp_codes restart identity cascade`;
+await sql.end();
+
 const port = process.env.PORT ?? "3100";
-const child = spawn(process.execPath, ["node_modules/next/dist/bin/next", "start", "-p", port], { env, stdio: "inherit" });
+const child = spawn(process.execPath, ["node_modules/next/dist/bin/next", "start", "-p", port], {
+  env: { ...process.env, DATABASE_URL: appUrl, DATABASE_URL_UNPOOLED: directUrl },
+  stdio: "inherit",
+});
 const stop = () => child.kill();
 process.on("SIGINT", stop);
 process.on("SIGTERM", stop);

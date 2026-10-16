@@ -12,11 +12,13 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   // Separate output dir lets e2e builds run while `pnpm dev` is using .next
   distDir: process.env.NEXT_DIST_DIR || ".next",
+  // The e2e build must not type-check the dev server's live .next/types.
+  typescript: process.env.NEXT_DIST_DIR ? { tsconfigPath: "tsconfig.e2e.json" } : undefined,
   poweredByHeader: false,
   reactStrictMode: true,
   // Prompts are read from disk at runtime; make sure Vercel ships them.
   outputFileTracingIncludes: { "/**": ["./lib/ai/prompts/*.md"] },
-  serverExternalPackages: ["googleapis", "@electric-sql/pglite", "@electric-sql/pglite-pgvector"],
+  serverExternalPackages: ["googleapis"],
   async headers() {
     return [
       { source: "/:path*", headers: securityHeaders },

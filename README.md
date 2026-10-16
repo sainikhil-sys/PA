@@ -2,7 +2,7 @@
 
 A single-user command center: a daily **Today** dashboard, chat and voice with your agent, inbox triage with Gmail **drafts** (never sends), tasks and schedule, automations that actually run, a knowledge base the agent answers from with citations, LinkedIn drafting, and a remote **MCP server** so Claude can work on your tasks.
 
-**Stack:** Next.js 15 (App Router) · React 19 · Tailwind v4 + shadcn-style components · Phosphor icons · Motion · GSAP · Lenis · Postgres + pgvector (Neon/Supabase) with Drizzle · Vercel AI SDK (OpenAI-compatible, open-weight models) · Upstash rate limiting · Vitest + Playwright · Vercel (serverless, Vercel Cron).
+**Stack:** Next.js 15 (App Router) · React 19 · Tailwind v4 + shadcn-style components · Phosphor icons · Motion · GSAP · Lenis · Supabase Postgres + pgvector with Drizzle · Vercel AI SDK (OpenAI-compatible, open-weight models) · Upstash rate limiting · Vitest + Playwright · Vercel (serverless, Vercel Cron).
 
 Design rules live in [`docs/design.md`](docs/design.md).
 
@@ -26,30 +26,30 @@ pnpm install
 cp .env.example .env.local
 ```
 
-For local development you can skip a hosted database and use embedded Postgres by setting `DATABASE_URL=pglite:./.pglite-dev` in `.env.local`:
+Fill in `.env.local` (Supabase URLs from step 2 are required — PA always uses Supabase, including in development), then:
 
 ```bash
 pnpm db:migrate
 pnpm dev
 ```
 
-With no `RESEND_API_KEY`, the sign-in code is printed in the dev server console.
+In development, if email delivery fails or `RESEND_API_KEY` is empty, the sign-in code is printed in the dev server console.
 
-### 2. Postgres with pgvector (Neon or Supabase)
+### 2. Supabase (Postgres + pgvector)
 
-**Neon**
-1. Create a project at neon.tech, then copy both connection strings: the **pooled** one (host contains `-pooler`) → `DATABASE_URL`, and the **direct** one → `DATABASE_URL_UNPOOLED`.
-2. pgvector is available on Neon. The first migration runs `CREATE EXTENSION IF NOT EXISTS vector`.
-
-**Supabase**
-1. Create a project, then go to Database → Extensions and enable **vector**.
-2. Settings → Database: the *Transaction pooler* URI (port 6543) → `DATABASE_URL`, and the *Direct connection* URI → `DATABASE_URL_UNPOOLED`.
-
-Then run the migrations (uses the direct URL):
+1. Create a project at supabase.com and save the database password.
+2. **Database → Extensions**: enable **vector**.
+3. Click **Connect** at the top of the project:
+   - **Transaction pooler** URI (port **6543**) → `DATABASE_URL`. The app uses this (serverless-friendly; prepared statements are off).
+   - **Session pooler** URI (port **5432**) → `DATABASE_URL_UNPOOLED`. Migrations use this. The *Direct connection* also works if your network supports IPv6.
+   - Replace `[YOUR-PASSWORD]` in both. If the password has special characters, URL-encode them.
+4. Run the migrations:
 
 ```bash
 pnpm db:migrate
 ```
+
+Connections use TLS (`ssl: require`). Keep the database password only in `.env.local` and in Vercel's environment variables.
 
 ### 3. Sign-in email (Resend)
 
@@ -140,10 +140,10 @@ pnpm typecheck    # tsc --noEmit
 pnpm lint         # next lint
 pnpm test         # Vitest unit tests
 pnpm build        # production build
-pnpm test:e2e     # Playwright smoke (run `pnpm build` first)
+pnpm test:e2e     # builds to .next-e2e, then runs the Playwright smoke flow
 ```
 
-The Playwright smoke flow starts `next start` on a fresh embedded PGlite database with `OTP_TEST_MODE=true` (fixed code `424242`) and points the AI router at a deterministic, test-mode-only mock endpoint (`/api/dev/mock-ai/v1`, which returns 404 otherwise). To reuse an installed browser instead of downloading Playwright's Chromium: `PW_CHANNEL=msedge pnpm test:e2e`.
+The Playwright smoke flow needs a **separate Supabase project** for testing: set `E2E_DATABASE_URL` (transaction pooler) and `E2E_DATABASE_URL_UNPOOLED` (session pooler). Before each run it migrates that database and **wipes all PA rows in it**. It refuses to start if those URLs match your real `DATABASE_URL`. It then runs `next start` (built into `.next-e2e`, so it never clashes with `pnpm dev`) with `OTP_TEST_MODE=true` (fixed code `424242`) and points the AI router at a deterministic, test-mode-only mock endpoint (`/api/dev/mock-ai/v1`, which returns 404 otherwise). To reuse an installed browser instead of downloading Playwright's Chromium: `PW_CHANNEL=msedge pnpm test:e2e`.
 
 ### Layout
 

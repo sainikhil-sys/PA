@@ -9,40 +9,28 @@ export type DB = PostgresJsDatabase<typeof schema>;
 const g = globalThis as unknown as { __paDb?: DB };
 
 /**
- * Lazily created so builds never need DATABASE_URL.
+ * Supabase Postgres (with pgvector). Lazily created so builds never need DATABASE_URL.
  *
- * - `postgres://...`  Neon/Supabase POOLED url (pgbouncer transaction mode):
- *   prepared statements off, small per-instance pool.
- * - `pglite:<dir>` or `pglite:memory`  embedded Postgres + pgvector for local
- *   dev and the Playwright smoke run. Never use on Vercel.
+ * DATABASE_URL must be Supabase's **transaction pooler** URL (port 6543): prepared
+ * statements are disabled (required by the pooler) and the per-instance pool is
+ * kept small for serverless. Migrations use DATABASE_URL_UNPOOLED instead.
  */
 export function db(): DB {
   if (!g.__paDb) {
     const url = requireEnv("DATABASE_URL");
-    if (url.startsWith("pglite:")) {
-      if (process.env.VERCEL) throw new Error("PGlite is for local development only");
-      g.__paDb = createPglite(url.slice("pglite:".length));
-    } else {
-      const client = postgres(url, { prepare: false, max: 5, idle_timeout: 20, connect_timeout: 10 });
-      g.__paDb = drizzle(client, { schema });
-    }
+    const client = postgres(url, {
+      prepare: false,
+      max: 5,
+      idle_timeout: 20,
+      connect_timeout: 10,
+      ssl: /localhost|127\.0\.0\.1/.test(url) ? false : "require",
+    });
+    g.__paDb = drizzle(client, { schema });
   }
   return g.__paDb;
 }
 
-function createPglite(location: string): DB {
-  // Required lazily so the WASM bundle is never loaded in production.
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { PGlite } = require("@electric-sql/pglite") as typeof import("@electric-sql/pglite");
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { vector } = require("@electric-sql/pglite-pgvector") as typeof import("@electric-sql/pglite-pgvector");
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { drizzle: drizzlePglite } = require("drizzle-orm/pglite") as typeof import("drizzle-orm/pglite");
-  const client = new PGlite(location === "memory" ? undefined : location, { extensions: { vector } });
-  return drizzlePglite(client, { schema }) as unknown as DB;
-}
-
-/** Normalise `db().execute()` results across drivers (postgres-js returns rows; PGlite returns { rows }). */
+/** `db().execute()` returns rows as an array with postgres-js; kept as a helper for clarity. */
 export function rowsOf<T>(result: unknown): T[] {
   if (Array.isArray(result)) return result as T[];
   const rows = (result as { rows?: T[] } | null)?.rows;
