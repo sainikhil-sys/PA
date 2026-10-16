@@ -67,6 +67,43 @@ export async function refreshNews(userId: string, topics: string[]) {
   return { feeds: feeds.length, inserted };
 }
 
+export const NEWS_MAX_AGE_MS = 30 * 60_000;
+const inflight = new Map<string, Promise<unknown>>();
+
+/** When the newest stored headline was fetched (null if none). */
+export async function lastNewsFetch(userId: string): Promise<Date | null> {
+  const [row] = await db()
+    .select({ at: schema.newsItems.createdAt })
+    .from(schema.newsItems)
+    .where(eq(schema.newsItems.userId, userId))
+    .orderBy(desc(schema.newsItems.createdAt))
+    .limit(1);
+  return row?.at ?? null;
+}
+
+/**
+ * Refresh feeds if nothing is stored yet or the newest item is older than 30 min.
+ * The cron dispatcher does this on Vercel; this covers local dev and first loads.
+ * Concurrent callers share one refresh per user.
+ */
+export async function ensureFreshNews(userId: string, topics: string[], maxAgeMs = NEWS_MAX_AGE_MS): Promise<boolean> {
+  // A refresh that found no NEW stories still counts as fresh (tracked per instance).
+  const checked = lastChecked.get(userId);
+  if (checked && Date.now() - checked < maxAgeMs) return false;
+  const last = await lastNewsFetch(userId);
+  if (last && Date.now() - last.getTime() < maxAgeMs) return false;
+  let p = inflight.get(userId);
+  if (!p) {
+    p = refreshNews(userId, topics)
+      .then(() => lastChecked.set(userId, Date.now()))
+      .finally(() => inflight.delete(userId));
+    inflight.set(userId, p);
+  }
+  await p;
+  return true;
+}
+const lastChecked = new Map<string, number>();
+
 export async function listNews(userId: string, topics: string[], limit = 24) {
   const conds = [eq(schema.newsItems.userId, userId)];
   if (topics.length) conds.push(inArray(schema.newsItems.category, topics));

@@ -6,19 +6,26 @@ import { NewsRibbon } from "@/components/today/news-ribbon";
 import { requireOwner } from "@/lib/auth/session";
 import type { User } from "@/lib/db/schema";
 import { getSettings } from "@/lib/db/queries/settings";
-import { listNews } from "@/lib/news/fetch";
+import { errMessage, log } from "@/lib/log";
+import { ensureFreshNews, listNews } from "@/lib/news/fetch";
+import { toNewsCard } from "@/lib/news/card";
+import { after } from "next/server";
 
 export const metadata: Metadata = { title: "Today" };
 export const dynamic = "force-dynamic";
 
 async function News({ user }: { user: User }) {
   const s = await getSettings(user.id);
-  const items = await listNews(user.id, s.newsTopics, 24).catch(() => []);
-  return (
-    <NewsRibbon
-      items={items.map((n) => ({ id: n.id, title: n.title, summary: n.summary, sourceName: n.sourceName, category: n.category, url: n.url, publishedAt: n.publishedAt.toISOString() }))}
-    />
-  );
+  let items = await listNews(user.id, s.newsTopics, 24).catch(() => []);
+  if (!items.length) {
+    // First visit (or nothing for these topics yet): fetch now, inside the ribbon's skeleton.
+    await ensureFreshNews(user.id, s.newsTopics).catch((err) => log.warn("news.refresh_failed", { error: errMessage(err) }));
+    items = await listNews(user.id, s.newsTopics, 24).catch(() => []);
+  } else {
+    // Stale? Refresh after the response is sent; the ribbon picks it up via /api/news.
+    after(() => ensureFreshNews(user.id, s.newsTopics).catch((err) => log.warn("news.refresh_failed", { error: errMessage(err) })));
+  }
+  return <NewsRibbon items={items.map(toNewsCard)} />;
 }
 
 /** Bento grid: news ribbon, agent, schedule, tasks, mail, ideas, integrations. Each card streams in with its own skeleton. */

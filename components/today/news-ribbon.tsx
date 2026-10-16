@@ -3,12 +3,14 @@
 import { ArrowSquareOut, Lightbulb, Newspaper, Pause, Play, Sparkle } from "@phosphor-icons/react";
 import { useReducedMotion } from "motion/react";
 import * as React from "react";
+import useSWR from "swr";
 import { toast } from "sonner";
 import { createIdeaFromNews } from "@/app/actions/content";
 import { useShell } from "@/components/layout/shell-context";
 import { Button } from "@/components/ui/button";
 import { Sheet } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/ui/states";
+import { fetcher } from "@/lib/fetcher";
 import { cn, timeAgo } from "@/lib/utils";
 
 export type NewsCardData = { id: string; title: string; summary: string; sourceName: string; category: string; url: string; publishedAt: string };
@@ -18,7 +20,10 @@ export type NewsCardData = { id: string; title: string; summary: string; sourceN
  * directions on large screens). Pauses on hover/focus, drag to scrub, keyboard
  * focusable. With reduced motion it is a static, natively scrollable list.
  */
-export function NewsRibbon({ items }: { items: NewsCardData[] }) {
+export function NewsRibbon({ items: initial }: { items: NewsCardData[] }) {
+  // Live: poll quickly while empty (first fetch running), then every 5 minutes.
+  const { data } = useSWR<{ items: NewsCardData[] }>("/api/news", fetcher, { fallbackData: { items: initial }, refreshInterval: (d) => (d?.items.length ? 5 * 60_000 : 15_000) });
+  const items = data?.items ?? initial;
   const prefersReduced = useReducedMotion();
   const [selected, setSelected] = React.useState<NewsCardData | null>(null);
   const [paused, setPaused] = React.useState(false);
