@@ -1,0 +1,209 @@
+@import "tailwindcss";
+
+/*
+ * PA design tokens. Light mode only for v1, but EVERY color is a variable so a
+ * dark theme can be added by redefining these under [data-theme="dark"].
+ * Components must never hardcode colors — use the Tailwind names mapped below.
+ */
+:root {
+  /* Swap this one variable to change the UI typeface (e.g. a licensed font). */
+  --font-ui: var(--font-hanken), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: var(--font-newsreader), ui-serif, Georgia, serif;
+  --font-code: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+
+  --background: #ffffff;
+  --foreground: #0a0a0a;
+  --muted: #52525b; /* secondary text, 7.4:1 on white */
+  --subtle: #71717a; /* tertiary text / placeholders, 4.8:1 on white */
+  --surface: #fafafa;
+  --surface-2: #f4f4f5;
+  --surface-hover: #f1f1f3;
+  --border: #e7e7ea;
+  --border-strong: #c9c9cf;
+  --primary: #0a0a0a;
+  --primary-foreground: #ffffff;
+  --primary-hover: #27272a;
+  --ring: #0a0a0a;
+  --overlay: rgb(10 10 10 / 0.32);
+
+  /* Tiny semantic states only (dots, small icons). */
+  --success: #15803d;
+  --danger: #b91c1c;
+  --warning: #a16207;
+  --info: #1d4ed8;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --shadow-pop: 0 8px 24px -12px rgb(10 10 10 / 0.18);
+
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --dur-fast: 150ms;
+  --dur-base: 200ms;
+  --dur-slow: 250ms;
+
+  --font-scale: 1;
+}
+
+:root[data-font-scale="sm"] { --font-scale: 0.9375; }
+:root[data-font-scale="lg"] { --font-scale: 1.0625; }
+
+@theme inline {
+  --font-sans: var(--font-ui);
+  --font-serif: var(--font-display);
+  --font-mono: var(--font-code);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-subtle: var(--subtle);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-hover: var(--surface-hover);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-hover: var(--primary-hover);
+  --color-ring: var(--ring);
+  --color-overlay: var(--overlay);
+  --color-success: var(--success);
+  --color-danger: var(--danger);
+  --color-warning: var(--warning);
+  --color-info: var(--info);
+
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --shadow-pop: var(--shadow-pop);
+  --ease-out: var(--ease-out);
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+  html {
+    font-size: calc(16px * var(--font-scale));
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+  }
+  body {
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-ui);
+    font-feature-settings: "ss01", "cv11";
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  ::selection {
+    background: var(--foreground);
+    color: var(--background);
+  }
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+  [hidden] {
+    display: none !important;
+  }
+}
+
+/* Lenis smooth scroll (https://github.com/darkroomengineering/lenis) */
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+.lenis.lenis-smooth [data-lenis-prevent] {
+  overscroll-behavior: contain;
+}
+.lenis.lenis-stopped {
+  overflow: hidden;
+}
+
+/* Respect reduced motion everywhere: CSS transitions collapse to instant. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+:root[data-reduce-motion="true"] *,
+:root[data-reduce-motion="true"] *::before,
+:root[data-reduce-motion="true"] *::after {
+  animation-duration: 0.01ms !important;
+  transition-duration: 0.01ms !important;
+}
+
+@keyframes pa-pop {
+  from { opacity: 0; transform: translateY(-4px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+
+/* Hide scrollbars on horizontal rails while keeping them scrollable. */
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Markdown rendering inside chat and task results */
+.prose-pa {
+  font-size: 0.9375rem;
+  line-height: 1.65;
+}
+.prose-pa > * + * {
+  margin-top: 0.75em;
+}
+.prose-pa h1,
+.prose-pa h2,
+.prose-pa h3 {
+  font-weight: 600;
+  line-height: 1.3;
+  margin-top: 1.25em;
+}
+.prose-pa h1 { font-size: 1.25rem; }
+.prose-pa h2 { font-size: 1.125rem; }
+.prose-pa h3 { font-size: 1rem; }
+.prose-pa ul { list-style: disc; padding-left: 1.25rem; }
+.prose-pa ol { list-style: decimal; padding-left: 1.25rem; }
+.prose-pa a { text-decoration: underline; text-underline-offset: 3px; }
+.prose-pa code {
+  font-family: var(--font-code);
+  font-size: 0.85em;
+  background: var(--surface-2);
+  border-radius: 6px;
+  padding: 0.1em 0.35em;
+}
+.prose-pa pre {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  overflow-x: auto;
+}
+.prose-pa pre code { background: none; padding: 0; }
+.prose-pa blockquote {
+  border-left: 2px solid var(--border-strong);
+  padding-left: 12px;
+  color: var(--muted);
+}
+.prose-pa table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+.prose-pa th, .prose-pa td { border: 1px solid var(--border); padding: 6px 8px; text-align: left; }
+
+@media print {
+  .no-print { display: none !important; }
+  body { background: #fff; }
+}

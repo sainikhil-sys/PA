@@ -1,0 +1,224 @@
+{
+  "gmail": {
+    "title": "Gmail",
+    "hex": "#EA4335",
+    "source": "simple-icons (CC0)",
+    "guidelines": null
+  },
+  "googlecalendar": {
+    "title": "Google Calendar",
+    "hex": "#4285F4",
+    "source": "simple-icons (CC0)",
+    "guidelines": null
+  },
+  "googledrive": {
+    "title": "Google Drive",
+    "hex": "#4285F4",
+    "source": "simple-icons (CC0)",
+    "guidelines": null
+  },
+  "googledocs": {
+    "title": "Google Docs",
+    "hex": "#4285F4",
+    "source": "simple-icons (CC0)",
+    "guidelines": null
+  },
+  "googlesheets": {
+    "title": "Google Sheets",
+    "hex": "#34A853",
+    "source": "simple-icons (CC0)",
+    "guidelines": null
+  },
+  "googletasks": {
+    "title": "Google Tasks",
+    "hex": "#2684FC",
+    "source": "simple-icons (CC0)",
+    "guidelines": "https://about.google/brand-resource-center"
+  },
+  "googlemeet": {
+    "title": "Google Meet",
+    "hex": "#00897B",
+    "source": "simple-icons (CC0)",
+    "guidelines": null
+  },
+  "notion": {
+    "title": "Notion",
+    "hex": "#000000",
+    "source": "simple-icons (CC0)",
+    "guidelines": null
+  },
+  "github": {
+    "title": "GitHub",
+    "hex": "#181717",
+    "source": "simple-icons (CC0)",
+    "guidelines": "https://github.com/logos"
+  },
+  "gitlab": {
+    "title": "GitLab",
+    "hex": "#FC6D26",
+    "source": "simple-icons (CC0)",
+    "guidelines": "https://about.gitlab.com/handbook/marketing/corporate-marketing/brand-activation/trademark-guidelines/"
+  },
+  "asana": {
+    "title": "Asana",
+    "hex": "#F06A6A",
+    "source": "simple-icons (CC0)",
+    "guidelines": "https://asana.com/brand"
+  },
+  "linear": {
+    "title": "Linear",
+    "hex": "#5E6AD2",
+    "source": "simple-icons (CC0)",
+    "guidelines": null
+  },
+  "hubspot": {
+    "title": "HubSpot",
+    "hex": "#FF7A59",
+    "source": "simple-icons (CC0)",
+    "guidelines": "https://www.hubspot.com/style-guide"
+  },
+  "stripe": {
+    "title": "Stripe",
+    "hex": "#635BFF",
+    "source": "simple-icons (CC0)",
+    "guidelines": null
+  },
+  "telegram": {
+    "title": "Telegram",
+    "hex": "#26A5E4",
+    "source": "simple-icons (CC0)",
+    "guidelines": null
+  },
+  "zoom": {
+    "title": "Zoom",
+    "hex": "#0B5CFF",
+    "source": "simple-icons (CC0)",
+    "guidelines": "https://brand.zoom.us/usage-legal/"
+  },
+  "youtube": {
+    "title": "YouTube",
+    "hex": "#FF0000",
+    "source": "simple-icons (CC0)",
+    "guidelines": "https://www.youtube.com/howyoutubeworks/resources/brand-resources/#logos-icons-and-colors"
+  },
+  "figma": {
+    "title": "Figma",
+    "hex": "#F24E1E",
+    "source": "simple-icons (CC0)",
+    "guidelines": "https://www.figma.com/using-the-figma-brand/"
+  },
+  "discord": {
+    "title": "Discord",
+    "hex": "#5865F2",
+    "source": "simple-icons (CC0)",
+    "guidelines": "https://discord.com/branding"
+  },
+  "dropbox": {
+    "title": "Dropbox",
+    "hex": "#0061FF",
+    "source": "simple-icons (CC0)",
+    "guidelines": null
+  },
+  "trello": {
+    "title": "Trello",
+    "hex": "#0052CC",
+    "source": "simple-icons (CC0)",
+    "guidelines": "https://atlassian.design/foundations/logos"
+  },
+  "jira": {
+    "title": "Jira",
+    "hex": "#0052CC",
+    "source": "simple-icons (CC0)",
+    "guidelines": "https://atlassian.design/foundations/logos/"
+  },
+  "confluence": {
+    "title": "Confluence",
+    "hex": "#172B4D",
+    "source": "simple-icons (CC0)",
+    "guidelines": null
+  },
+  "medium": {
+    "title": "Medium",
+    "hex": "#000000",
+    "source": "simple-icons (CC0)",
+    "guidelines": "https://medium.design/logos-and-brand-guidelines-f1a01a733592"
+  },
+  "substack": {
+    "title": "Substack",
+    "hex": "#FF6719",
+    "source": "simple-icons (CC0)",
+    "guidelines": null
+  },
+  "x": {
+    "title": "X",
+    "hex": "#000000",
+    "source": "simple-icons (CC0)",
+    "guidelines": "https://about.x.com/en/who-we-are/brand-toolkit"
+  },
+  "whatsapp": {
+    "title": "WhatsApp",
+    "hex": "#25D366",
+    "source": "simple-icons (CC0)",
+    "guidelines": "https://about.meta.com/brand/resources/whatsapp/whatsapp-brand"
+  },
+  "rss": {
+    "title": "RSS",
+    "hex": "#FFA500",
+    "source": "simple-icons (CC0)",
+    "guidelines": null
+  },
+  "todoist": {
+    "title": "Todoist",
+    "hex": "#E44332",
+    "source": "simple-icons (CC0)",
+    "guidelines": null
+  },
+  "clickup": {
+    "title": "ClickUp",
+    "hex": "#7B68EE",
+    "source": "simple-icons (CC0)",
+    "guidelines": null
+  },
+  "airtable": {
+    "title": "Airtable",
+    "hex": "#18BFFF",
+    "source": "simple-icons (CC0)",
+    "guidelines": null
+  },
+  "calendly": {
+    "title": "Calendly",
+    "hex": "#006BFF",
+    "source": "simple-icons (CC0)",
+    "guidelines": "https://calendly.com/newsroom"
+  },
+  "claude": {
+    "title": "Claude",
+    "hex": "#D97757",
+    "source": "simple-icons (CC0)",
+    "guidelines": null
+  },
+  "obsidian": {
+    "title": "Obsidian",
+    "hex": "#7C3AED",
+    "source": "simple-icons (CC0)",
+    "guidelines": "https://obsidian.md/brand"
+  },
+  "miro": {
+    "title": "Miro",
+    "hex": "#050038",
+    "source": "simple-icons (CC0)",
+    "guidelines": null
+  },
+  "evernote": {
+    "title": "Evernote",
+    "hex": "#00A82D",
+    "source": "simple-icons (CC0)",
+    "guidelines": "https://evernote.com/about-us"
+  },
+  "zapier": {
+    "title": "Zapier",
+    "hex": "#FF4F00",
+    "source": "simple-icons (CC0)",
+    "guidelines": "https://www.figma.com/file/NQFxTCE5pGR3dHZt0DkOyy/Zapier-Brand-Guidelines-%5BExternal%5D?type=design&node-id=101-9701&mode=design"
+  }
+}
