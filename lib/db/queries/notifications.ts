@@ -3,13 +3,8 @@ import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { env } from "@/lib/env";
 import { errMessage, log } from "@/lib/log";
-import { localTime } from "@/lib/time";
+import { inQuietHours, localTime } from "@/lib/time";
 import { getSettings } from "./settings";
-
-export function inQuietHours(now: string, start: string | null, end: string | null): boolean {
-  if (!start || !end || start === end) return false;
-  return start < end ? now >= start && now < end : now >= start || now < end; // handles overnight windows
-}
 
 /** Telegram delivery: notification-only, to the owner's own chat. Never used to message anyone else. */
 async function sendTelegram(text: string) {

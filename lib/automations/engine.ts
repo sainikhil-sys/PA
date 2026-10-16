@@ -19,15 +19,12 @@ import { errMessage } from "@/lib/log";
 import { truncate } from "@/lib/security/sanitize";
 import { Trace } from "@/lib/trace";
 import { checkConditions } from "./match";
+import { fillTemplate } from "./template-vars";
+export { fillTemplate };
 import { ACTION_LABEL } from "./templates";
 
 /** Thrown for failures that should not be retried (bad config, missing permission). */
 export class PermanentError extends Error {}
-
-/** Fill {{placeholders}} from the trigger event / previous step outputs. Plain text only. */
-export function fillTemplate(text: string, vars: Record<string, unknown>): string {
-  return text.replace(/\{\{(\w+)\}\}/g, (_, k: string) => truncate(String(vars[k] ?? ""), k === "agent_output" ? 1500 : 200));
-}
 
 function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
   return Promise.race([p, new Promise<T>((_, rej) => setTimeout(() => rej(new Error(`Timed out after ${Math.round(ms / 1000)}s`)), ms))]);

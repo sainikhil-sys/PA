@@ -7,7 +7,7 @@ import { NextResponse, type NextRequest } from "next/server";
  */
 const PUBLIC_PATHS = ["/login"];
 
-function buildCsp(nonce: string): string {
+function buildCsp(nonce: string, local: boolean): string {
   const dev = process.env.NODE_ENV !== "production";
   return [
     "default-src 'self'",
@@ -22,7 +22,7 @@ function buildCsp(nonce: string): string {
     "form-action 'self'",
     "base-uri 'self'",
     "object-src 'none'",
-    ...(dev ? [] : ["upgrade-insecure-requests"]),
+    ...(dev || local ? [] : ["upgrade-insecure-requests"]),
   ].join("; ");
 }
 
@@ -38,7 +38,8 @@ export function middleware(req: NextRequest) {
   }
 
   const nonce = btoa(crypto.randomUUID());
-  const csp = buildCsp(nonce);
+  const local = req.nextUrl.hostname === "localhost" || req.nextUrl.hostname === "127.0.0.1";
+  const csp = buildCsp(nonce, local);
   const headers = new Headers(req.headers);
   headers.set("x-nonce", nonce);
   headers.set("content-security-policy", csp);

@@ -12,6 +12,8 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   reactStrictMode: true,
+  // Prompts are read from disk at runtime; make sure Vercel ships them.
+  outputFileTracingIncludes: { "/**": ["./lib/ai/prompts/*.md"] },
   serverExternalPackages: ["googleapis", "@electric-sql/pglite", "@electric-sql/pglite-pgvector"],
   async headers() {
     return [

@@ -46,3 +46,9 @@ export function formatTime(iso: string, tz: string): string {
 export function formatDateTime(d: Date | string, tz: string): string {
   return formatInTimeZone(typeof d === "string" ? new Date(d) : d, tz, "MMM d, HH:mm");
 }
+
+/** True if HH:MM `now` falls inside [start, end), handling overnight windows like 22:00–07:00. */
+export function inQuietHours(now: string, start: string | null, end: string | null): boolean {
+  if (!start || !end || start === end) return false;
+  return start < end ? now >= start && now < end : now >= start || now < end;
+}
