@@ -22,6 +22,7 @@ export default defineConfig({
     timeout: 180_000,
     env: {
       PORT: String(PORT),
+      NEXT_DIST_DIR: ".next-e2e",
       APP_URL: BASE,
       AUTH_SECRET: "e2e-only-secret-not-for-production-use-000000",
       ENCRYPTION_KEY: "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=",

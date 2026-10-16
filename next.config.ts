@@ -10,6 +10,8 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // Separate output dir lets e2e builds run while `pnpm dev` is using .next
+  distDir: process.env.NEXT_DIST_DIR || ".next",
   poweredByHeader: false,
   reactStrictMode: true,
   // Prompts are read from disk at runtime; make sure Vercel ships them.

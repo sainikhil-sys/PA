@@ -122,6 +122,16 @@ Security: PKCE S256 only. Redirect URIs are allowlisted to Claude's hosts (`MCP_
 
 ---
 
+## Live Link panel
+
+Press **⌘⇧L** (Ctrl+Shift+L) or the Graph button in the top bar. A see-through panel shows how your inputs (chat, voice, Claude, automations), the agent, models, sources, the approval gate and outputs are linked, which are active, idle, off or need you, and how data moves between them right now.
+
+- **One event system.** Chat, voice, automations, Claude's MCP calls and knowledge syncs write `trace_spans`. The panel and the Flow pages read them through `/api/flow/events?since=<cursor>` (spans that started or ended after the cursor) and `/api/flow/status` (per node: connected, enabled, 1-hour calls/errors, last activity, permissions; cached ~4s).
+- **Honest status.** "Active" comes only from running spans or events in the last 15s (configurable). "Off" comes from your own switches, and "Idle" means connected but quiet. With no data you see the real idle state. The **Example run (demo)** button plays a clearly labelled demo that never touches the database.
+- **Transport.** SWR polling: 2s while a run is active, 10s idle, paused in hidden tabs. `lib/flow/transport.ts` defines a `FlowTransport` interface, so an Ably/Pusher push transport can replace polling without UI changes.
+- **Run focus.** Follow the latest run (or pin one) to see numbered steps, a progress bar and replay. Every feed line and the focus bar link to **Flow** (`/flow`, `/flow/<runId>`). Chat messages have **Show in panel**, and the automation builder has **Preview in panel**, which draws the unsaved plan as dashed draft links.
+- **Safety.** Only PA-generated labels and counts are shown ("Read 12 important emails"), never bodies, tokens or documents. All text renders as escaped text. The on/off switches in node details map to your own capability, include and pause settings. Nothing disconnects or deletes.
+
 ## Development
 
 ```bash
@@ -203,6 +213,16 @@ lib/trace.ts     run tracing (trace_spans) shared by chat, voice, automations, M
 - [ ] `claim_task` shows "In progress by Claude". `complete_task` moves the task to Needs review, and Approve / Request changes behave as described.
 - [ ] Every call appears in the Connect Claude activity feed, and revoking the credential stops access immediately.
 
+**Live Link panel**
+- [ ] ⌘⇧L opens it on any page. Navigating keeps it open. Esc closes it.
+- [ ] Floating drags and resizes and remembers position and size. Dock right pushes the page (no overlap). Dock bottom works. Minimize shows "● N active".
+- [ ] The opacity slider (40–100%) keeps text readable. Click-through lets you click the page underneath, and its toggle still works.
+- [ ] Send a chat message: Chat → Agent → sources → Smart model light up with travelling dots, numbered steps appear, and the feed shows plain-English lines. Within ~15s everything returns to idle and recent links fade.
+- [ ] Claude calling a tool lights **Claude (MCP)** with the tool name in the feed. Voice runs start at the **Voice** node.
+- [ ] Hover a node to see its tooltip (last activity, calls/hour, permissions). Clicking a node shows details, last 5 events and a safe on/off. Clicking a link shows recent counts.
+- [ ] List view, the pause-animation button and reduced motion all work. On a phone the panel is a bottom sheet with the list.
+- [ ] Open in Flow shows the run's map and steps.
+
 **Build & tests**
 - [ ] `pnpm typecheck && pnpm lint && pnpm test && pnpm build && pnpm test:e2e` all pass.
 
@@ -210,7 +230,7 @@ lib/trace.ts     run tracing (trace_spans) shared by chat, voice, automations, M
 
 ## Known gaps and next steps
 
-- **Live Link panel** (queued next): it will read `trace_spans`, which chat, voice, automations, MCP calls and knowledge syncs already write. It needs `/api/flow/events` and `/api/flow/status`, plus a Flow page. Neither exists yet.
+- **Flow page** is a minimal run view (recent runs + per-run map and steps). Prompt-to-flow (natural language → automation plan) isn’t built; the panel already supports dashed draft previews, which the automation builder uses today.
 - Asana, Linear, HubSpot, Stripe, Zoom, YouTube, Canva, Figma and LinkedIn publishing are listed as "coming soon" (no fake connections). LinkedIn uses copy + open, with no automation.
 - Model choice is environment-driven (keys never live in the database). The Agent page shows the configuration and tests it but doesn't edit it.
 - Slack and LinkedIn logos aren't in Simple Icons, so they show a neutral monogram until official assets are added to `/public/brands` per each brand's guidelines.

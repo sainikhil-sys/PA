@@ -10,3 +10,4 @@ playwright-report/
 test-results/
 coverage/
 .pglite*
+.next-e2e/
