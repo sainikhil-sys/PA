@@ -145,6 +145,8 @@ export const userSettings = pgTable("user_settings", {
   reduceMotion: boolean("reduce_motion").notNull().default(false),
   automationsPaused: boolean("automations_paused").notNull().default(false),
   agent: jsonb("agent").$type<AgentSettings>().notNull().default(DEFAULT_AGENT),
+  /** Live Link panel preferences (mode, position, opacity…), persisted per user. */
+  linkPanel: jsonb("link_panel").$type<Record<string, unknown>>().notNull().default({}),
   updatedAt: updatedAt(),
 });
 

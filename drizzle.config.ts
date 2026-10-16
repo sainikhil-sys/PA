@@ -1,4 +1,6 @@
-import "dotenv/config";
+import { config } from "dotenv";
+config({ path: ".env.local" });
+config();
 import { defineConfig } from "drizzle-kit";
 
 // Migrations use the DIRECT (unpooled) connection string.

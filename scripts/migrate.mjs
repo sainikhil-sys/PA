@@ -1,6 +1,10 @@
 // Applies Drizzle migrations. Uses the DIRECT (unpooled) URL for Postgres,
 // or an embedded PGlite database when DATABASE_URL starts with "pglite:".
-import "dotenv/config";
+import { config } from "dotenv";
+
+// .env.local (development) wins over .env, matching Next.js precedence.
+config({ path: ".env.local" });
+config();
 
 const url = process.env.DATABASE_URL_UNPOOLED || process.env.DATABASE_URL;
 if (!url) {

@@ -12,7 +12,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <AppShell
       user={{ name: user.name, email: user.email, avatarUrl: user.avatarUrl, timezone: s.timezone, agentName: s.agent.name }}
-      prefs={{ reduceMotion: s.reduceMotion, fontScale: s.fontScale, density: s.density }}
+      prefs={{ reduceMotion: s.reduceMotion, fontScale: s.fontScale, density: s.density, linkPanel: s.linkPanel }}
     >
       {children}
     </AppShell>

@@ -1,6 +1,7 @@
 "use client";
 
-import { ArrowClockwise, ArrowUp, CaretDown, Copy, Files, Paperclip, PencilSimple, Sparkle, Stop, X } from "@phosphor-icons/react";
+import { ArrowClockwise, ArrowUp, CaretDown, Copy, Files, Graph, Paperclip, PencilSimple, Sparkle, Stop, X } from "@phosphor-icons/react";
+import { useLinkPanel } from "@/components/flow/link-panel-context";
 import { AnimatePresence, motion } from "motion/react";
 import * as React from "react";
 import { toast } from "sonner";
@@ -228,6 +229,7 @@ function AssistantMessage({
   onProposalStatus: (id: string, status: string) => void;
 }) {
   const [showTools, setShowTools] = React.useState(false);
+  const { openPanel } = useLinkPanel();
   const toolNames = [...new Set((m.tools ?? []).map((t) => t.tool))];
   return (
     <div className="flex flex-col gap-3">
@@ -292,6 +294,11 @@ function AssistantMessage({
           >
             <Copy size={14} /> Copy
           </button>
+          {m.runId ? (
+            <button type="button" onClick={() => openPanel({ runId: m.runId })} className="inline-flex h-8 items-center gap-1 rounded-md px-2 text-[12px] text-muted hover:bg-surface-hover hover:text-foreground">
+              <Graph size={14} /> Show in panel
+            </button>
+          ) : null}
           {isLast && !busy ? (
             <button type="button" onClick={onRegenerate} className="inline-flex h-8 items-center gap-1 rounded-md px-2 text-[12px] text-muted hover:bg-surface-hover hover:text-foreground">
               <ArrowClockwise size={14} /> Regenerate

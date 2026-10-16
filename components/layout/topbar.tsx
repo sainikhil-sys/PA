@@ -1,6 +1,7 @@
 "use client";
 
-import { Bell, Gear, MagnifyingGlass, Microphone, Plugs, SignOut, UserCircle } from "@phosphor-icons/react";
+import { Bell, Gear, Graph, MagnifyingGlass, Microphone, Plugs, SignOut, UserCircle } from "@phosphor-icons/react";
+import { useLinkPanel } from "@/components/flow/link-panel-context";
 import Link from "next/link";
 import * as React from "react";
 import useSWR from "swr";
@@ -31,6 +32,7 @@ function useLocalHour(tz: string) {
 
 export function Topbar() {
   const { user, openPalette, openVoice } = useShell();
+  const { open: panelOpen, togglePanel } = useLinkPanel();
   const local = useLocalHour(user.timezone);
   const firstName = user.name?.split(" ")[0];
 
@@ -66,6 +68,11 @@ export function Topbar() {
         <Tooltip content="Talk to your agent">
           <button type="button" onClick={openVoice} className="grid size-11 place-items-center rounded-full text-muted hover:bg-surface-hover hover:text-foreground" aria-label="Start voice">
             <Microphone size={20} />
+          </button>
+        </Tooltip>
+        <Tooltip content="Live links (⌘⇧L)">
+          <button type="button" onClick={togglePanel} aria-pressed={panelOpen} className="grid size-11 place-items-center rounded-full text-muted hover:bg-surface-hover hover:text-foreground aria-pressed:bg-surface-2 aria-pressed:text-foreground" aria-label="Live links panel">
+            <Graph size={20} weight={panelOpen ? "fill" : "regular"} />
           </button>
         </Tooltip>
         <NotificationsMenu />

@@ -30,7 +30,12 @@ export async function sendOtpEmail(to: string, code: string): Promise<void> {
   const resend = new Resend(e.RESEND_API_KEY);
   const { error } = await resend.emails.send({ from: e.MAIL_FROM ?? "PA <onboarding@resend.dev>", to, subject, text, html });
   if (error) {
-    log.error("otp.mail_failed", { provider: "resend", error: error.name });
+    log.error("otp.mail_failed", { provider: "resend", error: error.name, detail: error.message });
+    if (e.NODE_ENV !== "production") {
+      // Local development only: don't get locked out by an unverified sender/domain.
+      console.info(`\n[dev] Email delivery failed (${error.message}).\n[dev] PA sign-in code for ${to}: ${code}\n`);
+      return;
+    }
     throw new Error("Could not send the sign-in email");
   }
 }

@@ -1,0 +1,1 @@
+ALTER TABLE "user_settings" ADD COLUMN "link_panel" jsonb DEFAULT '{}'::jsonb NOT NULL;

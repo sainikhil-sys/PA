@@ -1,6 +1,8 @@
 "use client";
 
-import { Check, Copy, Plus, ShieldCheck, Trash } from "@phosphor-icons/react";
+import { Check, Copy, Graph, Plus, ShieldCheck, Trash } from "@phosphor-icons/react";
+import { useLinkPanel } from "@/components/flow/link-panel-context";
+import { automationDraft } from "@/lib/flow/draft";
 import { motion } from "motion/react";
 import { useRouter } from "next/navigation";
 import * as React from "react";
@@ -69,6 +71,7 @@ export function AutomationBuilder({ initial }: { initial: BuilderInitial }) {
   const [secret, setSecret] = React.useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const { openPanel } = useLinkPanel();
 
   const setTrigger = (t: AutomationTrigger) => setS((x) => ({ ...x, trigger: t }));
   const setAction = (i: number, a: AutomationAction) => setS((x) => ({ ...x, actions: x.actions.map((y, j) => (j === i ? a : y)) }));
@@ -251,9 +254,14 @@ export function AutomationBuilder({ initial }: { initial: BuilderInitial }) {
         ) : (
           <span />
         )}
+        <div className="flex flex-wrap gap-2">
+        <Button size="lg" onClick={() => openPanel({ draft: automationDraft(s.name, s.trigger, s.actions) })}>
+          <Graph /> Preview in panel
+        </Button>
         <Button variant="primary" size="lg" onClick={save} disabled={pending}>
           <Check /> {pending ? "Saving…" : "Save automation"}
         </Button>
+        </div>
       </div>
 
       <Dialog

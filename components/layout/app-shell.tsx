@@ -3,6 +3,7 @@
 import { MotionConfig } from "motion/react";
 import dynamic from "next/dynamic";
 import * as React from "react";
+import { LinkPanelProvider, useLinkPanel } from "@/components/flow/link-panel-context";
 import { TooltipProvider } from "@/components/ui/misc";
 import { CommandPalette } from "./command-palette";
 import { MobileNav } from "./mobile-nav";
@@ -13,23 +14,34 @@ import { Topbar } from "./topbar";
 
 // Heavy, on-demand widgets are lazy-loaded.
 const ChatPanel = dynamic(() => import("@/components/chat/chat-panel").then((m) => m.ChatPanel), { ssr: false });
+const LinkPanel = dynamic(() => import("@/components/flow/link-panel").then((m) => m.LinkPanel), { ssr: false });
 const VoiceOverlay = dynamic(() => import("@/components/voice/voice-overlay").then((m) => m.VoiceOverlay), { ssr: false });
 
 export type ShellUser = { name: string | null; email: string; avatarUrl: string | null; timezone: string; agentName: string };
 
-export function AppShell({
+export function AppShell(props: Parameters<typeof ShellInner>[0]) {
+  return (
+    <LinkPanelProvider initial={props.prefs.linkPanel}>
+      <ShellInner {...props} />
+    </LinkPanelProvider>
+  );
+}
+
+function ShellInner({
   user,
   prefs,
   children,
 }: {
   user: ShellUser;
-  prefs: { reduceMotion: boolean; fontScale: string; density: string };
+  prefs: { reduceMotion: boolean; fontScale: string; density: string; linkPanel: unknown };
   children: React.ReactNode;
 }) {
   const [chatOpen, setChatOpen] = React.useState(false);
   const [chatPrompt, setChatPrompt] = React.useState<string | null>(null);
   const [voiceOpen, setVoiceOpen] = React.useState(false);
   const [paletteOpen, setPaletteOpen] = React.useState(false);
+  const linkPanel = useLinkPanel();
+  const togglePanel = linkPanel.togglePanel;
 
   React.useEffect(() => {
     const root = document.documentElement;
@@ -41,7 +53,10 @@ export function AppShell({
   React.useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const mod = e.metaKey || e.ctrlKey;
-      if (mod && e.key.toLowerCase() === "k") {
+      if (mod && e.shiftKey && e.key.toLowerCase() === "l") {
+        e.preventDefault();
+        togglePanel();
+      } else if (mod && e.key.toLowerCase() === "k") {
         e.preventDefault();
         setPaletteOpen((o) => !o);
       } else if (mod && e.key.toLowerCase() === "j") {
@@ -51,7 +66,7 @@ export function AppShell({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  }, [togglePanel]);
 
   const ctx = React.useMemo(
     () => ({
@@ -76,7 +91,8 @@ export function AppShell({
       <MotionConfig reducedMotion={prefs.reduceMotion ? "always" : "user"}>
         <TooltipProvider>
           <SmoothScroll disabled={prefs.reduceMotion} />
-          <div className="flex min-h-dvh">
+          {/* Docked Live Link panel pushes content via --lp-right / --lp-bottom. */}
+          <div className="flex min-h-dvh pb-[var(--lp-bottom,0px)] pr-[var(--lp-right,0px)] transition-[padding] duration-200">
             <Sidebar />
             <div className="flex min-w-0 flex-1 flex-col">
               <Topbar />
@@ -89,6 +105,7 @@ export function AppShell({
           <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
           {chatOpen ? <ChatPanel /> : null}
           {voiceOpen ? <VoiceOverlay /> : null}
+          {linkPanel.everOpened ? <LinkPanel /> : null}
         </TooltipProvider>
       </MotionConfig>
     </ShellContext.Provider>

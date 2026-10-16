@@ -83,8 +83,62 @@ test("OTP login → onboarding → dashboard → chat → task → automation dr
   await expect(page.getByText(/^Would: Ask the agent/)).toBeVisible({ timeout: 30_000 });
   await expect(page.getByText(/^Would: Notify you/)).toBeVisible();
 
+  // Draft preview of the automation in the Live Link panel (dashed, not saved)
+  await page.getByRole("button", { name: "Preview in panel" }).click();
+  await expect(page.getByText(/Draft preview \(dashed\)/)).toBeVisible();
+  await page.keyboard.press("Escape");
+
   // Command palette and chat panel shortcuts
   await page.keyboard.press("Control+k");
   await expect(page.getByRole("dialog", { name: "Command palette" })).toBeVisible();
   await page.keyboard.press("Escape");
+});
+
+test("Live Link panel: shortcut, opacity, dock, live run, click-through, list view", async ({ page }) => {
+  await signIn(page);
+  await expect(page).toHaveURL(/\/$/, { timeout: 15_000 });
+
+  // Open with Cmd/Ctrl+Shift+L
+  await page.keyboard.press("Control+Shift+L");
+  const panel = page.getByRole("dialog", { name: "Live links panel" });
+  await expect(panel).toBeVisible();
+
+  // Change opacity
+  await panel.getByRole("button", { name: "Opacity" }).click();
+  const slider = panel.getByLabel(/Opacity/).and(page.locator("input[type=range]"));
+  await slider.focus();
+  await page.keyboard.press("ArrowLeft");
+  await page.keyboard.press("ArrowLeft");
+  await expect(panel.getByText(/^(5|6)\d%$/)).toBeVisible();
+  await panel.getByRole("button", { name: "Opacity" }).click();
+
+  // Dock right: page content is pushed, not covered
+  await panel.getByRole("button", { name: "Dock right" }).click();
+  await expect.poll(() => page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--lp-right").trim())).toBe("380px");
+
+  // List view (keyboard-accessible alternative to the map)
+  await panel.getByRole("button", { name: "List view" }).click();
+  await expect(panel.getByRole("list", { name: "Nodes and links" })).toBeVisible();
+
+  // Send a chat message without leaving the panel (client-side navigation)
+  await page.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name: "Chat" }).click();
+  await page.getByLabel(/^Message/).fill("What tasks do I have?");
+  await page.getByRole("button", { name: "Send" }).click();
+  await expect(page.getByText("Hello from the test model. Everything is working.")).toBeVisible({ timeout: 20_000 });
+
+  // Links light up and a feed line appears
+  await expect(panel.getByText(/Agent \(active\)/).first()).toBeVisible({ timeout: 15_000 });
+  await expect(panel.getByText(/^Now:/)).toContainText(/Agent ·/);
+  await expect(page.getByRole("button", { name: "Show in panel" }).first()).toBeVisible();
+
+  // Click-through makes the panel non-interactive (except its own toggle)
+  await panel.getByRole("button", { name: "Click-through" }).click();
+  await expect.poll(() => panel.evaluate((el) => getComputedStyle(el).pointerEvents)).toBe("none");
+  await panel.getByRole("button", { name: "Click-through" }).click();
+  await expect.poll(() => panel.evaluate((el) => getComputedStyle(el).pointerEvents)).not.toBe("none");
+
+  // Esc closes
+  await page.locator("body").click({ position: { x: 5, y: 300 } });
+  await page.keyboard.press("Escape");
+  await expect(panel).toBeHidden();
 });

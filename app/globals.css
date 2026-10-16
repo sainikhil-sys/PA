@@ -207,3 +207,37 @@ html.lenis body {
   .no-print { display: none !important; }
   body { background: #fff; }
 }
+
+/* ── Live Link panel ─────────────────────────────────────────
+ * The ONE translucency exception in the design system: a frosted panel that
+ * floats over the app. Text always sits on a backing raised to keep AA
+ * contrast; without backdrop-filter support the panel is solid white.
+ */
+.lp-surface {
+  background: rgb(255 255 255 / var(--lp-alpha, 0.72));
+  border: 1px solid var(--border);
+  box-shadow: 0 12px 32px -16px rgb(10 10 10 / 0.25);
+}
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .lp-surface {
+    -webkit-backdrop-filter: blur(14px);
+    backdrop-filter: blur(14px);
+  }
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .lp-surface {
+    background: var(--background);
+  }
+}
+.lp-text {
+  background: rgb(255 255 255 / var(--lp-text-alpha, 0.9));
+  border-radius: 10px;
+}
+@keyframes lp-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-2px); }
+  75% { transform: translateX(2px); }
+}
+.lp-shake-once { animation: lp-shake 240ms ease-out 1; }
+.react-flow__node:focus-visible,
+.react-flow__edge:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; border-radius: 10px; }

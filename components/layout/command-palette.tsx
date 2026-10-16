@@ -1,6 +1,7 @@
 "use client";
 
-import { ChatCircle, Microphone, Plus, Sparkle } from "@phosphor-icons/react";
+import { ChatCircle, Graph, Microphone, Plus, Sparkle, TreeStructure } from "@phosphor-icons/react";
+import { useLinkPanel } from "@/components/flow/link-panel-context";
 import { Command } from "cmdk";
 import { AnimatePresence, motion } from "motion/react";
 import { useRouter } from "next/navigation";
@@ -13,6 +14,7 @@ import { useShell } from "./shell-context";
 export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
   const router = useRouter();
   const { openChat, openVoice } = useShell();
+  const { openPanel } = useLinkPanel();
   const [query, setQuery] = React.useState("");
 
   React.useEffect(() => {
@@ -94,6 +96,12 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
                   </Command.Item>
                   <Command.Item value="talk voice" className={itemClass} onSelect={() => run(openVoice)}>
                     <Microphone size={18} /> Talk to your agent
+                  </Command.Item>
+                  <Command.Item value="live links panel" className={itemClass} onSelect={() => run(() => openPanel())}>
+                    <Graph size={18} /> Live links panel <span className="ml-auto text-[12px] text-subtle">⌘⇧L</span>
+                  </Command.Item>
+                  <Command.Item value="flow runs" className={itemClass} onSelect={() => run(() => router.push("/flow"))}>
+                    <TreeStructure size={18} /> Flow: recent runs
                   </Command.Item>
                 </Command.Group>
               </Command.List>
