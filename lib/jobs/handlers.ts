@@ -1,10 +1,11 @@
 import "server-only";
-import { and, eq, gte, inArray } from "drizzle-orm";
+import { and, eq, gte, inArray, lte } from "drizzle-orm";
 import { classifyEmail } from "@/lib/agents/emailAgent";
 import { generateDailyBriefing } from "@/lib/agents/briefingAgent";
 import { emitEvent } from "@/lib/automations/events";
 import { runAutomation } from "@/lib/automations/engine";
 import { suggestDailyIdeas } from "@/lib/content/ideas";
+import { sendBriefingDigest } from "@/lib/digest";
 import { db, schema } from "@/lib/db";
 import type { Job } from "@/lib/db/schema";
 import { logActivity } from "@/lib/db/queries/activity";
@@ -126,8 +127,13 @@ async function classifyEmails(job: Job) {
 
 async function dailyBriefing(job: Job) {
   const user = await ownerOf(job);
-  const { created } = await generateDailyBriefing(user, { force: Boolean(job.payload.force) });
-  if (created) await logActivity({ userId: user.id, actor: "agent", tool: "daily_briefing", outcome: "success" });
+  const { created, briefing } = await generateDailyBriefing(user, { force: Boolean(job.payload.force) });
+  if (created) {
+    await logActivity({ userId: user.id, actor: "agent", tool: "daily_briefing", outcome: "success" });
+    const s = await getSettings(user.id);
+    if (s.notifyEmailDigest) await sendBriefingDigest(user.email, briefing.date, briefing.content);
+    await notify(user.id, { kind: "briefing", title: "Your briefing is ready", body: briefing.content.headline, href: "/", dedupeKey: `briefing:${briefing.date}` });
+  }
   return { created };
 }
 
@@ -164,7 +170,16 @@ async function deliverReminders(job: Job) {
     await notify(job.userId, { kind: "reminder", title: `Reminder: ${t.title}`.slice(0, 200), href: `/tasks?task=${t.id}`, dedupeKey: `reminder:${t.id}:${t.remindAt?.toISOString()}` });
     await db().update(schema.tasks).set({ reminderSentAt: new Date() }).where(eq(schema.tasks.id, t.id));
   }
-  return { sent: due.length };
+  // Scheduled posts: remind me to post (publishing itself is always manual).
+  const posts = await db()
+    .select({ id: schema.contentDrafts.id, title: schema.contentDrafts.title, scheduledFor: schema.contentDrafts.scheduledFor })
+    .from(schema.contentDrafts)
+    .where(and(eq(schema.contentDrafts.userId, job.userId), eq(schema.contentDrafts.status, "scheduled"), lte(schema.contentDrafts.scheduledFor, new Date())))
+    .limit(10);
+  for (const p of posts) {
+    await notify(job.userId, { kind: "post_reminder", title: `Time to post: ${p.title}`.slice(0, 200), body: "Your approved post is ready to copy.", href: `/content/${p.id}`, dedupeKey: `post:${p.id}:${p.scheduledFor?.toISOString()}` });
+  }
+  return { sent: due.length + posts.length };
 }
 
 const HANDLERS: Record<JobType, (job: Job) => Promise<unknown>> = {

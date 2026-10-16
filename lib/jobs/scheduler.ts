@@ -1,5 +1,5 @@
 import "server-only";
-import { and, asc, eq, isNotNull, isNull, lte, lt, or } from "drizzle-orm";
+import { and, asc, eq, isNull, lt, or } from "drizzle-orm";
 import { queueRun, emitEvent } from "@/lib/automations/events";
 import { nextCronRun } from "@/lib/automations/schedule";
 import { db, schema } from "@/lib/db";
@@ -87,14 +87,10 @@ async function scheduleKnowledgeSync(user: User) {
   return true;
 }
 
+/** Task reminders and scheduled-post reminders (cheap; at most one job per 5 minutes). */
 async function scheduleReminders(user: User) {
-  const [due] = await db()
-    .select({ id: schema.tasks.id })
-    .from(schema.tasks)
-    .where(and(eq(schema.tasks.userId, user.id), isNotNull(schema.tasks.remindAt), lte(schema.tasks.remindAt, new Date()), isNull(schema.tasks.reminderSentAt)))
-    .limit(1);
-  if (due) await enqueue(user.id, "reminders", {}, { dedupeKey: `reminders:${user.id}:${bucket(5)}` });
-  return Boolean(due);
+  await enqueue(user.id, "reminders", {}, { dedupeKey: `reminders:${user.id}:${bucket(5)}` });
+  return true;
 }
 
 /** Everything the 5-minute dispatcher needs to enqueue. Each piece is idempotent. */

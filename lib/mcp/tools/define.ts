@@ -5,6 +5,7 @@ import { logActivity } from "@/lib/db/queries/activity";
 import { TaskError } from "@/lib/db/queries/tasks";
 import { errMessage } from "@/lib/log";
 import { hasScope, type Scope } from "@/lib/security/scopes";
+import { Trace } from "@/lib/trace";
 import { authExtra, type PaAuthExtra } from "../auth";
 
 type ToolResult = { content: { type: "text"; text: string }[]; isError?: boolean };
@@ -56,8 +57,10 @@ export function registerTool<S extends z.ZodObject>(server: McpServer, def: Tool
         await logActivity({ userId: auth.userId, actor: "claude", tool: def.name, inputSummary: summary, outcome: "denied", detail: `missing scope ${def.scope}`, tokenId: auth.tokenId });
         return text(`This token lacks the "${def.scope}" scope. Ask the owner to grant it in PA > Connect Claude.`, true);
       }
+      const trace = new Trace(auth.userId, "mcp", "claude");
+      await trace.event("input:claude", `Claude called ${def.name}`);
       try {
-        const result = await def.run(args, auth);
+        const result = await trace.span(`tool:${def.name}`, `Claude: ${def.title}`, () => def.run(args, auth));
         await logActivity({ userId: auth.userId, actor: "claude", tool: def.name, inputSummary: summary, outcome: "success", tokenId: auth.tokenId });
         return text(result);
       } catch (err) {

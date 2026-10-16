@@ -391,6 +391,21 @@ CREATE TABLE "tasks" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
+CREATE TABLE "trace_spans" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"user_id" uuid NOT NULL,
+	"run_id" uuid NOT NULL,
+	"parent_id" uuid,
+	"run_kind" text NOT NULL,
+	"trigger" text NOT NULL,
+	"node" text NOT NULL,
+	"label" text NOT NULL,
+	"status" text DEFAULT 'running' NOT NULL,
+	"meta" jsonb DEFAULT '{}'::jsonb NOT NULL,
+	"started_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"ended_at" timestamp with time zone
+);
+--> statement-breakpoint
 CREATE TABLE "user_settings" (
 	"user_id" uuid PRIMARY KEY NOT NULL,
 	"timezone" text DEFAULT 'UTC' NOT NULL,
@@ -457,6 +472,7 @@ ALTER TABLE "task_comments" ADD CONSTRAINT "task_comments_user_id_users_id_fk" F
 ALTER TABLE "task_comments" ADD CONSTRAINT "task_comments_task_id_tasks_id_fk" FOREIGN KEY ("task_id") REFERENCES "public"."tasks"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "tasks" ADD CONSTRAINT "tasks_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "tasks" ADD CONSTRAINT "tasks_source_email_id_emails_id_fk" FOREIGN KEY ("source_email_id") REFERENCES "public"."emails"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "trace_spans" ADD CONSTRAINT "trace_spans_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "user_settings" ADD CONSTRAINT "user_settings_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 CREATE INDEX "activity_user_created_idx" ON "activity_log" USING btree ("user_id","created_at");--> statement-breakpoint
 CREATE INDEX "ai_runs_created_idx" ON "ai_runs" USING btree ("created_at");--> statement-breakpoint
@@ -496,4 +512,6 @@ CREATE INDEX "sessions_user_idx" ON "sessions" USING btree ("user_id");--> state
 CREATE INDEX "task_comments_task_idx" ON "task_comments" USING btree ("task_id","created_at");--> statement-breakpoint
 CREATE INDEX "tasks_user_status_idx" ON "tasks" USING btree ("user_id","status","position");--> statement-breakpoint
 CREATE INDEX "tasks_user_scheduled_idx" ON "tasks" USING btree ("user_id","scheduled_at");--> statement-breakpoint
-CREATE INDEX "tasks_parent_idx" ON "tasks" USING btree ("parent_id");
+CREATE INDEX "tasks_parent_idx" ON "tasks" USING btree ("parent_id");--> statement-breakpoint
+CREATE INDEX "trace_spans_user_started_idx" ON "trace_spans" USING btree ("user_id","started_at");--> statement-breakpoint
+CREATE INDEX "trace_spans_run_idx" ON "trace_spans" USING btree ("run_id");

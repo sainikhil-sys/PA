@@ -1,6 +1,6 @@
 "use server";
 
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { ownerAction } from "@/lib/auth/action";
@@ -8,6 +8,8 @@ import { db, schema } from "@/lib/db";
 import { logActivity } from "@/lib/db/queries/activity";
 import { updateSettings } from "@/lib/db/queries/settings";
 import { isValidTimezone } from "@/lib/time";
+import { testProvider } from "@/lib/ai/router";
+import { signOutCurrent } from "@/lib/auth/session";
 
 const hhmm = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Use HH:MM");
 const tz = z.string().refine(isValidTimezone, "Unknown timezone");
@@ -83,4 +85,37 @@ export const savePreferences = ownerAction(
 export const completeOnboarding = ownerAction(z.object({}), async (_i, user) => {
   await db().update(schema.users).set({ onboardedAt: new Date() }).where(eq(schema.users.id, user.id));
   revalidatePath("/", "layout");
+});
+
+/** Avatar as a small JPEG data URL (client downsizes to 256px). */
+export const saveAvatar = ownerAction(
+  z.object({ dataUrl: z.string().max(200_000).regex(/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/, "Unsupported image").nullable() }),
+  async ({ dataUrl }, user) => {
+    await db().update(schema.users).set({ avatarUrl: dataUrl }).where(eq(schema.users.id, user.id));
+    revalidatePath("/", "layout");
+  },
+);
+
+// ---------- Agent memory (visible, editable, deletable) ----------
+export const addMemory = ownerAction(z.object({ content: z.string().trim().min(2).max(500), kind: z.enum(["preference", "fact", "person", "project"]).default("preference") }), async (input, user) => {
+  await db().insert(schema.memories).values({ userId: user.id, content: input.content, kind: input.kind });
+  revalidatePath("/settings/agent");
+});
+
+export const updateMemory = ownerAction(z.object({ id: z.string().uuid(), content: z.string().trim().min(2).max(500) }), async ({ id, content }, user) => {
+  await db().update(schema.memories).set({ content }).where(and(eq(schema.memories.id, id), eq(schema.memories.userId, user.id)));
+  revalidatePath("/settings/agent");
+});
+
+export const deleteMemory = ownerAction(z.object({ id: z.string().uuid() }), async ({ id }, user) => {
+  await db().delete(schema.memories).where(and(eq(schema.memories.id, id), eq(schema.memories.userId, user.id)));
+  revalidatePath("/settings/agent");
+});
+
+export const testProviderAction = ownerAction(z.object({ name: z.string().max(40) }), async ({ name }) => testProvider(name));
+
+/** Irreversible. UI requires typing DELETE. Removes the user row; everything cascades. */
+export const deleteAccount = ownerAction(z.object({ confirm: z.literal("DELETE") }), async (_i, user) => {
+  await db().delete(schema.users).where(eq(schema.users.id, user.id));
+  await signOutCurrent();
 });

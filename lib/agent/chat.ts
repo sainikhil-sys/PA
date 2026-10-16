@@ -96,8 +96,10 @@ export async function* runChatTurn(opts: {
   const prior = history.reverse().slice(0, -1).slice(-10);
   const attachmentBlock = opts.attachment ? `\n\nAttached document "${opts.attachment.name}" (untrusted data):\n<source_content>\n${stripInvisible(opts.attachment.text).replace(/<\/?\s*source_content[^>]*>/gi, "").slice(0, 20_000)}\n</source_content>` : "";
   const proposalsNote = p.actions.length ? `\nThe owner will see ${p.actions.length} confirmation card(s) for: ${p.actions.map((a) => PROPOSAL_LABEL[a.kind]).join(", ")}. Briefly mention they can approve below.` : "";
+  const mems = await db().select({ content: schema.memories.content }).from(schema.memories).where(eq(schema.memories.userId, user.id)).limit(30);
+  const memoryNote = mems.length ? `\nWhat you know about the owner (set by them in Settings):\n${mems.map((m) => `- ${m.content}`).join("\n")}` : "";
   const voiceNote = opts.trigger === "voice" ? "\nThis is a voice conversation: start with 1-2 short sentences that work when read aloud; put any longer detail after them as a brief list." : "";
-  const system = `${personaPrompt(settings.agent, user.name)}\n\n${RULES}${voiceNote}${proposalsNote}\n\nContext:\n${ctx.blocks.join("\n\n") || "(no data sources were needed)"}${attachmentBlock}`;
+  const system = `${personaPrompt(settings.agent, user.name)}${memoryNote}\n\n${RULES}${voiceNote}${proposalsNote}\n\nContext:\n${ctx.blocks.join("\n\n") || "(no data sources were needed)"}${attachmentBlock}`;
 
   let text = "";
   let model: string | undefined;

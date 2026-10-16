@@ -1,7 +1,7 @@
 import "server-only";
 import { createMcpHandler } from "mcp-handler";
 import { registerBriefingTools } from "./tools/briefing";
-import { registerMemoryTools } from "./tools/memory";
+import { registerKnowledgeTools, registerMemoryTools } from "./tools/memory";
 import { registerTaskTools } from "./tools/tasks";
 
 /** Tool names exposed to Claude. There is deliberately no send or delete tool. */
@@ -15,6 +15,7 @@ export const MCP_TOOL_NAMES = [
   "list_important_emails",
   "search_memory",
   "save_note",
+  "search_knowledge",
 ] as const;
 
 /** Stateless Streamable HTTP handler: no in-memory sessions, safe on serverless. */
@@ -23,6 +24,7 @@ export const mcpHandler = createMcpHandler(
     registerTaskTools(server);
     registerBriefingTools(server);
     registerMemoryTools(server);
+    registerKnowledgeTools(server);
   },
   {
     serverInfo: { name: "pa", version: "0.1.0" },

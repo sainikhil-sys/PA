@@ -273,7 +273,7 @@ export function VoiceOverlay() {
       recRef.current?.abort();
       const m = mediaRef.current;
       if (m) {
-        m.recorder.state !== "inactive" && m.recorder.stop();
+        if (m.recorder.state !== "inactive") m.recorder.stop();
         m.stream.getTracks().forEach((t) => t.stop());
       }
       window.speechSynthesis?.cancel();
