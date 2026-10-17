@@ -11,6 +11,7 @@ import { FieldError, Input, Label } from "@/components/ui/input";
 import { OtpInput } from "./otp-input";
 
 const RESEND_SECONDS = 30;
+const STALE_KEY = "pa:login-retry";
 
 export function LoginFlow({ next }: { next?: string }) {
   const router = useRouter();
@@ -23,6 +24,32 @@ export function LoginFlow({ next }: { next?: string }) {
   const [pending, startTransition] = React.useTransition();
   const [resendIn, setResendIn] = React.useState(0);
 
+  // After a deploy, a page opened earlier can no longer reach the server (its form actions
+  // changed). Reload once, keeping the email, instead of failing silently.
+  const staleReload = () => {
+    try {
+      if (sessionStorage.getItem(STALE_KEY)) {
+        sessionStorage.removeItem(STALE_KEY);
+        setError("We couldn't reach Cowork. Check your connection and try again.");
+        return;
+      }
+      sessionStorage.setItem(STALE_KEY, email);
+    } catch {}
+    setError("Cowork was just updated. Reloading…");
+    window.location.reload();
+  };
+
+  React.useEffect(() => {
+    try {
+      const saved = sessionStorage.getItem(STALE_KEY);
+      if (saved) {
+        setEmail(saved);
+        setNotice("Cowork was updated. Press Continue again to get your code.");
+        setTimeout(() => sessionStorage.removeItem(STALE_KEY), 30_000);
+      }
+    } catch {}
+  }, []);
+
   React.useEffect(() => {
     if (resendIn <= 0) return;
     const t = setTimeout(() => setResendIn((s) => s - 1), 1000);
@@ -32,7 +59,8 @@ export function LoginFlow({ next }: { next?: string }) {
   const sendCode = () =>
     startTransition(async () => {
       setError(null);
-      const res = await requestCodeAction(email);
+      const res = await requestCodeAction(email).catch(() => null);
+      if (!res) return staleReload();
       if (!res.ok) return setError(res.message);
       setNotice(res.message);
       setStep("code");
@@ -43,7 +71,8 @@ export function LoginFlow({ next }: { next?: string }) {
   const verify = (value: string) =>
     startTransition(async () => {
       setError(null);
-      const res = await verifyCodeAction(email, value);
+      const res = await verifyCodeAction(email, value).catch(() => null);
+      if (!res) return staleReload();
       if (!res.ok) {
         setError(res.message);
         setCode("");

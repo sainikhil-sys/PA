@@ -234,32 +234,32 @@ export async function IdeasCard({ user }: { user: User }) {
 export async function IntegrationsStrip({ user }: { user: User }) {
   const rows = await listIntegrations(user.id).catch(() => []);
   const byProvider = new Map(rows.map((r) => [r.provider, r]));
-  const shown = CATALOG.slice(0, 7);
+  const shown = CATALOG.filter((c) => c.provider !== "telegram").slice(0, 10);
   return (
     <Card>
-      <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center">
-        <div className="flex items-center gap-2.5">
-          <Plugs size={20} className="text-muted" />
-          <h2 className="text-[15px] font-medium">Integrations</h2>
-        </div>
-        <ul className="no-scrollbar flex flex-1 items-center gap-2 overflow-x-auto">
+      <div className="flex items-center gap-3 px-4 py-3">
+        <h2 className="flex shrink-0 items-center gap-2 text-[14px] font-medium">
+          <Plugs size={18} className="text-muted" />
+          <span className="hidden sm:inline">Integrations</span>
+        </h2>
+        <ul className="no-scrollbar flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto [mask-image:linear-gradient(90deg,black_92%,transparent)]">
           {shown.map((c) => {
             const row = c.provider ? byProvider.get(c.provider) : undefined;
             const state = c.provider === "telegram" ? (process.env.TELEGRAM_BOT_TOKEN ? "ok" : "idle") : row?.status === "connected" ? "ok" : row?.status === "error" ? "error" : "idle";
             const label = state === "ok" ? "connected" : state === "error" ? "needs attention" : "not connected";
             return (
-              <li key={c.id}>
-                <Link href="/integrations" className="flex h-11 items-center gap-2 rounded-[12px] border border-border px-3 text-[13px] hover:border-border-strong" aria-label={`${c.name}, ${label}`}>
-                  <BrandLogo id={c.logo} size={18} />
-                  <span className="hidden sm:inline">{c.name}</span>
+              <li key={c.id} className="shrink-0">
+                <Link href={`/integrations/${c.id}`} className="flex h-9 items-center gap-2 whitespace-nowrap rounded-full border border-border pl-2 pr-2.5 text-[12.5px] hover:border-border-strong" aria-label={`${c.name}, ${label}`}>
+                  <BrandLogo id={c.logo} size={16} />
+                  <span>{c.name}</span>
                   <StatusDot state={state as "ok" | "error" | "idle"} pulse={state === "ok"} />
                 </Link>
               </li>
             );
           })}
         </ul>
-        <Button asChild size="sm" variant="secondary">
-          <Link href="/integrations">Add more</Link>
+        <Button asChild size="sm" variant="secondary" className="shrink-0">
+          <Link href="/integrations">All</Link>
         </Button>
       </div>
     </Card>

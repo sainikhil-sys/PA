@@ -3,6 +3,8 @@ import manifest from "@/public/brands/manifest.json";
 import { cn } from "@/lib/utils";
 
 const NAMES: Record<string, string> = { slack: "Slack", linkedin: "LinkedIn", canva: "Canva" };
+/** Black single-colour marks: inverted on dark backgrounds so they stay visible. */
+const MONO = new Set(["notion", "github", "x", "threads", "vercel", "apple"]);
 
 /**
  * Brand mark in its ORIGINAL colors (from Simple Icons, stored locally).
@@ -18,6 +20,7 @@ export function BrandLogo({ id, size = 24, className, box = false }: { id: strin
       {(NAMES[id] ?? id).slice(0, 1).toUpperCase()}
     </span>
   );
-  if (!box) return <span className={cn("inline-grid shrink-0 place-items-center", className)}>{inner}</span>;
-  return <span className={cn("inline-grid shrink-0 place-items-center rounded-[12px] border border-border bg-background", className)} style={{ width: size + 20, height: size + 20 }}>{inner}</span>;
+  const mono = MONO.has(id) && "brand-mono";
+  if (!box) return <span className={cn("inline-grid shrink-0 place-items-center", mono, className)}>{inner}</span>;
+  return <span className={cn("inline-grid shrink-0 place-items-center rounded-[12px] border border-border bg-background", mono, className)} style={{ width: size + 20, height: size + 20 }}>{inner}</span>;
 }

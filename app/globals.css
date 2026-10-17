@@ -312,3 +312,6 @@ html[data-room] .card {
   -webkit-backdrop-filter: blur(16px) saturate(1.15);
   backdrop-filter: blur(16px) saturate(1.15);
 }
+html[data-room="dark"] .brand-mono img {
+  filter: invert(1);
+}
