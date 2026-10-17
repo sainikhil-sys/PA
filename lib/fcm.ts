@@ -1,6 +1,6 @@
 import "server-only";
 import { GoogleAuth } from "google-auth-library";
-import { env } from "@/lib/env";
+import { appUrl, env } from "@/lib/env";
 import { errMessage, log } from "@/lib/log";
 
 /** Firebase Cloud Messaging (HTTP v1). Enabled when FIREBASE_SERVICE_ACCOUNT holds the service-account JSON. */
@@ -27,7 +27,7 @@ export function fcmConfigured(): boolean {
 }
 
 /** Send one notification to one FCM registration token. "dead" means the token should be removed. */
-export async function sendFcm(token: string, msg: { title: string; body: string; href: string; tag?: string }): Promise<"ok" | "dead" | "error"> {
+export async function sendFcm(token: string, msg: { title: string; body: string; href: string; tag?: string }, opts: { nativeApp?: boolean } = {}): Promise<"ok" | "dead" | "error"> {
   const sa = serviceAccount();
   if (!sa) return "error";
   try {
@@ -37,13 +37,21 @@ export async function sendFcm(token: string, msg: { title: string; body: string;
       method: "POST",
       headers: { authorization: `Bearer ${access}`, "content-type": "application/json" },
       body: JSON.stringify({
-        message: {
-          token,
-          // Data-only payload: our service worker (sw.js) shows it, same as standard Web Push.
-          data: { title: msg.title, body: msg.body, href: msg.href, tag: msg.tag ?? "" },
-          webpush: { headers: { TTL: "43200", Urgency: "normal" } },
-          android: { priority: "high" },
-        },
+        message: opts.nativeApp
+          ? {
+              // Phone app (Appilix): Android shows "notification" itself; the link rides along in data.
+              token,
+              notification: { title: msg.title, body: msg.body },
+              data: { href: msg.href, url: `${appUrl()}${msg.href}`, tag: msg.tag ?? "" },
+              android: { priority: "high", notification: { tag: msg.tag || undefined, default_sound: true } },
+            }
+          : {
+              token,
+              // Data-only payload: our service worker (sw.js) shows it, same as standard Web Push.
+              data: { title: msg.title, body: msg.body, href: msg.href, tag: msg.tag ?? "" },
+              webpush: { headers: { TTL: "43200", Urgency: "normal" } },
+              android: { priority: "high" },
+            },
       }),
       signal: AbortSignal.timeout(8000),
     });

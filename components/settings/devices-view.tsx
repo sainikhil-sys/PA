@@ -6,6 +6,7 @@ import * as React from "react";
 import { toast } from "sonner";
 import { createPairCode, removeDevice, saveFcmToken, savePushSubscription, sendTestPush } from "@/app/actions/devices";
 import { Button } from "@/components/ui/button";
+import { appFcmToken, appNotificationsAllowed, inAppilixApp, requestAppNotifications } from "@/lib/appilix";
 import { timeAgo } from "@/lib/utils";
 import { Section } from "./section";
 
@@ -36,10 +37,15 @@ export function DevicesView({ vapidKey, firebase, devices, justPaired }: { vapid
   const router = useRouter();
   const [pending, start] = React.useTransition();
   const [qr, setQr] = React.useState<{ svg: string; expiresAt: string } | null>(null);
-  const [support, setSupport] = React.useState<"ok" | "unsupported" | "ios-install" | null>(null);
+  const [support, setSupport] = React.useState<"ok" | "app" | "unsupported" | "ios-install" | null>(null);
   const [permission, setPermission] = React.useState<NotificationPermission | null>(null);
 
   React.useEffect(() => {
+    // Inside the installed phone app, notifications go through the app (Firebase), not the browser.
+    if (inAppilixApp()) {
+      setSupport("app");
+      return;
+    }
     if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) {
       setSupport(isIos() && !isStandalone() ? "ios-install" : "unsupported");
       return;
@@ -54,6 +60,23 @@ export function DevicesView({ vapidKey, firebase, devices, justPaired }: { vapid
     setStatus(msg);
     toast.error(msg);
   };
+  const enableInApp = () =>
+    start(async () => {
+      setStatus(null);
+      if (!(await appNotificationsAllowed())) {
+        requestAppNotifications();
+        setStatus("Allow notifications for Cowork in the screen that opens, then come back here and tap the button again.");
+        return;
+      }
+      const token = await appFcmToken();
+      if (!token) return fail("The app couldn't get a notification token yet. Close and reopen Cowork, then try again.");
+      const r = await saveFcmToken({ token, nativeApp: true });
+      if (!r.ok) return fail(r.error);
+      setStatus("This phone is connected. Tap “Send a test” to check.");
+      toast.success("This phone will get notifications.");
+      router.refresh();
+    });
+
   const enableHere = () =>
     start(async () => {
       setStatus(null);
@@ -115,7 +138,7 @@ export function DevicesView({ vapidKey, firebase, devices, justPaired }: { vapid
           <p className="text-[13px] text-muted">This browser doesn&apos;t support notifications.</p>
         ) : (
           <div className="flex flex-wrap items-center gap-2">
-            <Button onClick={enableHere} disabled={pending || support !== "ok"}>
+            <Button onClick={support === "app" ? enableInApp : enableHere} disabled={pending || (support !== "ok" && support !== "app")}>
               <Bell /> {permission === "granted" ? "Re-connect this device" : "Turn on notifications here"}
             </Button>
             {devices.length ? (

@@ -33,14 +33,18 @@ export const savePushSubscription = ownerAction(
   },
 );
 
-/** Save this device's Firebase Cloud Messaging token (stored as an "fcm:" endpoint). */
-export const saveFcmToken = ownerAction(z.object({ token: z.string().min(20).max(4096).regex(/^[\w:.-]+$/) }), async ({ token }, user) => {
+/**
+ * Save a Firebase Cloud Messaging token: "fcm:" for a browser, "fcmapp:" for the installed
+ * phone app (Appilix), which gets native Android notifications.
+ */
+export const saveFcmToken = ownerAction(z.object({ token: z.string().min(20).max(4096).regex(/^[\w:.-]+$/), nativeApp: z.boolean().optional() }), async ({ token, nativeApp }, user) => {
   const ua = (await headers()).get("user-agent") ?? "";
-  const endpoint = `fcm:${token}`;
+  const endpoint = `${nativeApp ? "fcmapp" : "fcm"}:${token}`;
+  const label = nativeApp ? `${/iPhone|iPad/.test(ua) ? "iPhone" : "Android"} app` : `${deviceLabel(ua)} · Firebase`;
   await db()
     .insert(schema.pushSubscriptions)
-    .values({ userId: user.id, endpoint, p256dh: "fcm", auth: "fcm", label: `${deviceLabel(ua)} · Firebase` })
-    .onConflictDoUpdate({ target: schema.pushSubscriptions.endpoint, set: { userId: user.id, label: `${deviceLabel(ua)} · Firebase` } });
+    .values({ userId: user.id, endpoint, p256dh: "fcm", auth: "fcm", label })
+    .onConflictDoUpdate({ target: schema.pushSubscriptions.endpoint, set: { userId: user.id, label } });
   await logActivity({ userId: user.id, actor: "me", tool: "devices.fcm_enabled", inputSummary: deviceLabel(ua), outcome: "success" });
 });
 

@@ -35,8 +35,10 @@ export async function sendPush(userId: string, msg: PushMessage): Promise<number
   await Promise.all(
     subs.map(async (s) => {
       // Firebase Cloud Messaging devices are stored with an "fcm:" endpoint.
-      if (s.endpoint.startsWith("fcm:")) {
-        const r = await sendFcm(s.endpoint.slice(4), { title, body, href, tag });
+      // Firebase devices: "fcm:" = browser, "fcmapp:" = the installed phone app (Appilix).
+      if (s.endpoint.startsWith("fcm:") || s.endpoint.startsWith("fcmapp:")) {
+        const native = s.endpoint.startsWith("fcmapp:");
+        const r = await sendFcm(s.endpoint.slice(native ? 7 : 4), { title, body, href, tag }, { nativeApp: native });
         if (r === "ok") ok++;
         else if (r === "dead") dead.push(s.id);
         return;

@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import * as React from "react";
 import { LinkPanelProvider, useLinkPanel } from "@/components/flow/link-panel-context";
 import { TooltipProvider } from "@/components/ui/misc";
+import { AppilixSync } from "./appilix-sync";
 import { CommandPalette } from "./command-palette";
 import { MobileNav } from "./mobile-nav";
 import { ShellContext } from "./shell-context";
@@ -102,6 +103,7 @@ function ShellInner({
             </div>
           </div>
           <MobileNav />
+          <AppilixSync email={user.email} />
           <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
           {chatOpen ? <ChatPanel /> : null}
           {voiceOpen ? <VoiceOverlay /> : null}
