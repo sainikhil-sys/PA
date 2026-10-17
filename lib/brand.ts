@@ -9,4 +9,6 @@ export const BRAND = {
   tagline: "Your work, handled.",
   /** Short machine-friendly id (user agents, export file names). */
   slug: "cowork",
+  /** Public contact for privacy and support requests (shown on /privacy and /terms). */
+  supportEmail: "support@antropic.me",
 } as const;

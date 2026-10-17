@@ -5,7 +5,7 @@ import { NextResponse, type NextRequest } from "next/server";
  * session cookie to /login. The cookie is fully validated (DB lookup + allowlist)
  * server-side in requireOwner(); this is only a fast first gate.
  */
-const PUBLIC_PATHS = ["/login"];
+const PUBLIC_PATHS = ["/login", "/home", "/privacy", "/terms"];
 
 function buildCsp(nonce: string, local: boolean): string {
   const dev = process.env.NODE_ENV !== "production";
