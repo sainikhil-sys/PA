@@ -3,7 +3,9 @@ import { Suspense } from "react";
 import { CardSkeleton, RibbonSkeleton } from "@/components/today/card-skeleton";
 import { AgentCard, IdeasCard, IntegrationsStrip, MailCard, ScheduleCard, TasksCard } from "@/components/today/cards";
 import { NewsRibbon } from "@/components/today/news-ribbon";
+import { PhoneCard } from "@/components/today/phone-card";
 import { RoomRow } from "@/components/today/room";
+import { listPhoneFeed } from "@/lib/phone-server";
 import { requireOwner } from "@/lib/auth/session";
 import type { User } from "@/lib/db/schema";
 import { getSettings } from "@/lib/db/queries/settings";
@@ -30,6 +32,11 @@ async function News({ user }: { user: User }) {
     });
   }
   return <NewsRibbon items={items.map(toNewsCard)} />;
+}
+
+/** Linked phone at a glance (live via /api/phone/feed). */
+async function PhoneSection({ user }: { user: User }) {
+  return <PhoneCard initial={await listPhoneFeed(user.id, 20).catch(() => ({ devices: [], events: [] }))} />;
 }
 
 /** Room: wallpaper, focus clock, music and video. Then the bento grid: news ribbon, agent, schedule, tasks, mail, ideas, integrations. Each card streams in with its own skeleton. */
@@ -65,6 +72,11 @@ export default async function TodayPage() {
           </Suspense>
         </div>
         <div className="md:col-span-2 lg:col-span-5">
+          <Suspense fallback={<CardSkeleton rows={3} />}>
+            <PhoneSection user={user} />
+          </Suspense>
+        </div>
+        <div className="md:col-span-2 lg:col-span-12">
           <Suspense fallback={<CardSkeleton rows={3} />}>
             <IdeasCard user={user} />
           </Suspense>
