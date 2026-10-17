@@ -50,6 +50,13 @@
       "when": 1792225561800,
       "tag": "0006_devices_admin",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1792228158268,
+      "tag": "0007_agents_sprints",
+      "breakpoints": true
     }
   ]
 }

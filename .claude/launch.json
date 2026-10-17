@@ -22,6 +22,15 @@
         "scripts/dev-test.mjs"
       ],
       "port": 3200
+    },
+    {
+      "name": "prod (test db)",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "scripts/dev-test.mjs",
+        "--prod"
+      ],
+      "port": 3200
     }
   ]
 }

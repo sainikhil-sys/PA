@@ -6,6 +6,7 @@ import {
   Lightning,
   PenNib,
   PuzzlePiece,
+  Robot,
   SunHorizon,
   Tray,
   type Icon,
@@ -25,6 +26,7 @@ export const PRIMARY_NAV: NavItem[] = [
 ];
 
 export const SECONDARY_NAV: NavItem[] = [
+  { href: "/agents", label: "Agents & sprints", icon: Robot },
   { href: "/integrations", label: "Integrations", icon: PuzzlePiece },
   { href: "/settings", label: "Settings", icon: GearSix },
 ];

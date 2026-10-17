@@ -1,5 +1,6 @@
 import "server-only";
 import { processBroadcast } from "@/lib/admin/broadcast";
+import { runAgentTask } from "@/lib/agents/run-task";
 import { and, eq, gte, inArray, lte } from "drizzle-orm";
 import { classifyEmail } from "@/lib/agents/emailAgent";
 import { generateDailyBriefing } from "@/lib/agents/briefingAgent";
@@ -216,6 +217,7 @@ const HANDLERS: Record<JobType, (job: Job) => Promise<unknown>> = {
   knowledge_sync: knowledgeSync,
   reminders: deliverReminders,
   broadcast: broadcastJob,
+  agent_task: (job) => runAgentTask(job.userId, String(job.payload.taskId)),
 };
 
 /**

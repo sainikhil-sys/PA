@@ -276,10 +276,16 @@ export const tasks = pgTable(
     /** Imported from another tool, e.g. "asana:1203" or "linear:ENG-12" (dedupe key). */
     externalRef: text("external_ref"),
     externalUrl: text("external_url"),
+    /** Agile: sprint and story points. */
+    sprintId: uuid("sprint_id"),
+    points: integer("points"),
+    /** External AI agent working this task ("chatgpt" | "gemini" | "claude"), via Agents. */
+    agentProvider: text("agent_provider"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
   (t) => [
+    index("tasks_user_sprint_idx").on(t.userId, t.sprintId),
     uniqueIndex("tasks_user_external_idx").on(t.userId, t.externalRef),
     index("tasks_user_status_idx").on(t.userId, t.status, t.position),
     index("tasks_user_scheduled_idx").on(t.userId, t.scheduledAt),
@@ -301,6 +307,37 @@ export const taskComments = pgTable(
     createdAt: createdAt(),
   },
   (t) => [index("task_comments_task_idx").on(t.taskId, t.createdAt)],
+);
+
+// ---------- Agents (ChatGPT / Gemini / Claude by API key) and sprints ----------
+export const agentConnectors = pgTable(
+  "agent_connectors",
+  {
+    id: id(),
+    userId: userId(),
+    provider: text("provider").notNull(),
+    model: text("model").notNull(),
+    keyEnc: text("key_enc").notNull(),
+    keyHint: text("key_hint").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("agent_connectors_user_provider_idx").on(t.userId, t.provider)],
+);
+
+export const sprints = pgTable(
+  "sprints",
+  {
+    id: id(),
+    userId: userId(),
+    name: text("name").notNull(),
+    goal: text("goal").notNull().default(""),
+    startDate: date("start_date", { mode: "string" }).notNull(),
+    endDate: date("end_date", { mode: "string" }).notNull(),
+    /** planned | active | closed */
+    status: text("status").notNull().default("planned"),
+    createdAt: createdAt(),
+  },
+  (t) => [index("sprints_user_idx").on(t.userId, t.startDate)],
 );
 
 // ---------- Notes & agent memory ----------

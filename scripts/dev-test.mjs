@@ -31,7 +31,13 @@ if (e2e) {
   const migrate = spawnSync(process.execPath, ["scripts/migrate.mjs"], { env, stdio: "inherit" });
   if (migrate.status !== 0) process.exit(migrate.status ?? 1);
 }
-const child = spawn(process.execPath, ["node_modules/next/dist/bin/next", "dev", "--turbopack", "-p", "3200"], { env, stdio: "inherit" });
+// --prod: build once, then serve the production bundle (much faster to click through than dev mode).
+const prod = process.argv.includes("--prod");
+if (prod) {
+  const build = spawnSync(process.execPath, ["node_modules/next/dist/bin/next", "build"], { env: { ...env, NODE_ENV: "production" }, stdio: "inherit" });
+  if (build.status !== 0) process.exit(build.status ?? 1);
+}
+const child = spawn(process.execPath, ["node_modules/next/dist/bin/next", prod ? "start" : "dev", ...(prod ? [] : ["--turbopack"]), "-p", "3200"], { env, stdio: "inherit" });
 process.on("SIGINT", () => child.kill());
 process.on("SIGTERM", () => child.kill());
 child.on("exit", (code) => process.exit(code ?? 0));

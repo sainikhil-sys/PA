@@ -56,7 +56,7 @@ export function IntegrationGrid({ catalog, states, telegramConfigured, oauthRead
         <AnimatePresence mode="popLayout">
           {filtered.map((c) => (
             <motion.li key={c.id} layout variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0, transition: { duration: 0.25, ease: EASE } } }} exit={{ opacity: 0, scale: 0.98 }}>
-              <IntegrationCard entry={c} state={stateOf(c)} celebrate={justConnected !== null && c.provider === justConnected} onOpen={() => setOpen(c)} />
+              <IntegrationCard entry={c} state={stateOf(c)} celebrate={justConnected !== null && c.provider === justConnected} onOpen={() => router.push(`/integrations/${c.id}`)} />
             </motion.li>
           ))}
           <motion.li key="request" layout variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } }}>
@@ -135,7 +135,7 @@ function CheckBurst() {
 
 const SYNCABLE = new Set(["asana", "linear", "hubspot", "stripe", "zoom", "youtube", "figma", "canva"]);
 
-function ConnectPanel({ entry, state, onClose, onChanged, telegramConfigured, oauthReady }: { entry: CatalogEntry | null; state: ConnState; onClose: () => void; onChanged: () => void; telegramConfigured: boolean; oauthReady: Record<string, boolean> }) {
+export function ConnectPanel({ entry, state, onClose, onChanged, telegramConfigured, oauthReady }: { entry: CatalogEntry | null; state: ConnState; onClose: () => void; onChanged: () => void; telegramConfigured: boolean; oauthReady: Record<string, boolean> }) {
   const [values, setValues] = React.useState<Record<string, string>>({});
   const [pending, start] = React.useTransition();
   const [confirm, setConfirm] = React.useState(false);
