@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { saveFcmToken } from "@/app/actions/devices";
-import { appFcmToken, appNotificationsAllowed, inAppilixApp, recordAppUser } from "@/lib/appilix";
+import { appFcmToken, appNotificationsAllowed, inAndroidWebView, inAppilixApp, recordAppUser, waitForAppilix } from "@/lib/appilix";
 
 const KEY = "pa:app-fcm-token";
 
@@ -13,8 +13,8 @@ const KEY = "pa:app-fcm-token";
  */
 export function AppilixSync({ email }: { email: string }) {
   React.useEffect(() => {
-    if (!inAppilixApp()) return;
     let busy = false;
+    let cancelled = false;
     const sync = async () => {
       if (busy) return;
       busy = true;
@@ -38,10 +38,16 @@ export function AppilixSync({ email }: { email: string }) {
         busy = false;
       }
     };
-    void sync();
-    const onVisible = () => document.visibilityState === "visible" && void sync();
+    const onVisible = () => document.visibilityState === "visible" && inAppilixApp() && void sync();
     document.addEventListener("visibilitychange", onVisible);
-    return () => document.removeEventListener("visibilitychange", onVisible);
+    // The bridge may appear a moment after load; only worth waiting inside an app WebView.
+    void (async () => {
+      if ((inAppilixApp() || (inAndroidWebView() && (await waitForAppilix()))) && !cancelled) void sync();
+    })();
+    return () => {
+      cancelled = true;
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, [email]);
   return null;
 }

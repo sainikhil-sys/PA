@@ -12,6 +12,21 @@ export function inAppilixApp(): boolean {
   return bridge() !== null;
 }
 
+/** The bridge can appear shortly after the page loads: wait for it (up to timeoutMs). */
+export async function waitForAppilix(timeoutMs = 8000): Promise<boolean> {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    if (bridge()) return true;
+    await new Promise((r) => setTimeout(r, 250));
+  }
+  return bridge() !== null;
+}
+
+/** Android marks app-embedded browsers (WebViews) with "; wv)" in the user agent. */
+export function inAndroidWebView(): boolean {
+  return typeof navigator !== "undefined" && /; wv\)/.test(navigator.userAgent);
+}
+
 /** One request/response over the bridge (it has a single onmessage slot, so calls run one at a time). */
 let queue: Promise<unknown> = Promise.resolve();
 function call<T = Record<string, unknown>>(type: string, props?: Record<string, unknown>, timeoutMs = 8000): Promise<T | null> {

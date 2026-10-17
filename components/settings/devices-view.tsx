@@ -6,7 +6,7 @@ import * as React from "react";
 import { toast } from "sonner";
 import { createPairCode, removeDevice, saveFcmToken, savePushSubscription, sendTestPush } from "@/app/actions/devices";
 import { Button } from "@/components/ui/button";
-import { appFcmToken, appNotificationsAllowed, inAppilixApp, requestAppNotifications } from "@/lib/appilix";
+import { appFcmToken, appNotificationsAllowed, inAndroidWebView, inAppilixApp, requestAppNotifications, waitForAppilix } from "@/lib/appilix";
 import { timeAgo } from "@/lib/utils";
 import { Section } from "./section";
 
@@ -42,8 +42,9 @@ export function DevicesView({ vapidKey, firebase, devices, justPaired }: { vapid
 
   React.useEffect(() => {
     // Inside the installed phone app, notifications go through the app (Firebase), not the browser.
-    if (inAppilixApp()) {
+    if (inAppilixApp() || inAndroidWebView()) {
       setSupport("app");
+      void waitForAppilix();
       return;
     }
     if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) {
@@ -126,6 +127,7 @@ export function DevicesView({ vapidKey, firebase, devices, justPaired }: { vapid
         </div>
       ) : null}
 
+      <AppCheck />
       <Section title="This device" description="Get reminders, urgent mail and announcements as notifications.">
         {support === "ios-install" ? (
           <div className="flex items-start gap-3 rounded-[14px] border border-border p-4 text-[13px]">
@@ -224,5 +226,57 @@ export function DevicesView({ vapidKey, firebase, devices, justPaired }: { vapid
         )}
       </Section>
     </div>
+  );
+}
+
+/** Step-by-step check for the installed phone app, so a failure shows exactly where it stops. */
+function AppCheck() {
+  const [rows, setRows] = React.useState<{ label: string; ok: boolean | null; note?: string }[] | null>(null);
+  const [running, setRunning] = React.useState(false);
+  const run = React.useCallback(async () => {
+    setRunning(true);
+    const out: { label: string; ok: boolean | null; note?: string }[] = [];
+    const webView = inAndroidWebView();
+    const inApp = inAppilixApp() || (await waitForAppilix(8000));
+    out.push({
+      label: "Running inside the Cowork phone app",
+      ok: inApp,
+      note: inApp
+        ? undefined
+        : webView
+          ? "This is inside an Android app, but the Appilix bridge isn't available. Turn on the JavaScript Bridge / Firebase notifications for this app in Appilix, rebuild, and reinstall."
+          : "This page is open in a normal browser, not the Cowork app. Open the Cowork app itself and check again.",
+    });
+    if (inApp) {
+      const allowed = await appNotificationsAllowed();
+      out.push({ label: "Notifications allowed for the app", ok: allowed, note: allowed ? undefined : "Tap “Turn on notifications here” and allow Cowork in the phone settings." });
+      const token = allowed ? await appFcmToken() : null;
+      out.push({ label: "Firebase token received", ok: allowed ? Boolean(token) : null, note: allowed && !token ? "Firebase isn't connected in this build. Upload google-services.json in Appilix and rebuild the app." : undefined });
+    }
+    setRows(out);
+    setRunning(false);
+  }, []);
+  React.useEffect(() => {
+    if (inAppilixApp() || inAndroidWebView()) void run();
+  }, [run]);
+  return (
+    <Section title="Phone app check" description="Shows each step needed for notifications in the installed app.">
+      {rows ? (
+        <ul className="flex flex-col gap-1.5 text-[13px]">
+          {rows.map((r) => (
+            <li key={r.label} className="flex flex-col">
+              <span className="flex items-center gap-2">
+                <span aria-hidden className={r.ok === true ? "text-success" : r.ok === false ? "text-danger" : "text-muted"}>{r.ok === true ? "✓" : r.ok === false ? "✕" : "–"}</span>
+                {r.label}
+              </span>
+              {r.note ? <span className="pl-5 text-muted">{r.note}</span> : null}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      <Button size="sm" variant="secondary" className="w-fit" disabled={running} onClick={() => void run()}>
+        {running ? "Checking…" : rows ? "Check again" : "Run check"}
+      </Button>
+    </Section>
   );
 }
