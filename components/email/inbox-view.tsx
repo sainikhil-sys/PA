@@ -19,7 +19,7 @@ export type InboxRow = { id: string; fromName: string | null; fromEmail: string 
 
 type Filter = "important" | EmailCategory | "all";
 
-export function InboxView({ initial, counts, connected }: { initial: InboxRow[]; counts: Record<string, number>; connected: boolean }) {
+export function InboxView({ initial, counts, connected, syncError }: { initial: InboxRow[]; counts: Record<string, number>; connected: boolean; syncError?: string | null }) {
   const router = useRouter();
   const [filter, setFilter] = React.useState<Filter>("important");
   const [pending, start] = React.useTransition();
@@ -44,11 +44,17 @@ export function InboxView({ initial, counts, connected }: { initial: InboxRow[];
   ];
 
   if (!connected) {
-    return <EmptyState icon={Tray} title="Connect Gmail" description="PA reads your inbox, sorts it, and prepares reply drafts. It never sends." action={<Button asChild variant="primary"><a href="/api/integrations/google/start?returnTo=/inbox">Connect Google</a></Button>} />;
+    return <EmptyState icon={Tray} title="Connect Gmail" description="Cowork reads your inbox, sorts it, and prepares reply drafts. It never sends." action={<Button asChild variant="primary"><a href="/api/integrations/google/start?returnTo=/inbox">Connect Google</a></Button>} />;
   }
 
   return (
     <div className="flex flex-col gap-5">
+      {syncError ? (
+        <p role="alert" className="flex items-start gap-2 rounded-[12px] border border-border px-4 py-3 text-[13px]">
+          <span className="mt-1.5 size-2 shrink-0 rounded-full bg-danger" aria-hidden />
+          {syncError}
+        </p>
+      ) : null}
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div className="no-scrollbar -mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
           <Segmented id="inbox-filter" label="Filter" value={filter} onChange={setFilter} options={options} />

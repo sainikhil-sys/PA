@@ -67,6 +67,7 @@ export const savePreferences = ownerAction(
     quietHoursEnd: hhmm.nullable().optional(),
     notifyInApp: z.boolean().optional(),
     notifyEmailDigest: z.boolean().optional(),
+    notifyEmail: z.boolean().optional(),
     notifyTelegram: z.boolean().optional(),
     fontScale: z.enum(["sm", "md", "lg"]).optional(),
     density: z.enum(["comfortable", "compact"]).optional(),

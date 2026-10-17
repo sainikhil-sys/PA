@@ -2,7 +2,7 @@ import "server-only";
 import { and, desc, eq, gt, isNull, sql } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { logActivity } from "@/lib/db/queries/activity";
-import { allowedEmails, isTestMode, requireEnv } from "@/lib/env";
+import { isTestMode, requireEnv } from "@/lib/env";
 import { log } from "@/lib/log";
 import { rateLimit } from "@/lib/security/ratelimit";
 import { sendOtpEmail } from "./mail";
@@ -10,13 +10,13 @@ import {
   generateOtpCode,
   hashEmail,
   hashOtp,
-  isEmailAllowed,
   normalizeEmail,
   OTP_MAX_ATTEMPTS,
   OTP_TTL_MS,
   TEST_OTP_CODE,
   verifyOtpHash,
 } from "./otp-core";
+import { mayUseApp } from "./policy";
 import { createSession } from "./session";
 
 /** Same message whether or not the email is allowed: never reveal the allowlist. */
@@ -32,7 +32,7 @@ export async function requestOtp(rawEmail: string, ip: string): Promise<{ ok: bo
   const [byEmail, byIp] = await Promise.all([rateLimit("otpEmail", emailHash), rateLimit("otpIp", ip)]);
   if (!byEmail.success || !byIp.success) return { ok: false, message: RATE_LIMITED };
 
-  if (!isEmailAllowed(email, allowedEmails())) {
+  if (!mayUseApp(email)) {
     // Do comparable work so timing doesn't reveal the allowlist.
     hashOtp(email, generateOtpCode(), secret);
     log.info("otp.requested", { allowed: false });
@@ -73,7 +73,7 @@ export async function verifyOtp(rawEmail: string, code: string, ip: string): Pro
     .orderBy(desc(schema.otpCodes.createdAt))
     .limit(1);
 
-  if (!row || row.attempts >= OTP_MAX_ATTEMPTS || !isEmailAllowed(email, allowedEmails())) {
+  if (!row || row.attempts >= OTP_MAX_ATTEMPTS || !mayUseApp(email)) {
     return { ok: false, message: GENERIC_INVALID };
   }
 

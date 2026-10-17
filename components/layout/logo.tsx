@@ -6,7 +6,7 @@ export function Logo({ size = 28, withWord = true }: { size?: number; withWord?:
         <circle cx="16" cy="16" r="6.5" fill="none" stroke="var(--primary-foreground)" strokeWidth="2.2" />
         <circle cx="16" cy="16" r="2" fill="var(--primary-foreground)" />
       </svg>
-      {withWord ? <span className="text-[17px] font-medium tracking-[-0.02em]">PA</span> : <span className="sr-only">PA</span>}
+      {withWord ? <span className="text-[17px] font-medium tracking-[-0.02em]">Cowork</span> : <span className="sr-only">Cowork</span>}
     </span>
   );
 }

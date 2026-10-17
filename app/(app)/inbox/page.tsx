@@ -17,6 +17,7 @@ export default async function InboxPage() {
       <PageHeader title="Inbox" description="Sorted, summarized, with reply drafts ready when you want them." />
       <InboxView
         connected={google.connected}
+        syncError={google.connected ? (google.lastError ?? null) : null}
         counts={counts}
         initial={emails.map((e) => ({ id: e.id, fromName: e.fromName, fromEmail: e.fromEmail, subject: e.subject, summary: e.summary, snippet: e.snippet, category: e.category, receivedAt: e.receivedAt.toISOString(), draftId: e.draftId }))}
       />

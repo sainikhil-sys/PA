@@ -76,7 +76,7 @@ export const authorizeParamsSchema = z.object({
 });
 export type AuthorizeParams = z.infer<typeof authorizeParamsSchema>;
 
-/** Requested scopes intersected with supported ones. Empty means all PA scopes (still subject to consent). */
+/** Requested scopes intersected with supported ones. Empty means all Cowork scopes (still subject to consent). */
 export function resolveRequestedScopes(scope: string | undefined): Scope[] {
   const s = parseScopes(scope);
   return s.length ? s : ALL_SCOPES;

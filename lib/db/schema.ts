@@ -138,7 +138,9 @@ export const userSettings = pgTable("user_settings", {
   quietHoursStart: text("quiet_hours_start"),
   quietHoursEnd: text("quiet_hours_end"),
   notifyInApp: boolean("notify_in_app").notNull().default(true),
-  notifyEmailDigest: boolean("notify_email_digest").notNull().default(false),
+  notifyEmailDigest: boolean("notify_email_digest").notNull().default(true),
+  /** Email for urgent mail, reminders and automation alerts. */
+  notifyEmail: boolean("notify_email").notNull().default(true),
   notifyTelegram: boolean("notify_telegram").notNull().default(false),
   fontScale: text("font_scale").notNull().default("md"),
   density: text("density").notNull().default("comfortable"),

@@ -138,7 +138,7 @@ export async function syncSlack(source: KnowledgeSource): Promise<SyncResult> {
 export async function syncGithub(source: KnowledgeSource): Promise<SyncResult> {
   const token = await tokenFor(source.userId, "github");
   const repos = list(source.config, "repos").filter((r) => /^[\w.-]+\/[\w.-]+$/.test(r));
-  const headers = { authorization: `Bearer ${token}`, accept: "application/vnd.github+json", "user-agent": "PA-knowledge" };
+  const headers = { authorization: `Bearer ${token}`, accept: "application/vnd.github+json", "user-agent": "Cowork-knowledge" };
   let processed = 0;
   for (const repo of repos.slice(0, 5)) {
     const readme = await fetch(`https://api.github.com/repos/${repo}/readme`, { headers: { ...headers, accept: "application/vnd.github.raw" }, signal: AbortSignal.timeout(15_000) });

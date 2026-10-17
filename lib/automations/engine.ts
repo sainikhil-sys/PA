@@ -116,7 +116,7 @@ async function execute(user: User, a: Automation, run: AutomationRun, action: Au
       // Metadata only — never email bodies, documents or agent output.
       const res = await fetch(url, {
         method: "POST",
-        headers: { "content-type": "application/json", "user-agent": "PA-automations/1.0" },
+        headers: { "content-type": "application/json", "user-agent": "Cowork-automations/1.0" },
         body: JSON.stringify({ automation: a.name, runId: run.id, trigger: a.trigger.type, at: new Date().toISOString(), dryRun: false }),
         signal: AbortSignal.timeout(10_000),
         redirect: "error",

@@ -10,6 +10,10 @@ const schema = z.object({
   // Auth
   ALLOWED_EMAILS: z.string().optional(),
   ALLOWED_EMAIL: z.string().optional(),
+  /** "open": anyone with an email can sign up. "allowlist" (default): only ALLOWED_EMAILS. */
+  SIGNUP_MODE: z.enum(["open", "allowlist"]).default("allowlist"),
+  /** Admins get Telegram alerts and system mail. Defaults to ALLOWED_EMAILS. */
+  ADMIN_EMAILS: z.string().optional(),
   AUTH_SECRET: z.string().min(32).optional(),
   OTP_TEST_MODE: z.enum(["true", "false"]).optional(),
   RESEND_API_KEY: z.string().optional(),
@@ -87,13 +91,28 @@ export function appUrl(): string {
   return "http://localhost:3000";
 }
 
-/** Emails allowed to sign in (single-user guard). ALLOWED_EMAILS takes a comma list. */
+/** Emails allowed to sign in when SIGNUP_MODE=allowlist. ALLOWED_EMAILS takes a comma list. */
 export function allowedEmails(): string[] {
   const e = env();
-  return (e.ALLOWED_EMAILS ?? e.ALLOWED_EMAIL ?? "")
+  return emailList(e.ALLOWED_EMAILS ?? e.ALLOWED_EMAIL);
+}
+
+/** True when anyone may create an account. */
+export function signupOpen(): boolean {
+  return env().SIGNUP_MODE === "open";
+}
+
+function emailList(raw: string | undefined): string[] {
+  return (raw ?? "")
     .split(",")
     .map((s) => s.trim().toLowerCase())
     .filter(Boolean);
+}
+
+/** Admin accounts (Telegram alerts go only to these). Falls back to the allowlist. */
+export function adminEmails(): string[] {
+  const e = env();
+  return e.ADMIN_EMAILS ? emailList(e.ADMIN_EMAILS) : allowedEmails();
 }
 
 export const isProd = () => env().NODE_ENV === "production";

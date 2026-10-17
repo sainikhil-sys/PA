@@ -55,7 +55,7 @@ export function registerTool<S extends z.ZodObject>(server: McpServer, def: Tool
       }
       if (!hasScope(granted, def.scope)) {
         await logActivity({ userId: auth.userId, actor: "claude", tool: def.name, inputSummary: summary, outcome: "denied", detail: `missing scope ${def.scope}`, tokenId: auth.tokenId });
-        return text(`This token lacks the "${def.scope}" scope. Ask the owner to grant it in PA > Connect Claude.`, true);
+        return text(`This token lacks the "${def.scope}" scope. Ask the owner to grant it in Cowork > Connect Claude.`, true);
       }
       const trace = new Trace(auth.userId, "mcp", "claude");
       await trace.event("input:claude", `Claude called ${def.name}`);

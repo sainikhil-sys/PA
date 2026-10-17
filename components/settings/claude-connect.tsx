@@ -65,12 +65,12 @@ export function ClaudeConnect({ mcpUrl, tokens, scopes }: { mcpUrl: string; toke
               <StatusDot state={connected ? "ok" : active.length ? "warn" : "idle"} pulse={connected} />
               {connected ? "Connected" : active.length ? "Ready, not used recently" : "Not connected"}
             </p>
-            <p className="text-[13px] text-muted">{lastUsed ? `Last request ${timeAgo(lastUsed)}` : "Claude hasn't called PA yet."} · {active.length} active credential{active.length === 1 ? "" : "s"}</p>
+            <p className="text-[13px] text-muted">{lastUsed ? `Last request ${timeAgo(lastUsed)}` : "Claude hasn't called Cowork yet."} · {active.length} active credential{active.length === 1 ? "" : "s"}</p>
           </div>
         </div>
       </Section>
 
-      <Section title="Add PA to Claude" description="PA is a remote MCP server. Claude can read your tasks and briefing, claim and complete tasks, and search your knowledge. It can't send, post or delete anything.">
+      <Section title="Add Cowork to Claude" description="Cowork is a remote MCP server. Claude can read your tasks and briefing, claim and complete tasks, and search your knowledge. It can't send, post or delete anything.">
         <div className="flex flex-col gap-2">
           <Label>MCP server URL</Label>
           <CopyField value={mcpUrl} label="MCP server URL" />
@@ -79,9 +79,9 @@ export function ClaudeConnect({ mcpUrl, tokens, scopes }: { mcpUrl: string; toke
           <li>
             In Claude, open <span className="font-medium">Settings → Connectors</span> and choose <span className="font-medium">Add custom connector</span>.
           </li>
-          <li>Name it “PA” and paste the URL above. Leave the OAuth fields empty.</li>
-          <li>Click Connect. You'll land on PA's consent screen; review the scopes and approve.</li>
-          <li>In a chat, enable the PA connector and try: “List my PA tasks.”</li>
+          <li>Name it “Cowork” and paste the URL above. Leave the OAuth fields empty.</li>
+          <li>Click Connect. You'll land on Cowork's consent screen; review the scopes and approve.</li>
+          <li>In a chat, enable the Cowork connector and try: “List my Cowork tasks.”</li>
         </ol>
         <p className="text-[13px] text-muted">
           Claude Code or another client that sends headers? Create a token below and use <code className="font-mono">Authorization: Bearer &lt;token&gt;</code>.

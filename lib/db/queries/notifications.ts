@@ -1,12 +1,16 @@
 import "server-only";
 import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
-import { env } from "@/lib/env";
+import { isAdmin } from "@/lib/auth/policy";
+import { mailConfigured, topicUnsubscribeUrl, trySendMail } from "@/lib/email/send";
+import { appLink, notificationEmail } from "@/lib/email/templates";
+import { appUrl, env } from "@/lib/env";
+import { rateLimit } from "@/lib/security/ratelimit";
 import { errMessage, log } from "@/lib/log";
 import { inQuietHours, localTime } from "@/lib/time";
 import { getSettings } from "./settings";
 
-/** Telegram delivery: notification-only, to the owner's own chat. Never used to message anyone else. */
+/** Telegram delivery: notification-only, to the ADMIN's own chat. Never used for other accounts. */
 async function sendTelegram(text: string) {
   const e = env();
   if (!e.TELEGRAM_BOT_TOKEN || !e.TELEGRAM_CHAT_ID) return;
@@ -22,7 +26,13 @@ async function sendTelegram(text: string) {
   }
 }
 
-/** Create an in-app notification (deduplicated) and optionally mirror it to Telegram. */
+/** Kinds worth an email. Briefings have their own digest email. */
+const EMAIL_KINDS = new Set(["urgent_email", "automation", "automation_failed", "reminder", "post_reminder"]);
+
+/**
+ * Create an in-app notification (deduplicated), then deliver it by email to the
+ * account's own address (if on) and by Telegram (admins only; the bot has one chat).
+ */
 export async function notify(userId: string, n: { kind: string; title: string; body?: string; href?: string; dedupeKey?: string }) {
   const rows = await db()
     .insert(schema.notifications)
@@ -30,9 +40,25 @@ export async function notify(userId: string, n: { kind: string; title: string; b
     .onConflictDoNothing()
     .returning({ id: schema.notifications.id });
   if (!rows.length) return false;
-  const s = await getSettings(userId);
-  if (s.notifyTelegram && !inQuietHours(localTime(s.timezone), s.quietHoursStart, s.quietHoursEnd)) {
+  const [s, user] = await Promise.all([getSettings(userId), db().query.users.findFirst({ where: eq(schema.users.id, userId), columns: { email: true } })]);
+  if (!user || inQuietHours(localTime(s.timezone), s.quietHoursStart, s.quietHoursEnd)) return true;
+  if (s.notifyTelegram && isAdmin(user.email)) {
     await sendTelegram(`${n.title}${n.body ? `\n${n.body}` : ""}`);
+  }
+  if (s.notifyEmail && EMAIL_KINDS.has(n.kind) && mailConfigured() && (await rateLimit("notifyEmail", userId)).success) {
+    const base = appUrl();
+    await trySendMail(
+      user.email,
+      notificationEmail({
+        kind: n.kind,
+        title: n.title.slice(0, 200),
+        body: n.body?.slice(0, 500),
+        url: appLink(base, n.href),
+        manageUrl: `${base}/settings/notifications`,
+        unsubscribeUrl: topicUnsubscribeUrl(userId, "updates"),
+      }),
+      { unsubscribe: { userId, topic: "updates" }, tag: n.kind },
+    );
   }
   return true;
 }

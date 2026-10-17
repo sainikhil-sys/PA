@@ -10,5 +10,5 @@ export const markNotificationsRead = ownerAction(z.object({}).optional(), async 
 
 export const sendTestTelegram = ownerAction(z.object({}), async () => {
   if (!process.env.TELEGRAM_BOT_TOKEN || !process.env.TELEGRAM_CHAT_ID) throw new Error("Telegram is not configured");
-  await sendTelegram("PA test message: notifications are working.");
+  await sendTelegram("Cowork test message: notifications are working.");
 });

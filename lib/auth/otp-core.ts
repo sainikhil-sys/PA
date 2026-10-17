@@ -35,3 +35,9 @@ export function isEmailAllowed(email: string, allowed: string[]): boolean {
   const e = normalizeEmail(email);
   return allowed.some((a) => safeEqual(a, e));
 }
+
+/** Sign-in policy: open sign-up admits any well-formed address; otherwise the allowlist decides. */
+export function canSignIn(email: string, policy: { open: boolean; allowed: string[] }): boolean {
+  if (policy.open) return /^[^s@]+@[^s@]+.[^s@]+$/.test(normalizeEmail(email));
+  return isEmailAllowed(email, policy.allowed);
+}

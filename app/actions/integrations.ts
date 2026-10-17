@@ -28,13 +28,13 @@ async function validate(provider: "notion" | "slack" | "github", token: string):
     if (!d.ok) throw new UserFacingError(`Slack didn't accept that token (${d.error ?? "error"}).`);
     return d.team ?? "Slack";
   }
-  const r = await fetch("https://api.github.com/user", { headers: { authorization: `Bearer ${token}`, "user-agent": "PA", accept: "application/vnd.github+json" }, signal });
+  const r = await fetch("https://api.github.com/user", { headers: { authorization: `Bearer ${token}`, "user-agent": "Cowork", accept: "application/vnd.github+json" }, signal });
   if (!r.ok) throw new UserFacingError("GitHub didn't accept that token.");
   const d = (await r.json()) as { login?: string };
   return d.login ?? "GitHub";
 }
 
-/** Token providers whose data PA syncs automatically (source name shown on the Knowledge page). */
+/** Token providers whose data Cowork syncs automatically (source name shown on the Knowledge page). */
 const AUTO_SOURCES: Record<string, string> = {
   asana: "Asana tasks",
   linear: "Linear issues",

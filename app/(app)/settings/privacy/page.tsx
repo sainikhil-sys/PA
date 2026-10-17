@@ -15,7 +15,7 @@ export default async function PrivacyPage() {
   const e = env();
   const ai = configuredProviders().map((p) => new URL(p.baseURL).host).join(", ") || "Not configured";
   const flows: DataFlow[] = [
-    { what: "Email text (for sorting & drafts)", where: `AI provider: ${ai}`, why: "Classify, summarize and draft replies. Bodies are fetched on demand and never stored by PA." },
+    { what: "Email text (for sorting & drafts)", where: `AI provider: ${ai}`, why: "Classify, summarize and draft replies. Bodies are fetched on demand and never stored by Cowork." },
     { what: "Chat messages & retrieved excerpts", where: `AI provider: ${ai}`, why: "Answer your questions with citations." },
     { what: "Knowledge text chunks", where: e.EMBEDDING_MODEL ? `AI provider: ${ai} (embeddings)` : "Stays in your database (keyword search)", why: "Semantic search." },
     { what: "Voice recordings", where: e.STT_BASE_URL ? new URL(e.STT_BASE_URL).host : "Your browser's speech service", why: "Speech-to-text. Audio isn't stored." },

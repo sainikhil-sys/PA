@@ -246,7 +246,7 @@ export function KnowledgePage({ sources, connected }: { sources: SourceCard[]; c
         open={confirm !== null}
         onOpenChange={(o) => !o && setConfirm(null)}
         title={`Delete synced data from ${confirm?.name}?`}
-        description="All indexed items and their embeddings for this source are removed from PA. Nothing is deleted at the source."
+        description="All indexed items and their embeddings for this source are removed from Cowork. Nothing is deleted at the source."
         footer={
           <>
             <Button onClick={() => setConfirm(null)}>Cancel</Button>

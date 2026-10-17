@@ -23,7 +23,7 @@ export function PrivacyView({ sources, flows }: { sources: { id: string; name: s
 
   return (
     <div>
-      <Section title="Export your data" description="Everything PA stores about you, minus secrets (tokens and hashes are never exported).">
+      <Section title="Export your data" description="Everything Cowork stores about you, minus secrets (tokens and hashes are never exported).">
         <div className="flex flex-wrap gap-2">
           <Button asChild>
             <a href="/api/export?format=json" download>
@@ -38,7 +38,7 @@ export function PrivacyView({ sources, flows }: { sources: { id: string; name: s
         </div>
       </Section>
 
-      <Section title="Synced data" description="Delete what PA indexed from each source. Nothing is deleted at the source itself.">
+      <Section title="Synced data" description="Delete what Cowork indexed from each source. Nothing is deleted at the source itself.">
         {sources.length === 0 ? (
           <p className="text-[13px] text-muted">
             No synced sources. <Link href="/knowledge" className="underline underline-offset-4">Knowledge</Link>
@@ -54,7 +54,7 @@ export function PrivacyView({ sources, flows }: { sources: { id: string; name: s
         )}
       </Section>
 
-      <Section title="Where your data goes" description="Plain answers about each provider PA talks to.">
+      <Section title="Where your data goes" description="Plain answers about each provider Cowork talks to.">
         <div className="overflow-x-auto rounded-[14px] border border-border">
           <table className="w-full text-left text-[13px]">
             <thead className="border-b border-border bg-surface">
@@ -77,7 +77,7 @@ export function PrivacyView({ sources, flows }: { sources: { id: string; name: s
         </div>
       </Section>
 
-      <Section title="Delete account" description="Removes your account and everything in PA: tasks, notes, chats, automations, knowledge and tokens. This can't be undone.">
+      <Section title="Delete account" description="Removes your account and everything in Cowork: tasks, notes, chats, automations, knowledge and tokens. This can't be undone.">
         <Button variant="danger" className="w-fit" onClick={() => setDeleting(true)}>
           <Trash /> Delete account
         </Button>
@@ -108,7 +108,7 @@ export function PrivacyView({ sources, flows }: { sources: { id: string; name: s
           </>
         }
       >
-        <p className="text-[13px] text-muted">Indexed items and embeddings are removed from PA.</p>
+        <p className="text-[13px] text-muted">Indexed items and embeddings are removed from Cowork.</p>
       </Dialog>
 
       <Dialog

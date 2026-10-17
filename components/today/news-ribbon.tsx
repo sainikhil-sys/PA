@@ -236,7 +236,7 @@ function NewsDrawer({ item, onClose }: { item: NewsCardData | null; onClose: () 
         <div className="flex flex-col gap-5">
           <span className="w-fit rounded-full border border-border px-2.5 py-0.5 text-[12px] capitalize">{item.category}</span>
           <p className="text-[15px] leading-relaxed">{item.summary || "No summary was provided by the source."}</p>
-          <p className="text-[13px] text-muted">PA shows a short excerpt from the source's feed. Read the full story on the publisher's site.</p>
+          <p className="text-[13px] text-muted">Cowork shows a short excerpt from the source's feed. Read the full story on the publisher's site.</p>
           <a href={item.url} target="_blank" rel="noopener noreferrer nofollow" className={cn("inline-flex w-fit items-center gap-1.5 text-sm underline underline-offset-4")}>
             Read on {item.sourceName} <ArrowSquareOut size={16} />
           </a>

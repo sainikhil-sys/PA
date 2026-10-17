@@ -59,10 +59,10 @@ export async function GET(req: Request) {
   const stamp = new Date().toISOString().slice(0, 10);
 
   if (format === "json") {
-    return new Response(JSON.stringify(data, null, 2), { headers: { "content-type": "application/json", "content-disposition": `attachment; filename="pa-export-${stamp}.json"`, "cache-control": "no-store" } });
+    return new Response(JSON.stringify(data, null, 2), { headers: { "content-type": "application/json", "content-disposition": `attachment; filename="cowork-export-${stamp}.json"`, "cache-control": "no-store" } });
   }
   const md = [
-    `# PA export — ${stamp}`,
+    `# Cowork export — ${stamp}`,
     `\n## Profile\n\n- ${g.user.name ?? ""} <${g.user.email}>${g.user.role ? ` — ${g.user.role}` : ""}`,
     `\n## Tasks (${tasks.length})\n`,
     ...tasks.map((t) => `- [${t.status === "done" ? "x" : " "}] ${t.title}${t.dueDate ? ` (due ${t.dueDate})` : ""}`),
@@ -75,5 +75,5 @@ export async function GET(req: Request) {
     `\n## Conversations (${conversations.length})\n`,
     ...conversations.map((c) => [`### ${c.title}`, ...messages.filter((m) => m.conversationId === c.id).map((m) => `**${m.role === "user" ? "You" : "Agent"}:** ${m.content}\n`)].join("\n\n")),
   ].join("\n");
-  return new Response(md, { headers: { "content-type": "text/markdown; charset=utf-8", "content-disposition": `attachment; filename="pa-export-${stamp}.md"`, "cache-control": "no-store" } });
+  return new Response(md, { headers: { "content-type": "text/markdown; charset=utf-8", "content-disposition": `attachment; filename="cowork-export-${stamp}.md"`, "cache-control": "no-store" } });
 }

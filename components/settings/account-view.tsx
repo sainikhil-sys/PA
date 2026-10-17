@@ -84,7 +84,7 @@ export function AccountView({ email, sessions, log }: { email: string; sessions:
         </Button>
       </Section>
       <Section title="Connected accounts">
-        <Row label="Google, Notion, Slack, GitHub…" hint="Manage what PA can read.">
+        <Row label="Google, Notion, Slack, GitHub…" hint="Manage what Cowork can read.">
           <Button asChild size="sm">
             <Link href="/integrations">Manage</Link>
           </Button>

@@ -11,7 +11,7 @@ export function GET() {
     generateProtectedResourceMetadata({
       authServerUrls: [base],
       resourceUrl: `${base}/api/mcp`,
-      additionalMetadata: { scopes_supported: ALL_SCOPES, resource_name: "PA" },
+      additionalMetadata: { scopes_supported: ALL_SCOPES, resource_name: "Cowork" },
     }),
     { headers: { "access-control-allow-origin": "*", "cache-control": "public, max-age=3600" } },
   );

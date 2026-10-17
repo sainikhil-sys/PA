@@ -1,20 +1,18 @@
-import { getOwnerForSystem } from "@/lib/auth/session";
 import { processJobs } from "@/lib/jobs/handlers";
+import { forEachUser } from "@/lib/jobs/each-user";
 import { scheduleBriefing } from "@/lib/jobs/scheduler";
 import { unauthorizedCron, verifyCron } from "@/lib/security/cron";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 120;
+export const maxDuration = 300;
 
 /**
- * Runs hourly (UTC). Converts to the owner's timezone and generates today's
- * briefing once the configured local time has passed. Idempotent.
+ * Converts to each user's timezone and generates today's briefing once their
+ * configured local time has passed. Idempotent (dedupe key per user and date).
  */
 export async function GET(req: Request) {
   if (!verifyCron(req)) return unauthorizedCron();
-  const user = await getOwnerForSystem();
-  if (!user) return Response.json({ skipped: "no owner yet" });
-  const scheduled = await scheduleBriefing(user);
-  const result = scheduled ? await processJobs({ budgetMs: 90_000, types: ["daily_briefing"] }) : null;
+  const scheduled = await forEachUser("briefing", scheduleBriefing);
+  const result = await processJobs({ budgetMs: 240_000, types: ["daily_briefing"] });
   return Response.json({ scheduled, result });
 }

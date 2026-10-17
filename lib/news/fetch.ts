@@ -12,7 +12,7 @@ const RETENTION_MS = 3 * 86_400_000;
 async function fetchFeed(url: string): Promise<string | null> {
   try {
     const res = await fetch(url, {
-      headers: { "user-agent": "PA-news/1.0 (+personal assistant; RSS reader)", accept: "application/rss+xml, application/atom+xml, application/xml, text/xml" },
+      headers: { "user-agent": "Cowork-news/1.0 (+personal assistant; RSS reader)", accept: "application/rss+xml, application/atom+xml, application/xml, text/xml" },
       signal: AbortSignal.timeout(8000),
       redirect: "follow",
     });

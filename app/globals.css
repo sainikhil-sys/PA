@@ -241,3 +241,43 @@ html.lenis body {
 .lp-shake-once { animation: lp-shake 240ms ease-out 1; }
 .react-flow__node:focus-visible,
 .react-flow__edge:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; border-radius: 10px; }
+
+/* ── Launch intro (plays once per session; see components/layout/launch-intro.tsx) ── */
+.pa-intro {
+  display: none;
+}
+html[data-intro="1"] .pa-intro {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  background: var(--background);
+  pointer-events: none;
+}
+.pa-intro-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+}
+.pa-intro-word {
+  display: flex;
+  overflow: hidden;
+  font-family: var(--font-ui);
+  font-weight: 500;
+  font-size: clamp(44px, 8vw, 72px);
+  letter-spacing: -0.04em;
+  line-height: 1;
+}
+.pa-intro-letter {
+  display: inline-block;
+}
+.pa-intro-line {
+  display: block;
+  width: 96px;
+  height: 1px;
+  background: var(--foreground);
+  transform-origin: left center;
+  transform: scaleX(0);
+}

@@ -29,7 +29,7 @@ export function ConsentCard({ params, clientName, redirectHost, scopes }: { para
         </span>
         <Logo size={48} withWord={false} />
       </div>
-      <h1 className="mt-6 text-center font-serif text-[24px] leading-tight">Allow {clientName} to use PA?</h1>
+      <h1 className="mt-6 text-center font-serif text-[24px] leading-tight">Allow {clientName} to use Cowork?</h1>
       <p className="mt-2 text-center text-[13px] text-muted">It will return to {redirectHost}.</p>
       <fieldset className="mt-6 flex flex-col gap-1">
         <legend className="mb-2 text-[13px] font-medium">Permissions</legend>

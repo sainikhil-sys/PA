@@ -5,9 +5,9 @@ import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { db, schema } from "@/lib/db";
 import type { User } from "@/lib/db/schema";
-import { allowedEmails, isProd } from "@/lib/env";
+import { isProd } from "@/lib/env";
 import { randomToken, sha256 } from "@/lib/security/crypto";
-import { isEmailAllowed } from "./otp-core";
+import { mayUseApp } from "./policy";
 
 const SESSION_TTL_MS = 30 * 86_400_000;
 const TOUCH_INTERVAL_MS = 5 * 60_000;
@@ -45,7 +45,7 @@ async function currentToken(): Promise<string | null> {
   return (await cookies()).get(sessionCookieName())?.value ?? null;
 }
 
-/** Validates the session cookie against the DB and re-checks the allowlist every time. */
+/** Validates the session cookie against the DB and re-checks the sign-in policy every time. */
 async function loadSession(): Promise<{ user: User; sessionId: string } | null> {
   const token = await currentToken();
   if (!token || token.length < 32) return null;
@@ -57,7 +57,7 @@ async function loadSession(): Promise<{ user: User; sessionId: string } | null> 
     .where(and(eq(schema.sessions.tokenHash, sha256(token)), isNull(schema.sessions.revokedAt), gt(schema.sessions.expiresAt, now)))
     .limit(1);
   if (!row) return null;
-  if (!isEmailAllowed(row.user.email, allowedEmails())) return null;
+  if (!mayUseApp(row.user.email)) return null;
   if (now.getTime() - row.session.lastSeenAt.getTime() > TOUCH_INTERVAL_MS) {
     // Fire-and-forget: never make a page wait on a bookkeeping write.
     void db().update(schema.sessions).set({ lastSeenAt: now }).where(eq(schema.sessions.id, row.session.id)).catch(() => {});
@@ -79,11 +79,10 @@ export async function requireOwner(): Promise<User> {
   return user;
 }
 
-/** The single owner account, for cron jobs and background work (no session). */
-export async function getOwnerForSystem(): Promise<User | null> {
-  const email = allowedEmails()[0];
-  if (!email) return null;
-  return (await db().query.users.findFirst({ where: eq(schema.users.email, email) })) ?? null;
+/** Every account that may still use the app, for cron jobs and background work (no session). */
+export async function listUsersForSystem(limit = 1000): Promise<User[]> {
+  const users = await db().select().from(schema.users).orderBy(schema.users.createdAt).limit(limit);
+  return users.filter((u) => mayUseApp(u.email));
 }
 
 export async function signOutCurrent() {

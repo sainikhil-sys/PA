@@ -36,7 +36,22 @@ async function syncInbox(job: Job) {
   const account = await getIntegration(job.userId, "google");
   const after = account?.lastSyncAt ? new Date(account.lastSyncAt.getTime() - SYNC_OVERLAP_MS) : new Date(Date.now() - FIRST_SYNC_LOOKBACK_MS);
   const startedAt = new Date();
-  const ids = await listRecentMessageIds(job.userId, after, MAX_NEW_PER_SYNC);
+  let ids: string[];
+  try {
+    ids = await listRecentMessageIds(job.userId, after, MAX_NEW_PER_SYNC);
+  } catch (err) {
+    // Surface fixable Google problems on the Integrations card and Inbox instead of failing silently.
+    const m = errMessage(err);
+    const human = /has not been used in project (\d+)|is disabled/i.test(m)
+      ? `The Gmail API is turned off in your Google Cloud project${/project (\d+)/.exec(m)?.[1] ? ` (${/project (\d+)/.exec(m)![1]})` : ""}. Enable it under APIs & Services → Library → Gmail API, then click Sync now.`
+      : /insufficient|scope/i.test(m)
+        ? "Cowork doesn't have Gmail access. Reconnect Google and approve all permissions."
+        : null;
+    if (human) {
+      await db().update(schema.integrations).set({ lastError: human }).where(and(eq(schema.integrations.userId, job.userId), eq(schema.integrations.provider, "google")));
+    }
+    throw err;
+  }
 
   const existing = new Set(
     ids.length
@@ -131,7 +146,7 @@ async function dailyBriefing(job: Job) {
   if (created) {
     await logActivity({ userId: user.id, actor: "agent", tool: "daily_briefing", outcome: "success" });
     const s = await getSettings(user.id);
-    if (s.notifyEmailDigest) await sendBriefingDigest(user.email, briefing.date, briefing.content);
+    if (s.notifyEmailDigest) await sendBriefingDigest(user, briefing.date, briefing.content);
     await notify(user.id, { kind: "briefing", title: "Your briefing is ready", body: briefing.content.headline, href: "/", dedupeKey: `briefing:${briefing.date}` });
   }
   return { created };

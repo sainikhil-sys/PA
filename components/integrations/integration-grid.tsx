@@ -257,7 +257,7 @@ function ConnectPanel({ entry, state, onClose, onChanged, telegramConfigured, oa
           </div>
           <section>
             <h3 className="mb-2 flex items-center gap-2 text-sm font-medium">
-              <ShieldCheck size={18} /> What PA can do
+              <ShieldCheck size={18} /> What Cowork can do
             </h3>
             <ul className="flex flex-col gap-2">
               {entry.permissions.map((p) => (
@@ -302,7 +302,7 @@ function ConnectPanel({ entry, state, onClose, onChanged, telegramConfigured, oa
         open={confirm}
         onOpenChange={setConfirm}
         title={`Disconnect ${entry.provider === "google" ? "Google" : entry.name}?`}
-        description="PA forgets the stored tokens. Synced knowledge stays until you delete it on the Knowledge page."
+        description="Cowork forgets the stored tokens. Synced knowledge stays until you delete it on the Knowledge page."
         footer={
           <>
             <Button onClick={() => setConfirm(false)}>Cancel</Button>

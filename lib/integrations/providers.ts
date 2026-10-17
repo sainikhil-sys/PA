@@ -87,7 +87,7 @@ export async function validateCreds(provider: string, c: Creds): Promise<string>
   }
 }
 
-// ---------- Task importers (Asana, Linear) → PA tasks ----------
+// ---------- Task importers (Asana, Linear) → Cowork tasks ----------
 async function importTasks(userId: string, items: { ref: string; title: string; url: string; due: string | null; notes: string }[]) {
   let added = 0;
   for (const it of items) {
