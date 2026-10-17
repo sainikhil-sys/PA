@@ -14,7 +14,8 @@ function buildCsp(nonce: string, local: boolean): string {
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${dev ? " 'unsafe-eval'" : ""}`,
     // Radix/Motion set inline style attributes; styles cannot execute code.
     "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: blob:",
+    // Spotify album art for the room's now-playing card.
+    "img-src 'self' data: blob: https://i.scdn.co https://mosaic.scdn.co https://image-cdn-ak.spotifycdn.com https://image-cdn-fa.spotifycdn.com",
     "font-src 'self' data:",
     "media-src 'self' blob:",
     // Only the Today room's music and video players may be framed.

@@ -1,9 +1,10 @@
 "use client";
 
-import { Image as ImageIcon, MusicNotes, Pause, Play, PaintBrush, ArrowCounterClockwise, YoutubeLogo, Timer } from "@phosphor-icons/react";
+import { Image as ImageIcon, MusicNotes, Pause, Play, PaintBrush, ArrowCounterClockwise, SkipBack, SkipForward, YoutubeLogo, Timer } from "@phosphor-icons/react";
 import { useRouter } from "next/navigation";
 import * as React from "react";
 import { toast } from "sonner";
+import useSWR from "swr";
 import { saveRoom } from "@/app/actions/room";
 import { Button } from "@/components/ui/button";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
@@ -11,6 +12,7 @@ import { Sheet } from "@/components/ui/dialog";
 import { Input, Label } from "@/components/ui/input";
 import type { RoomSettings } from "@/lib/db/schema";
 import { spotifyEmbed, WALLPAPERS, wallpaperById, youtubeEmbed } from "@/lib/room";
+import { fetcher } from "@/lib/fetcher";
 import { cn } from "@/lib/utils";
 
 /** Wallpaper behind the Today page. Dark wallpapers flip the page to a dark glass theme. */
@@ -284,7 +286,7 @@ export function RoomRow({ room }: { room: RoomSettings }) {
           <FocusCard minutes={room.focusMinutes} onSettings={() => setOpen(true)} />
         </div>
         <div className="lg:col-span-4">
-          <EmbedCard kind="spotify" url={room.spotifyUrl} onSettings={() => setOpen(true)} />
+          <MusicCard url={room.spotifyUrl} onSettings={() => setOpen(true)} />
         </div>
         <div className="lg:col-span-4">
           <EmbedCard kind="youtube" url={room.youtubeUrl} onSettings={() => setOpen(true)} />
@@ -292,5 +294,106 @@ export function RoomRow({ room }: { room: RoomSettings }) {
       </div>
       <RoomSheet open={open} onOpenChange={setOpen} room={room} />
     </>
+  );
+}
+
+type SpotifyNow = { connected: boolean; premium?: boolean; now?: { playing: boolean; track: string; artists: string; album: string; image: string | null; url: string | null; progressMs: number; durationMs: number; device: string | null } | null };
+type Playlist = { id: string; name: string; uri: string; image: string | null; tracks: number };
+
+/** Music: live Spotify (now playing + controls) when connected; otherwise the embedded player. */
+export function MusicCard({ url, onSettings }: { url?: string; onSettings: () => void }) {
+  const { data, mutate } = useSWR<SpotifyNow>("/api/spotify/now", fetcher, { refreshInterval: 8000 });
+  const [playlists, setPlaylists] = React.useState<Playlist[] | null>(null);
+  const [pending, setPending] = React.useState(false);
+  if (!data?.connected) return <EmbedCard kind="spotify" url={url} onSettings={onSettings} />;
+  const now = data.now;
+
+  const control = async (action: "play" | "pause" | "next" | "previous", contextUri?: string) => {
+    setPending(true);
+    const r = await fetch("/api/spotify/control", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ action, contextUri }) });
+    setPending(false);
+    if (!r.ok) {
+      const j = (await r.json().catch(() => ({}))) as { error?: string };
+      toast.error(j.error ?? "Spotify didn't respond.");
+    }
+    setTimeout(() => void mutate(), 600);
+  };
+  const loadPlaylists = async () => {
+    const r = await fetch("/api/spotify/playlists").then((x) => x.json() as Promise<{ items: Playlist[] }>).catch(() => ({ items: [] }));
+    setPlaylists(r.items);
+  };
+  const pct = now && now.durationMs ? Math.min(100, (now.progressMs / now.durationMs) * 100) : 0;
+
+  return (
+    <Card className="flex h-full flex-col">
+      <CardHeader icon={<MusicNotes size={18} />} title="Spotify" description={now?.device ? `On ${now.device}` : undefined} />
+      <CardBody className="flex flex-1 flex-col gap-3">
+        {now ? (
+          <div className="flex items-center gap-3">
+            {now.image ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={now.image} alt="" className="size-16 shrink-0 rounded-[10px] object-cover" />
+            ) : (
+              <span className="grid size-16 shrink-0 place-items-center rounded-[10px] bg-surface-2">
+                <MusicNotes size={22} />
+              </span>
+            )}
+            <div className="min-w-0">
+              <p className="truncate text-[14px] font-medium">{now.track}</p>
+              <p className="truncate text-[12.5px] text-muted">{now.artists}</p>
+              <div className="mt-1.5 h-1 w-40 max-w-full overflow-hidden rounded-full bg-surface-2">
+                <div className="h-full bg-foreground" style={{ width: `${pct}%` }} />
+              </div>
+            </div>
+          </div>
+        ) : (
+          <p className="text-[13px] text-muted">Nothing playing. Start Spotify on any device, or pick a playlist.</p>
+        )}
+        <div className="flex items-center gap-1.5">
+          <Button size="sm" variant="ghost" aria-label="Previous" disabled={pending || !now} onClick={() => void control("previous")}>
+            <SkipBack weight="fill" />
+          </Button>
+          <Button size="sm" aria-label={now?.playing ? "Pause" : "Play"} disabled={pending} onClick={() => void control(now?.playing ? "pause" : "play")}>
+            {now?.playing ? <Pause weight="fill" /> : <Play weight="fill" />}
+          </Button>
+          <Button size="sm" variant="ghost" aria-label="Next" disabled={pending || !now} onClick={() => void control("next")}>
+            <SkipForward weight="fill" />
+          </Button>
+          {now?.url ? (
+            <a href={now.url} target="_blank" rel="noopener noreferrer" className="ml-auto text-[12px] text-muted underline-offset-2 hover:underline">
+              Open in Spotify
+            </a>
+          ) : null}
+        </div>
+        {data.premium === false ? <p className="text-[11.5px] text-subtle">Play, pause and skip need Spotify Premium.</p> : null}
+        <div>
+          {playlists === null ? (
+            <Button size="sm" variant="secondary" onClick={() => void loadPlaylists()}>
+              Your playlists
+            </Button>
+          ) : playlists.length ? (
+            <ul className="no-scrollbar -mx-1 flex gap-2 overflow-x-auto px-1">
+              {playlists.map((p) => (
+                <li key={p.id} className="shrink-0">
+                  <button type="button" onClick={() => void control("play", p.uri)} className="flex w-24 flex-col gap-1 text-left" title={`Play ${p.name}`}>
+                    {p.image ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={p.image} alt="" className="aspect-square w-24 rounded-[10px] object-cover" />
+                    ) : (
+                      <span className="grid aspect-square w-24 place-items-center rounded-[10px] bg-surface-2">
+                        <MusicNotes size={20} />
+                      </span>
+                    )}
+                    <span className="truncate text-[12px]">{p.name}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-[12px] text-muted">No playlists found.</p>
+          )}
+        </div>
+      </CardBody>
+    </Card>
   );
 }
