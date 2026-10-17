@@ -6,11 +6,11 @@ import { z } from "zod";
 import { ownerAction } from "@/lib/auth/action";
 import { db, schema } from "@/lib/db";
 import { getSettings } from "@/lib/db/queries/settings";
-import { spotifyEmbed, WALLPAPERS, youtubeEmbed } from "@/lib/room";
+import { spotifyEmbed, WALLPAPER_IDS, youtubeEmbed } from "@/lib/room";
 
 export const saveRoom = ownerAction(
   z.object({
-    wallpaper: z.enum(["custom", ...WALLPAPERS.map((w) => w.id)] as [string, ...string[]]).optional(),
+    wallpaper: z.enum(WALLPAPER_IDS).optional(),
     // Client-downsized JPEG/WebP (≤ ~700 KB). Only data:image URLs, so nothing is fetched from elsewhere.
     customWallpaper: z
       .string()

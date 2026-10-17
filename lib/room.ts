@@ -13,6 +13,9 @@ export const WALLPAPERS: Wallpaper[] = [
   { id: "midnight", name: "Midnight desk", css: "radial-gradient(60% 50% at 75% 20%, #2b3a67 0%, transparent 70%), radial-gradient(1.5px 1.5px at 20% 30%, #ffffff99 50%, transparent 51%), radial-gradient(1px 1px at 60% 12%, #ffffff80 50%, transparent 51%), radial-gradient(1px 1px at 85% 40%, #ffffff66 50%, transparent 51%), linear-gradient(180deg, #0a0d1a 0%, #141a2e 100%)", dark: true },
 ];
 
+/** Accepted wallpaper ids (presets plus an uploaded photo). */
+export const WALLPAPER_IDS = ["custom", ...WALLPAPERS.map((w) => w.id)] as [string, ...string[]];
+
 export function wallpaperById(id: string | undefined): Wallpaper {
   return WALLPAPERS.find((w) => w.id === id) ?? WALLPAPERS[0]!;
 }

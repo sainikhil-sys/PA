@@ -13,11 +13,11 @@ export function feedImage(it: Record<string, any>): string | undefined { // esli
     ...arr(it["media:content"]).filter((m) => !m["@_medium"] || m["@_medium"] === "image" || /image/.test(m["@_type"] ?? "")).map((m) => m["@_url"]),
     ...arr(it["media:group"]).flatMap((g) => arr((g as Record<string, unknown>)["media:content"]).map((m) => m["@_url"])),
     ...arr(it["media:thumbnail"]).map((m) => m["@_url"]),
-    ...arr(it.enclosure).filter((e) => /^image//.test(e["@_type"] ?? "")).map((e) => e["@_url"]),
+    ...arr(it.enclosure).filter((e) => /^image\//.test(e["@_type"] ?? "")).map((e) => e["@_url"]),
   ];
   const html = [it["content:encoded"], it.description, it.content, it.summary].map((v) => (typeof v === "string" ? v : typeof v === "object" && v ? String((v as Record<string, unknown>)["#text"] ?? "") : "")).join(" ");
   candidates.push(/<img[^>]+src=["'](https:[^"']+)["']/i.exec(html)?.[1]);
-  const hit = candidates.find((u) => typeof u === "string" && /^https://[^s]+$/.test(u) && u.length < 1000);
+  const hit = candidates.find((u) => typeof u === "string" && /^https:\/\/[^\s]+$/.test(u) && u.length < 1000);
   return hit?.replace(/&amp;/g, "&");
 }
 

@@ -5,7 +5,7 @@ import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { modelFor } from "@/lib/ai/providers";
-import { AI_PRESETS, isSafeBaseUrl, keyHint } from "@/lib/ai/user-provider";
+import { AI_PRESET_IDS, AI_PRESETS, isSafeBaseUrl, keyHint } from "@/lib/ai/user-provider";
 import { ownerAction } from "@/lib/auth/action";
 import { db, schema } from "@/lib/db";
 import { logActivity } from "@/lib/db/queries/activity";
@@ -17,7 +17,7 @@ const model = z.string().trim().min(1).max(120).regex(/^[\w./:@-]+$/, "Model nam
 /** Save the user's own AI key. It's tested with a tiny prompt first, then stored encrypted. */
 export const saveAiKey = ownerAction(
   z.object({
-    preset: z.enum(Object.keys(AI_PRESETS) as [keyof typeof AI_PRESETS, ...(keyof typeof AI_PRESETS)[]]),
+    preset: z.enum(AI_PRESET_IDS),
     apiKey: z.string().trim().min(8).max(400),
     baseURL: z.string().trim().max(300).optional(),
     fastModel: model,

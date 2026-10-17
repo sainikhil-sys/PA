@@ -17,6 +17,8 @@ function buildCsp(nonce: string, local: boolean): string {
     "img-src 'self' data: blob:",
     "font-src 'self' data:",
     "media-src 'self' blob:",
+    // Only the Today room's music and video players may be framed.
+    "frame-src https://open.spotify.com https://www.youtube-nocookie.com",
     `connect-src 'self'${dev ? " ws:" : ""}`,
     "frame-ancestors 'none'",
     "form-action 'self'",

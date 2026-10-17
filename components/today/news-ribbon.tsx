@@ -13,7 +13,7 @@ import { EmptyState } from "@/components/ui/states";
 import { fetcher } from "@/lib/fetcher";
 import { cn, timeAgo } from "@/lib/utils";
 
-export type NewsCardData = { id: string; title: string; summary: string; sourceName: string; category: string; url: string; publishedAt: string };
+export type NewsCardData = { id: string; title: string; summary: string; sourceName: string; category: string; url: string; publishedAt: string; image?: string | null };
 
 /**
  * World news ribbon. GSAP drives a seamless marquee (two rows moving in opposite

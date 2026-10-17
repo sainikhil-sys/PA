@@ -16,6 +16,8 @@ const nextConfig: NextConfig = {
   typescript: process.env.NEXT_DIST_DIR ? { tsconfigPath: "tsconfig.e2e.json" } : undefined,
   poweredByHeader: false,
   experimental: {
+    // Room wallpapers are uploaded as a downsized JPEG (up to ~1 MB) through a server action.
+    serverActions: { bodySizeLimit: "2mb" },
     // Import only the icons/functions actually used (big win for Phosphor in dev and prod).
     optimizePackageImports: ["@phosphor-icons/react", "date-fns", "date-fns-tz", "motion", "@xyflow/react", "chrono-node"],
   },
