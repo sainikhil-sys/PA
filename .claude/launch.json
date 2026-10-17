@@ -4,13 +4,24 @@
     {
       "name": "dev",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
       "port": 3000
     },
     {
       "name": "dev (attach to running)",
       "url": "http://localhost:3000",
       "port": 3000
+    },
+    {
+      "name": "dev (test db)",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "scripts/dev-test.mjs"
+      ],
+      "port": 3200
     }
   ]
 }

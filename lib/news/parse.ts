@@ -4,7 +4,22 @@ import { htmlToText, stripInvisible, truncate } from "@/lib/security/sanitize";
 /** Pure feed parsing (RSS 2.0 + Atom). Output is short metadata only — never full articles. */
 
 export type FeedSource = { name: string; url: string; category: string };
-export type ParsedItem = { url: string; title: string; summary: string; publishedAt: Date; sourceName: string; category: string };
+export type ParsedItem = { url: string; title: string; summary: string; imageUrl?: string; publishedAt: Date; sourceName: string; category: string };
+
+/** Lead image: media:content / media:thumbnail / image enclosure / first <img> in the HTML. https only. */
+export function feedImage(it: Record<string, any>): string | undefined { // eslint-disable-line @typescript-eslint/no-explicit-any
+  const arr = (v: unknown) => (Array.isArray(v) ? v : v ? [v] : []) as Record<string, string>[];
+  const candidates: (string | undefined)[] = [
+    ...arr(it["media:content"]).filter((m) => !m["@_medium"] || m["@_medium"] === "image" || /image/.test(m["@_type"] ?? "")).map((m) => m["@_url"]),
+    ...arr(it["media:group"]).flatMap((g) => arr((g as Record<string, unknown>)["media:content"]).map((m) => m["@_url"])),
+    ...arr(it["media:thumbnail"]).map((m) => m["@_url"]),
+    ...arr(it.enclosure).filter((e) => /^image//.test(e["@_type"] ?? "")).map((e) => e["@_url"]),
+  ];
+  const html = [it["content:encoded"], it.description, it.content, it.summary].map((v) => (typeof v === "string" ? v : typeof v === "object" && v ? String((v as Record<string, unknown>)["#text"] ?? "") : "")).join(" ");
+  candidates.push(/<img[^>]+src=["'](https:[^"']+)["']/i.exec(html)?.[1]);
+  const hit = candidates.find((u) => typeof u === "string" && /^https://[^s]+$/.test(u) && u.length < 1000);
+  return hit?.replace(/&amp;/g, "&");
+}
 
 export const DEFAULT_FEEDS: FeedSource[] = [
   { name: "BBC News", url: "https://feeds.bbci.co.uk/news/world/rss.xml", category: "world" },
@@ -74,7 +89,7 @@ export function parseFeed(xml: string, source: FeedSource, limit = 15): ParsedIt
     const summary = clean(text(it.description) || text(it.summary) || text(it["content:encoded"]) || text(it.content), 200);
     const dateRaw = text(it.pubDate) || text(it.published) || text(it.updated) || text(it["dc:date"]);
     const publishedAt = dateRaw && !Number.isNaN(Date.parse(dateRaw)) ? new Date(dateRaw) : new Date();
-    out.push({ url: normalizeUrl(link), title, summary: summary === title ? "" : summary, publishedAt, sourceName: source.name, category: source.category });
+    out.push({ url: normalizeUrl(link), title, summary: summary === title ? "" : summary, imageUrl: feedImage(it), publishedAt, sourceName: source.name, category: source.category });
   }
   return out;
 }

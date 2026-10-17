@@ -38,12 +38,12 @@ export function Topbar() {
 
   return (
     <header className="no-print sticky top-0 z-30 border-b border-border bg-background/90 backdrop-blur-[2px] supports-[backdrop-filter]:bg-background/80">
-      <div className="mx-auto flex h-16 max-w-[1280px] items-center gap-3 px-4 sm:px-6 lg:px-10">
+      <div className="mx-auto flex h-14 max-w-[1280px] items-center gap-1 px-3 sm:h-16 sm:gap-3 sm:px-6 lg:px-10">
         <div className="lg:hidden">
-          <Logo withWord={false} />
+          <Logo size={24} withWord={false} />
         </div>
-        <div className="min-w-0 flex-1">
-          <p className="truncate font-serif text-[20px] leading-tight tracking-[-0.01em] sm:text-[22px]">
+        <div className="ml-1 min-w-0 flex-1">
+          <p className="truncate font-serif text-[18px] leading-tight tracking-[-0.01em] sm:text-[22px]">
             {local ? `${greeting(local.hour)}${firstName ? `, ${firstName}` : ""}` : " "}
           </p>
           <p className="hidden truncate text-[12px] text-muted sm:block">{local?.date ?? " "}</p>
@@ -61,24 +61,24 @@ export function Topbar() {
           <Kbd>K</Kbd>
         </button>
         <Tooltip content="Search (⌘K)">
-          <button type="button" onClick={openPalette} className="grid size-11 place-items-center rounded-full text-muted hover:bg-surface-hover hover:text-foreground md:hidden" aria-label="Search">
+          <button type="button" onClick={openPalette} className="grid size-10 place-items-center rounded-full text-muted hover:bg-surface-hover hover:text-foreground sm:size-11 md:hidden" aria-label="Search">
             <MagnifyingGlass size={20} />
           </button>
         </Tooltip>
         <Tooltip content="Talk to your agent">
-          <button type="button" onClick={openVoice} className="grid size-11 place-items-center rounded-full text-muted hover:bg-surface-hover hover:text-foreground" aria-label="Start voice">
+          <button type="button" onClick={openVoice} className="hidden size-11 place-items-center sm:grid rounded-full text-muted hover:bg-surface-hover hover:text-foreground" aria-label="Start voice">
             <Microphone size={20} />
           </button>
         </Tooltip>
         <Tooltip content="Live links (⌘⇧L)">
-          <button type="button" onClick={togglePanel} aria-pressed={panelOpen} className="grid size-11 place-items-center rounded-full text-muted hover:bg-surface-hover hover:text-foreground aria-pressed:bg-surface-2 aria-pressed:text-foreground" aria-label="Live links panel">
+          <button type="button" onClick={togglePanel} aria-pressed={panelOpen} className="hidden size-11 place-items-center md:grid rounded-full text-muted hover:bg-surface-hover hover:text-foreground aria-pressed:bg-surface-2 aria-pressed:text-foreground" aria-label="Live links panel">
             <Graph size={20} weight={panelOpen ? "fill" : "regular"} />
           </button>
         </Tooltip>
         <NotificationsMenu />
         <Menu>
           <MenuTrigger asChild>
-            <button type="button" className="grid size-11 place-items-center rounded-full hover:bg-surface-hover" aria-label="Account menu">
+            <button type="button" className="grid size-10 place-items-center rounded-full hover:bg-surface-hover sm:size-11" aria-label="Account menu">
               <Avatar src={user.avatarUrl} name={user.name} email={user.email} size={32} />
             </button>
           </MenuTrigger>
@@ -126,12 +126,12 @@ function NotificationsMenu() {
       }}
     >
       <MenuTrigger asChild>
-        <button type="button" className="relative grid size-11 place-items-center rounded-full text-muted hover:bg-surface-hover hover:text-foreground" aria-label={unread ? `Notifications, ${unread} unread` : "Notifications"}>
+        <button type="button" className="relative grid size-10 place-items-center sm:size-11 rounded-full text-muted hover:bg-surface-hover hover:text-foreground" aria-label={unread ? `Notifications, ${unread} unread` : "Notifications"}>
           <Bell size={20} />
           {unread > 0 ? <span className="absolute right-2.5 top-2.5 size-2 rounded-full bg-foreground ring-2 ring-background" aria-hidden /> : null}
         </button>
       </MenuTrigger>
-      <MenuContent className="w-[340px]">
+      <MenuContent className="w-[min(340px,calc(100vw-24px))]">
         <MenuLabel>Notifications</MenuLabel>
         <div className="max-h-[360px] overflow-y-auto" data-lenis-prevent>
           {!data?.items.length ? (

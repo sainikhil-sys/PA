@@ -125,6 +125,10 @@ export const DEFAULT_AGENT: AgentSettings = {
   capabilities: { readEmail: true, createDrafts: true, manageTasks: true, runAutomations: true, searchKnowledge: true },
 };
 
+export type RoomSettings = { wallpaper?: string; customWallpaper?: string; spotifyUrl?: string; youtubeUrl?: string; focusMinutes?: number; dim?: number };
+
+export type UserAiProvider = { preset: string; baseURL: string; fastModel: string; smartModel: string; keyEnc: string; keyHint: string; addedAt: string };
+
 export const userSettings = pgTable("user_settings", {
   userId: uuid("user_id")
     .primaryKey()
@@ -149,6 +153,10 @@ export const userSettings = pgTable("user_settings", {
   agent: jsonb("agent").$type<AgentSettings>().notNull().default(DEFAULT_AGENT),
   /** Live Link panel preferences (mode, position, opacity…), persisted per user. */
   linkPanel: jsonb("link_panel").$type<Record<string, unknown>>().notNull().default({}),
+  /** The user's own AI provider (OpenAI-compatible). Key is AES-256-GCM encrypted; never sent to the client. */
+  aiProvider: jsonb("ai_provider").$type<UserAiProvider | null>(),
+  /** Today "room": wallpaper, music and video widgets. */
+  room: jsonb("room").$type<RoomSettings>().notNull().default({}),
   updatedAt: updatedAt(),
 });
 
@@ -424,9 +432,13 @@ export const aiRuns = pgTable(
     attempts: integer("attempts").notNull().default(1),
     durationMs: integer("duration_ms").notNull(),
     errorCode: text("error_code"),
+    inputTokens: integer("input_tokens").notNull().default(0),
+    outputTokens: integer("output_tokens").notNull().default(0),
+    /** "server" (Cowork's key) or "own" (the user's key from Settings). */
+    keySource: text("key_source").notNull().default("server"),
     createdAt: createdAt(),
   },
-  (t) => [index("ai_runs_created_idx").on(t.createdAt)],
+  (t) => [index("ai_runs_created_idx").on(t.createdAt), index("ai_runs_user_idx").on(t.userId, t.createdAt)],
 );
 
 // ---------- Jobs (failed = dead letter, re-runnable) ----------
@@ -673,6 +685,8 @@ export const newsItems = pgTable(
     title: text("title").notNull(),
     /** One-line summary from the feed's own description (truncated). Never full articles. */
     summary: text("summary").notNull().default(""),
+    /** Lead image from the feed (https only). Served to the browser through /api/news/[id]/image. */
+    imageUrl: text("image_url"),
     category: text("category").notNull(),
     publishedAt: ts("published_at").notNull(),
     createdAt: createdAt(),

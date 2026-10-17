@@ -51,10 +51,10 @@ export function NotificationsForm({ initial, telegramConfigured, telegramAllowed
         <Row label="In-app" hint="The bell in the top bar.">
           <Switch checked={p.notifyInApp} onCheckedChange={(v) => set({ notifyInApp: v })} aria-label="In-app notifications" />
         </Row>
-        <Row label="Email updates" hint={digestAvailable ? "Urgent mail, reminders, scheduled posts and automation alerts, sent to your sign-in address." : "Needs RESEND_API_KEY on the server."}>
+        <Row label="Email updates" hint={digestAvailable ? "Urgent mail, reminders, scheduled posts and automation alerts, sent to your sign-in address." : "Email isn't available right now."}>
           <Switch checked={p.notifyEmail} disabled={!digestAvailable} onCheckedChange={(v) => set({ notifyEmail: v })} aria-label="Email updates" />
         </Row>
-        <Row label="Email digest" hint={digestAvailable ? "Your daily briefing, emailed to you each morning." : "Needs RESEND_API_KEY on the server."}>
+        <Row label="Email digest" hint={digestAvailable ? "Your daily briefing, emailed to you each morning." : "Email isn't available right now."}>
           <Switch checked={p.notifyEmailDigest} disabled={!digestAvailable} onCheckedChange={(v) => set({ notifyEmailDigest: v })} aria-label="Email digest" />
         </Row>
         {telegramAllowed ? (

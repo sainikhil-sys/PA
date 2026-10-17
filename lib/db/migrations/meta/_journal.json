@@ -29,6 +29,20 @@
       "when": 1792215969825,
       "tag": "0003_email_updates",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1792223384586,
+      "tag": "0004_ai_usage_and_keys",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1792224119189,
+      "tag": "0005_news_images_and_room",
+      "breakpoints": true
     }
   ]
 }

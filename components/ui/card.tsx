@@ -19,7 +19,7 @@ export function CardHeader({
   className?: string;
 }) {
   return (
-    <div className={cn("flex items-start justify-between gap-3 px-5 pt-5 pb-3", className)}>
+    <div className={cn("flex items-start justify-between gap-3 px-4 pt-4 pb-2.5 sm:px-5 sm:pt-5 sm:pb-3", className)}>
       <div className="flex min-w-0 items-center gap-2.5">
         {icon ? <span className="text-muted">{icon}</span> : null}
         <div className="min-w-0">
@@ -33,5 +33,5 @@ export function CardHeader({
 }
 
 export function CardBody({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("px-5 pb-5", className)} {...props} />;
+  return <div className={cn("px-4 pb-4 sm:px-5 sm:pb-5", className)} {...props} />;
 }

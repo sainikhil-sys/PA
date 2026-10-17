@@ -96,7 +96,7 @@ function ShellInner({
             <Sidebar />
             <div className="flex min-w-0 flex-1 flex-col">
               <Topbar />
-              <main id="main" tabIndex={-1} className="mx-auto w-full max-w-[1280px] flex-1 px-4 pb-28 pt-8 focus:outline-none sm:px-6 lg:px-10 lg:pb-16">
+              <main id="main" tabIndex={-1} className="mx-auto w-full max-w-[1280px] flex-1 px-3 pb-24 pt-4 focus:outline-none sm:px-6 sm:pt-6 lg:px-8 lg:pb-12">
                 {children}
               </main>
             </div>

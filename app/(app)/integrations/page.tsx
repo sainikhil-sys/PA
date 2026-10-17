@@ -18,11 +18,12 @@ export default async function IntegrationsPage() {
   const rows = await listIntegrations(user.id);
   const states: Record<string, ConnState> = Object.fromEntries(rows.map((r) => [r.provider, { status: r.status as ConnState["status"], label: r.accountLabel, error: r.lastError }]));
   const e = env();
+  const admin = isAdmin(user.email);
   return (
     <>
       <PageHeader title="Integrations" description="Connect the tools you use. Read-only by default; drafts at most. Nothing is ever sent or deleted for you." />
       <Suspense fallback={<CardSkeleton rows={4} />}>
-        <IntegrationGrid catalog={CATALOG} states={states} telegramConfigured={isAdmin(user.email) && Boolean(e.TELEGRAM_BOT_TOKEN && e.TELEGRAM_CHAT_ID)} oauthReady={{ linkedin: oauthConfigured("linkedin"), canva: oauthConfigured("canva") }} />
+        <IntegrationGrid catalog={admin ? CATALOG : CATALOG.filter((c) => c.provider !== "telegram")} states={states} telegramConfigured={admin && Boolean(e.TELEGRAM_BOT_TOKEN && e.TELEGRAM_CHAT_ID)} oauthReady={{ linkedin: oauthConfigured("linkedin"), canva: oauthConfigured("canva") }} />
       </Suspense>
       <p className="mt-10 text-[12px] text-subtle">Brand logos are trademarks of their owners, shown in original colors to identify each service. Marks courtesy of Simple Icons (CC0).</p>
     </>

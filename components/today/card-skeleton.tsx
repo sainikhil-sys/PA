@@ -18,9 +18,9 @@ export function CardSkeleton({ rows = 3, className }: { rows?: number; className
 
 export function RibbonSkeleton() {
   return (
-    <div aria-busy="true" aria-label="Loading news" className="flex gap-3 overflow-hidden">
+    <div aria-busy="true" aria-label="Loading news" className="flex gap-2 overflow-hidden pt-[26px]">
       {Array.from({ length: 4 }, (_, i) => (
-        <Skeleton key={i} className="h-[132px] w-[320px] shrink-0 rounded-[14px]" />
+        <Skeleton key={i} className="h-[72px] w-[288px] shrink-0 rounded-[12px]" />
       ))}
     </div>
   );

@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { env, isOnVercel } from "@/lib/env";
 
@@ -48,7 +49,8 @@ export function configuredProviders(): ProviderConfig[] {
 const cache = new Map<string, ReturnType<typeof createOpenAICompatible>>();
 
 export function providerClient(p: ProviderConfig) {
-  const key = `${p.name}|${p.baseURL}`;
+  // Keyed by the API key too: users who bring their own key must never share a client.
+  const key = `${p.name}|${p.baseURL}|${p.apiKey ? createHash("sha256").update(p.apiKey).digest("hex").slice(0, 16) : ""}`;
   let client = cache.get(key);
   if (!client) {
     client = createOpenAICompatible({ name: p.name, baseURL: p.baseURL, apiKey: p.apiKey });

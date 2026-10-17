@@ -35,8 +35,8 @@ export default function HomePage() {
   return (
     <article>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD).replace(/</g, "\\u003c") }} />
-      <section className="py-12">
-        <h1 className="font-serif text-[40px] leading-[1.1] tracking-[-0.02em]">{BRAND.name}, the AI work assistant that keeps your work in one calm place.</h1>
+      <section className="py-8 sm:py-12">
+        <h1 className="font-serif text-[32px] leading-[1.1] tracking-[-0.02em] sm:text-[44px]">{BRAND.name}, the AI work assistant that keeps your work in one calm place.</h1>
         <p className="mt-4 max-w-[560px] text-[17px] leading-7 text-muted">
           A personal work assistant for your email, calendar, tasks and notes. It reads and organizes; it never sends, posts or deletes anything without your click.
         </p>

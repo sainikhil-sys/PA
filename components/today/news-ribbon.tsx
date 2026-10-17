@@ -36,18 +36,16 @@ export function NewsRibbon({ items: initial }: { items: NewsCardData[] }) {
     );
   }
 
-  const half = Math.ceil(items.length / 2);
-  const rows = [items.slice(0, half), items.slice(half)].filter((r) => r.length);
 
   return (
-    <section aria-label="World news" aria-roledescription="news ribbon" className="relative -mx-4 sm:mx-0">
-      <div className="mb-3 flex items-center justify-between px-4 sm:px-0">
-        <h2 className="text-[13px] font-medium text-muted">World news</h2>
+    <section aria-label="World news" aria-roledescription="news ribbon" className="relative -mx-3 sm:mx-0">
+      <div className="mb-1.5 flex items-center justify-between px-3 sm:px-0">
+        <h2 className="text-[12px] font-medium uppercase tracking-[0.06em] text-muted">World news</h2>
         {!prefersReduced ? (
           <button
             type="button"
             onClick={() => setPaused((p) => !p)}
-            className="inline-flex h-9 items-center gap-1.5 rounded-full px-3 text-[12px] text-muted hover:bg-surface-hover hover:text-foreground"
+            className="inline-flex h-7 items-center gap-1.5 rounded-full px-2.5 text-[12px] text-muted hover:bg-surface-hover hover:text-foreground"
             aria-pressed={paused}
           >
             {paused ? <Play size={14} /> : <Pause size={14} />}
@@ -56,7 +54,7 @@ export function NewsRibbon({ items: initial }: { items: NewsCardData[] }) {
         ) : null}
       </div>
       {prefersReduced ? (
-        <ul className="no-scrollbar flex snap-x gap-3 overflow-x-auto px-4 pb-1 sm:px-0" data-lenis-prevent>
+        <ul className="no-scrollbar flex snap-x gap-2 overflow-x-auto px-3 pb-1 sm:px-0" data-lenis-prevent>
           {items.map((it) => (
             <li key={it.id} className="snap-start">
               <NewsCard item={it} onOpen={setSelected} />
@@ -64,13 +62,9 @@ export function NewsRibbon({ items: initial }: { items: NewsCardData[] }) {
           ))}
         </ul>
       ) : (
-        <div className="flex flex-col gap-3 [mask-image:linear-gradient(90deg,transparent,black_4%,black_96%,transparent)]">
-          <MarqueeRow items={rows[0]!} direction={-1} onOpen={setSelected} paused={paused || selected !== null} />
-          {rows[1] ? (
-            <div className="hidden lg:block">
-              <MarqueeRow items={rows[1]} direction={1} onOpen={setSelected} paused={paused || selected !== null} />
-            </div>
-          ) : null}
+        // One slim row: the ribbon is a glance, not a feed.
+        <div className="[mask-image:linear-gradient(90deg,transparent,black_3%,black_97%,transparent)]">
+          <MarqueeRow items={items} direction={-1} onOpen={setSelected} paused={paused || selected !== null} />
         </div>
       )}
       <NewsDrawer item={selected} onClose={() => setSelected(null)} />
@@ -161,7 +155,7 @@ function MarqueeRow({ items, direction, onOpen, paused }: { items: NewsCardData[
     >
       <div ref={trackRef} className="flex w-max will-change-transform">
         {[0, 1].map((copy) => (
-          <ul key={copy} className="flex gap-3 pr-3" aria-hidden={copy === 1 || undefined}>
+          <ul key={copy} className="flex gap-2 pr-2" aria-hidden={copy === 1 || undefined}>
             {items.map((it) => (
               <li key={`${copy}-${it.id}`}>
                 <NewsCard item={it} onOpen={onOpen} hiddenCopy={copy === 1} />
@@ -180,17 +174,34 @@ function NewsCard({ item, onOpen, hiddenCopy }: { item: NewsCardData; onOpen: (i
       type="button"
       tabIndex={hiddenCopy ? -1 : 0}
       onClick={() => onOpen(item)}
-      className="group flex h-[132px] w-[300px] flex-col justify-between rounded-[14px] border border-border bg-background p-4 text-left transition-[border-color] duration-150 hover:border-border-strong sm:w-[340px]"
+      className="group flex h-[72px] w-[288px] items-center gap-3 rounded-[12px] border border-border bg-background/90 p-2 pr-3 text-left transition-[border-color] duration-150 hover:border-border-strong sm:w-[320px]"
     >
-      <span className="flex items-center gap-2 text-[12px] text-muted">
-        <span className="truncate font-medium text-foreground">{item.sourceName}</span>
-        <span aria-hidden>·</span>
-        <span className="tabular shrink-0">{timeAgo(item.publishedAt)}</span>
-        <span className="ml-auto shrink-0 rounded-full border border-border px-2 py-0.5 text-[11px] capitalize">{item.category}</span>
+      <NewsThumb item={item} className="size-14 rounded-[9px]" />
+      <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <span className="line-clamp-2 text-[13px] font-medium leading-[17px]">{item.title}</span>
+        <span className="flex items-center gap-1.5 truncate text-[11px] text-muted">
+          <span className="truncate">{item.sourceName}</span>
+          <span aria-hidden>·</span>
+          <span className="tabular shrink-0">{timeAgo(item.publishedAt)}</span>
+        </span>
       </span>
-      <span className="line-clamp-2 text-[14px] font-medium leading-snug">{item.title}</span>
-      <span className="line-clamp-1 text-[12px] text-muted">{item.summary || " "}</span>
     </button>
+  );
+}
+
+/** Lead image (proxied), or a quiet monogram tile when the feed has none or it fails to load. */
+function NewsThumb({ item, className }: { item: NewsCardData; className?: string }) {
+  const [failed, setFailed] = React.useState(false);
+  if (!item.image || failed) {
+    return (
+      <span className={cn("grid shrink-0 place-items-center bg-surface-2 text-[11px] font-medium uppercase tracking-wide text-muted", className)} aria-hidden>
+        {item.category.slice(0, 3)}
+      </span>
+    );
+  }
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src={item.image} alt="" loading="lazy" decoding="async" onError={() => setFailed(true)} className={cn("shrink-0 bg-surface-2 object-cover", className)} />
   );
 }
 
@@ -234,6 +245,7 @@ function NewsDrawer({ item, onClose }: { item: NewsCardData | null; onClose: () 
     >
       {item ? (
         <div className="flex flex-col gap-5">
+          {item.image ? <NewsThumb item={item} className="aspect-[16/9] w-full rounded-[14px]" /> : null}
           <span className="w-fit rounded-full border border-border px-2.5 py-0.5 text-[12px] capitalize">{item.category}</span>
           <p className="text-[15px] leading-relaxed">{item.summary || "No summary was provided by the source."}</p>
           <p className="text-[13px] text-muted">Cowork shows a short excerpt from the source's feed. Read the full story on the publisher's site.</p>

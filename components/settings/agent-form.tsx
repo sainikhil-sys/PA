@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import * as React from "react";
 import { toast } from "sonner";
-import { addMemory, deleteMemory, saveAgentSettings, savePreferences, testProviderAction, updateMemory } from "@/app/actions/settings";
+import { addMemory, deleteMemory, saveAgentSettings, savePreferences, updateMemory } from "@/app/actions/settings";
 import { ChatView } from "@/components/chat/chat-view";
 import { AgentOrb } from "@/components/voice/agent-orb";
 import { Button } from "@/components/ui/button";
@@ -15,9 +15,9 @@ import { Segmented } from "@/components/ui/tabs";
 import { NEVER_DO, PERSONALITIES } from "@/lib/agent/personality";
 import type { AgentSettings } from "@/lib/db/schema";
 import { cn } from "@/lib/utils";
+import { AiKeySection, type AiPresetInfo, type OwnAiKey } from "./ai-key-section";
 import { Row, Section } from "./section";
 
-type Provider = { name: string; fastModel: string; smartModel: string; embeddingModel?: string; baseHost: string };
 type MemoryRow = { id: string; content: string; kind: string };
 
 const CAPS: { key: keyof AgentSettings["capabilities"]; label: string; hint: string }[] = [
@@ -28,12 +28,11 @@ const CAPS: { key: keyof AgentSettings["capabilities"]; label: string; hint: str
   { key: "searchKnowledge", label: "Search knowledge", hint: "Answer from your documents" },
 ];
 
-export function AgentForm({ initial, providers, memories, quiet, serverTts }: { initial: AgentSettings; providers: Provider[]; memories: MemoryRow[]; quiet: { start: string | null; end: string | null }; serverTts: boolean }) {
+export function AgentForm({ initial, aiPresets, ownKey, memories, quiet, serverTts }: { initial: AgentSettings; aiPresets: AiPresetInfo[]; ownKey: OwnAiKey; memories: MemoryRow[]; quiet: { start: string | null; end: string | null }; serverTts: boolean }) {
   const router = useRouter();
   const [a, setA] = React.useState(initial);
-  const [pending, start] = React.useTransition();
+  const [, start] = React.useTransition();
   const [voices, setVoices] = React.useState<string[]>([]);
-  const [tests, setTests] = React.useState<Record<string, string>>({});
   const [q, setQ] = React.useState(quiet);
   const [newMem, setNewMem] = React.useState("");
   const [previewKey, setPreviewKey] = React.useState(0);
@@ -94,7 +93,7 @@ export function AgentForm({ initial, providers, memories, quiet, serverTts }: { 
         </Row>
       </Section>
 
-      <Section title="Voice" description="Browser speech by default. Server voices appear if an open-source TTS endpoint is configured.">
+      <Section title="Voice" description="How your agent sounds when it talks back.">
         <Row label="Voice" htmlFor="ag-voice">
           <select id="ag-voice" value={a.voice} onChange={(e) => save({ voice: e.target.value })} className={inputClass}>
             <option value="">System default</option>
@@ -166,49 +165,9 @@ export function AgentForm({ initial, providers, memories, quiet, serverTts }: { 
         </Row>
       </Section>
 
-      <Section title="Models" description="Open-weight models through any OpenAI-compatible API. Keys live in environment variables, never in the database.">
-        {providers.length === 0 ? (
-          <p className="text-[13px] text-muted">No provider configured. Set AI_BASE_URL, AI_API_KEY, FAST_MODEL and SMART_MODEL, then redeploy.</p>
-        ) : (
-          <ol className="flex flex-col gap-2">
-            {providers.map((p, i) => (
-              <li key={p.name} className="flex flex-col gap-3 rounded-[14px] border border-border p-4 sm:flex-row sm:items-center">
-                <span className="tabular grid size-7 shrink-0 place-items-center rounded-full border border-border text-[12px]" aria-label={`Fallback order ${i + 1}`}>
-                  {i + 1}
-                </span>
-                <div className="min-w-0 flex-1 text-[13px]">
-                  <p className="font-medium capitalize">
-                    {p.name} <span className="font-normal text-muted">· {p.baseHost}</span>
-                  </p>
-                  <p className="truncate text-muted">
-                    Fast: <span className="font-mono">{p.fastModel}</span> · Smart: <span className="font-mono">{p.smartModel}</span>
-                    {p.embeddingModel ? (
-                      <>
-                        {" "}
-                        · Embeddings: <span className="font-mono">{p.embeddingModel}</span>
-                      </>
-                    ) : null}
-                  </p>
-                  {tests[p.name] ? <p className="mt-1" aria-live="polite">{tests[p.name]}</p> : null}
-                </div>
-                <Button
-                  size="sm"
-                  disabled={pending}
-                  onClick={() =>
-                    start(async () => {
-                      setTests((t) => ({ ...t, [p.name]: "Testing…" }));
-                      const res = await testProviderAction({ name: p.name });
-                      const r = res.ok ? res.data : { ok: false, error: res.error };
-                      setTests((t) => ({ ...t, [p.name]: r.ok ? `Works · ${"latencyMs" in r ? r.latencyMs : "?"} ms` : `Failed: ${"error" in r ? r.error : "unknown"}` }));
-                    })
-                  }
-                >
-                  Test connection
-                </Button>
-              </li>
-            ))}
-          </ol>
-        )}
+      <AiKeySection presets={aiPresets} current={ownKey} />
+
+      <Section title="Claude" description="Use your Cowork tasks, notes and briefing from Claude.">
         <Button asChild variant="secondary" className="w-fit">
           <Link href="/settings/claude">
             <Plugs /> Connect Claude

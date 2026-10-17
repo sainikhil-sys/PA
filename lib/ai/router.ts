@@ -7,6 +7,7 @@ import { db, schema } from "@/lib/db";
 import { EMBEDDING_DIMENSIONS } from "@/lib/db/schema";
 import { configuredProviders, modelFor, providerClient, type ModelTier, type ProviderConfig } from "./providers";
 import { generateStructured, type ChatMessage } from "./structured";
+import { userProvider } from "./user-provider";
 
 export class NoProviderError extends Error {
   constructor() {
@@ -15,8 +16,15 @@ export class NoProviderError extends Error {
 }
 
 type RunMeta = { kind: string; userId?: string | null };
+type Usage = { inputTokens?: number; outputTokens?: number } | undefined;
 
-async function recordRun(meta: RunMeta, p: ProviderConfig, model: string, ok: boolean, attempts: number, started: number, errorCode?: string) {
+/** The user's own key first (if they added one), then Cowork's server providers. */
+async function providersFor(meta: RunMeta): Promise<ProviderConfig[]> {
+  const own = await userProvider(meta.userId).catch(() => null);
+  return own ? [own, ...configuredProviders()] : configuredProviders();
+}
+
+async function recordRun(meta: RunMeta, p: ProviderConfig, model: string, ok: boolean, attempts: number, started: number, errorCode?: string, usage?: Usage) {
   const durationMs = Date.now() - started;
   // Log which model handled the task — never prompts or outputs.
   log.info("ai.run", { kind: meta.kind, provider: p.name, model, ok, attempts, durationMs, errorCode });
@@ -30,6 +38,9 @@ async function recordRun(meta: RunMeta, p: ProviderConfig, model: string, ok: bo
       attempts,
       durationMs,
       errorCode: errorCode?.slice(0, 120),
+      inputTokens: usage?.inputTokens ?? 0,
+      outputTokens: usage?.outputTokens ?? 0,
+      keySource: p.name === "own" ? "own" : "server",
     });
   } catch {
     // Observability must never break the task.
@@ -40,29 +51,30 @@ async function recordRun(meta: RunMeta, p: ProviderConfig, model: string, ok: bo
 async function withFallback<T>(
   meta: RunMeta,
   tier: ModelTier,
-  fn: (p: ProviderConfig, modelId: string, model: ReturnType<typeof modelFor>["model"]) => Promise<{ value: T; attempts: number }>,
+  fn: (p: ProviderConfig, modelId: string, model: ReturnType<typeof modelFor>["model"], usage: { in: number; out: number }) => Promise<{ value: T; attempts: number }>,
 ): Promise<{ value: T; provider: string; model: string }> {
-  const providers = configuredProviders();
+  const providers = await providersFor(meta);
   if (providers.length === 0) throw new NoProviderError();
   let lastErr: unknown;
   for (const p of providers) {
     const { id, model } = modelFor(p, tier);
     const started = Date.now();
+    const usage = { in: 0, out: 0 };
     try {
-      const { value, attempts } = await fn(p, id, model);
-      await recordRun(meta, p, id, true, attempts, started);
+      const { value, attempts } = await fn(p, id, model, usage);
+      await recordRun(meta, p, id, true, attempts, started, undefined, { inputTokens: usage.in, outputTokens: usage.out });
       return { value, provider: p.name, model: id };
     } catch (err) {
       lastErr = err;
-      await recordRun(meta, p, id, false, 1, started, err instanceof Error ? err.name : "error");
+      await recordRun(meta, p, id, false, 1, started, err instanceof Error ? err.name : "error", { inputTokens: usage.in, outputTokens: usage.out });
       log.warn("ai.provider_failed", { kind: meta.kind, provider: p.name, model: id, error: errMessage(err) });
     }
   }
   throw lastErr instanceof Error ? lastErr : new Error("All AI providers failed");
 }
 
-async function chat(model: ReturnType<typeof modelFor>["model"], system: string, messages: ChatMessage[], temperature: number) {
-  const { text } = await generateText({
+async function chat(model: ReturnType<typeof modelFor>["model"], system: string, messages: ChatMessage[], temperature: number, usage?: { in: number; out: number }) {
+  const { text, usage: u } = await generateText({
     model,
     system,
     messages,
@@ -70,13 +82,17 @@ async function chat(model: ReturnType<typeof modelFor>["model"], system: string,
     maxRetries: 1,
     abortSignal: AbortSignal.timeout(env().AI_TIMEOUT_MS),
   });
+  if (usage) {
+    usage.in += u?.inputTokens ?? 0;
+    usage.out += u?.outputTokens ?? 0;
+  }
   return text;
 }
 
 /** Free-text generation (drafts, briefings). */
 export async function generate(opts: RunMeta & { tier: ModelTier; system: string; prompt: string; temperature?: number }) {
-  return withFallback(opts, opts.tier, async (_p, _id, model) => ({
-    value: await chat(model, opts.system, [{ role: "user", content: opts.prompt }], opts.temperature ?? 0.4),
+  return withFallback(opts, opts.tier, async (_p, _id, model, usage) => ({
+    value: await chat(model, opts.system, [{ role: "user", content: opts.prompt }], opts.temperature ?? 0.4, usage),
     attempts: 1,
   }));
 }
@@ -85,11 +101,11 @@ export async function generate(opts: RunMeta & { tier: ModelTier; system: string
 export async function generateObject<T extends z.ZodType>(
   opts: RunMeta & { tier: ModelTier; system: string; prompt: string; schema: T; temperature?: number },
 ) {
-  return withFallback(opts, opts.tier, async (_p, _id, model) => {
+  return withFallback(opts, opts.tier, async (_p, _id, model, usage) => {
     const { data, attempts } = await generateStructured({
       schema: opts.schema,
       prompt: opts.prompt,
-      generate: (messages) => chat(model, opts.system, messages, opts.temperature ?? 0.1),
+      generate: (messages) => chat(model, opts.system, messages, opts.temperature ?? 0.1, usage),
     });
     return { value: data as z.infer<T>, attempts };
   });
@@ -102,7 +118,7 @@ export async function generateObject<T extends z.ZodType>(
 export async function* streamGenerate(
   opts: RunMeta & { tier: ModelTier; system: string; messages: ChatMessage[]; temperature?: number },
 ): AsyncGenerator<{ type: "model"; provider: string; model: string } | { type: "text"; delta: string }> {
-  const providers = configuredProviders();
+  const providers = await providersFor(opts);
   if (providers.length === 0) throw new NoProviderError();
   let lastErr: unknown;
   for (const p of providers) {
@@ -126,7 +142,8 @@ export async function* streamGenerate(
         yield { type: "text", delta };
       }
       if (!emitted) throw new Error("Empty response");
-      await recordRun(opts, p, id, true, 1, started);
+      const u = await Promise.resolve(result.usage).catch(() => undefined);
+      await recordRun(opts, p, id, true, 1, started, undefined, { inputTokens: u?.inputTokens, outputTokens: u?.outputTokens });
       return;
     } catch (err) {
       lastErr = err;
@@ -144,7 +161,7 @@ export async function embedText(text: string, meta: RunMeta): Promise<number[] |
   if (!p?.embeddingModel) return null;
   const started = Date.now();
   try {
-    const { embedding } = await embed({
+    const { embedding, usage } = await embed({
       model: providerClient(p).embeddingModel(p.embeddingModel),
       value: text.slice(0, 8000),
       maxRetries: 1,
@@ -153,7 +170,7 @@ export async function embedText(text: string, meta: RunMeta): Promise<number[] |
     if (embedding.length !== EMBEDDING_DIMENSIONS) {
       throw new Error(`Embedding has ${embedding.length} dims; schema expects ${EMBEDDING_DIMENSIONS}`);
     }
-    await recordRun(meta, p, p.embeddingModel, true, 1, started);
+    await recordRun(meta, p, p.embeddingModel, true, 1, started, undefined, { inputTokens: usage?.tokens });
     return embedding;
   } catch (err) {
     await recordRun(meta, p, p.embeddingModel, false, 1, started, err instanceof Error ? err.name : "error");

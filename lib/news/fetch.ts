@@ -58,7 +58,7 @@ export async function refreshNews(userId: string, topics: string[]) {
   if (items.length) {
     const rows = await db()
       .insert(schema.newsItems)
-      .values(items.map((i) => ({ userId, urlHash: sha256(i.url), url: i.url, sourceName: i.sourceName, title: i.title, summary: i.summary, category: i.category, publishedAt: i.publishedAt })))
+      .values(items.map((i) => ({ userId, urlHash: sha256(i.url), url: i.url, sourceName: i.sourceName, title: i.title, summary: i.summary, imageUrl: i.imageUrl ?? null, category: i.category, publishedAt: i.publishedAt })))
       .onConflictDoNothing()
       .returning({ id: schema.newsItems.id });
     inserted = rows.length;

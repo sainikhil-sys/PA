@@ -60,7 +60,7 @@ export function LoginFlow({ next }: { next?: string }) {
       : { initial: { opacity: 0, x: 16 * dir }, animate: { opacity: 1, x: 0 }, exit: { opacity: 0, x: -16 * dir } };
 
   return (
-    <div className="w-full max-w-[400px] rounded-[20px] border border-border bg-background p-8 sm:p-10">
+    <div className="w-full max-w-[400px] rounded-[20px] border border-border bg-background p-5 sm:p-10">
       <div className="mb-8 flex justify-center">
         <Logo size={36} withWord={false} />
       </div>

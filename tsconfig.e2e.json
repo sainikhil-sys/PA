@@ -1,5 +1,15 @@
 {
   "extends": "./tsconfig.json",
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next-e2e/types/**/*.ts"],
-  "exclude": ["node_modules", ".next", ".next-e2e/cache"]
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    ".next-e2e/types/**/*.ts",
+    "next-env.d.ts",
+    ".next-devtest/types/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    ".next",
+    ".next-e2e/cache"
+  ]
 }

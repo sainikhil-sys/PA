@@ -41,7 +41,7 @@ export function IntegrationGrid({ catalog, states, telegramConfigured, oauthRead
   const filtered = catalog.filter((c) => (category === "All" || c.category === category) && c.name.toLowerCase().includes(q.trim().toLowerCase()));
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div className="no-scrollbar -mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
           <Segmented id="int-cat" label="Category" value={category} onChange={setCategory} options={[{ value: "All" as const, label: "All" }, ...CATEGORIES.map((c) => ({ value: c, label: c }))]} />
@@ -52,7 +52,7 @@ export function IntegrationGrid({ catalog, states, telegramConfigured, oauthRead
         </div>
       </div>
 
-      <motion.ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" initial="hidden" animate="show" variants={{ show: { transition: { staggerChildren: 0.035 } } }}>
+      <motion.ul className="grid gap-2 sm:grid-cols-2 sm:gap-3 xl:grid-cols-3" initial="hidden" animate="show" variants={{ show: { transition: { staggerChildren: 0.035 } } }}>
         <AnimatePresence mode="popLayout">
           {filtered.map((c) => (
             <motion.li key={c.id} layout variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0, transition: { duration: 0.25, ease: EASE } } }} exit={{ opacity: 0, scale: 0.98 }}>
@@ -60,7 +60,7 @@ export function IntegrationGrid({ catalog, states, telegramConfigured, oauthRead
             </motion.li>
           ))}
           <motion.li key="request" layout variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } }}>
-            <button type="button" onClick={() => setRequestOpen(true)} className="flex h-full min-h-[168px] w-full flex-col items-center justify-center gap-2 rounded-[16px] border border-dashed border-border-strong p-5 text-center text-sm text-muted transition-colors hover:border-foreground hover:text-foreground">
+            <button type="button" onClick={() => setRequestOpen(true)} className="flex h-full min-h-[76px] w-full items-center justify-center gap-2 rounded-[14px] border border-dashed border-border-strong px-4 text-sm text-muted transition-colors hover:border-foreground hover:text-foreground">
               <Plus size={20} />
               Request an integration
             </button>
@@ -85,34 +85,31 @@ function IntegrationCard({ entry, state, celebrate, onOpen }: { entry: CatalogEn
       whileTap={reduce ? undefined : { scale: 0.99 }}
       animate={state.status === "error" && !reduce ? { x: [0, -4, 4, -2, 2, 0] } : undefined}
       transition={{ duration: 0.4 }}
-      className="group flex h-full min-h-[168px] w-full flex-col gap-4 rounded-[16px] border border-border bg-background p-5 text-left transition-[border-color] duration-200 hover:border-foreground/60"
+      className="group grid h-full min-h-[76px] w-full grid-cols-[40px_minmax(0,1fr)_auto] items-center gap-3 rounded-[14px] border border-border bg-background px-3.5 py-3 text-left transition-[border-color] duration-200 hover:border-foreground/60"
       aria-label={`${entry.name}: ${statusText}`}
     >
-      <div className="flex items-start justify-between">
-        <div className="relative">
-          <motion.div
-            className="relative"
-            animate={celebrate && !reduce ? { scale: [1, 1.12, 1] } : undefined}
-            whileHover={reduce ? undefined : { rotate: -4, y: -1 }}
-            transition={{ duration: 0.35, ease: EASE }}
-          >
-            <span className={cn("block", state.status === "disconnected" && "opacity-60 grayscale")}>
-              <BrandLogo id={entry.logo} size={28} box />
-            </span>
-          </motion.div>
-          {state.status === "syncing" ? <SyncRing /> : null}
-          {celebrate ? <CheckBurst /> : null}
-        </div>
-        <span className="inline-flex items-center gap-1.5 text-[12px] text-muted">
-          {state.status === "error" ? <WarningCircle size={14} className="text-danger" /> : <StatusDot state={state.status === "connected" ? "ok" : "idle"} pulse={state.status === "connected"} />}
-          {statusText}
-        </span>
+      <div className="relative grid size-10 place-items-center">
+        <motion.div
+          className="relative"
+          animate={celebrate && !reduce ? { scale: [1, 1.12, 1] } : undefined}
+          whileHover={reduce ? undefined : { rotate: -4, y: -1 }}
+          transition={{ duration: 0.35, ease: EASE }}
+        >
+          <span className={cn("block", state.status === "disconnected" && "opacity-60 grayscale")}>
+            <BrandLogo id={entry.logo} size={24} box />
+          </span>
+        </motion.div>
+        {state.status === "syncing" ? <SyncRing /> : null}
+        {celebrate ? <CheckBurst /> : null}
       </div>
-      <div>
-        <p className="text-sm font-medium">{entry.name}</p>
-        <p className="mt-1 text-[13px] text-muted">{entry.description}</p>
+      <div className="min-w-0">
+        <p className="truncate text-sm font-medium leading-5">{entry.name}</p>
+        <p className="line-clamp-2 text-[12.5px] leading-[18px] text-muted">{state.status === "connected" && state.label ? state.label : entry.description}</p>
       </div>
-      {state.status === "connected" && state.label ? <p className="mt-auto truncate text-[12px] text-subtle">{state.label}</p> : null}
+      <span className="inline-flex shrink-0 items-center gap-1.5 self-start pt-0.5 text-[11.5px] text-muted">
+        {state.status === "error" ? <WarningCircle size={14} className="text-danger" /> : <StatusDot state={state.status === "connected" ? "ok" : "idle"} pulse={state.status === "connected"} />}
+        <span className="hidden sm:inline">{statusText}</span>
+      </span>
     </motion.button>
   );
 }

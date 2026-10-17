@@ -49,7 +49,7 @@ export function OtpInput({
   };
 
   return (
-    <div className="flex justify-center gap-2 sm:gap-2.5" role="group" aria-label="Verification code">
+    <div className="grid grid-cols-6 gap-1.5 sm:gap-2.5" role="group" aria-label="Verification code">
       {digits.map((d, i) => (
         <input
           key={i}
@@ -84,7 +84,7 @@ export function OtpInput({
             fill(e.clipboardData.getData("text"), 0);
           }}
           className={cn(
-            "tabular h-14 w-11 rounded-[12px] border bg-background text-center text-[22px] font-medium outline-none transition-colors duration-150 sm:w-12",
+            "tabular h-12 w-full min-w-0 rounded-[10px] sm:h-14 sm:rounded-[12px] border bg-background text-center text-[22px] font-medium outline-none transition-colors duration-150 sm:w-12",
             "focus:border-foreground focus:ring-2 focus:ring-foreground/10 disabled:opacity-50",
             invalid ? "border-danger" : d ? "border-border-strong" : "border-border",
           )}
