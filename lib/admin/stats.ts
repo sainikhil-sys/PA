@@ -1,68 +1,63 @@
 import "server-only";
-import { and, count, desc, eq, gte, isNotNull, isNull, sql, sum } from "drizzle-orm";
-import { db, schema } from "@/lib/db";
+import { and, count, desc, eq, gte, isNull, sql, sum } from "drizzle-orm";
+import { db, rowsOf, schema } from "@/lib/db";
 
 const daysAgo = (n: number) => new Date(Date.now() - n * 86_400_000);
 
-/** Headline KPIs for the admin overview. Counts only, no user content. */
+/** Headline KPIs for the admin overview, in ONE round trip (the database is far away). Counts only. */
 export async function overviewStats() {
-  const d1 = daysAgo(1);
-  const d7 = daysAgo(7);
-  const d30 = daysAgo(30);
-  const one = async <T>(q: Promise<T[]>) => (await q)[0];
-  const [users, newUsers7, newUsers30, disabled, active1, active7, devices, tokens30, tokensToday, runs7, autoRuns7, jobs, integrations, tasks7, emails7, notif7] = await Promise.all([
-    one(db().select({ n: count() }).from(schema.users)),
-    one(db().select({ n: count() }).from(schema.users).where(gte(schema.users.createdAt, d7))),
-    one(db().select({ n: count() }).from(schema.users).where(gte(schema.users.createdAt, d30))),
-    one(db().select({ n: count() }).from(schema.users).where(isNotNull(schema.users.disabledAt))),
-    one(db().select({ n: sql<number>`count(distinct ${schema.sessions.userId})::int` }).from(schema.sessions).where(gte(schema.sessions.lastSeenAt, d1))),
-    one(db().select({ n: sql<number>`count(distinct ${schema.sessions.userId})::int` }).from(schema.sessions).where(gte(schema.sessions.lastSeenAt, d7))),
-    one(db().select({ n: count() }).from(schema.pushSubscriptions)),
-    one(db().select({ i: sum(schema.aiRuns.inputTokens), o: sum(schema.aiRuns.outputTokens) }).from(schema.aiRuns).where(gte(schema.aiRuns.createdAt, d30))),
-    one(db().select({ i: sum(schema.aiRuns.inputTokens), o: sum(schema.aiRuns.outputTokens) }).from(schema.aiRuns).where(gte(schema.aiRuns.createdAt, d1))),
-    one(db().select({ ok: sql<number>`count(*) filter (where ${schema.aiRuns.ok})::int`, failed: sql<number>`count(*) filter (where not ${schema.aiRuns.ok})::int` }).from(schema.aiRuns).where(gte(schema.aiRuns.createdAt, d7))),
-    one(
-      db()
-        .select({ ok: sql<number>`count(*) filter (where ${schema.automationRuns.status} = 'succeeded')::int`, failed: sql<number>`count(*) filter (where ${schema.automationRuns.status} in ('failed','dead'))::int` })
-        .from(schema.automationRuns)
-        .where(gte(schema.automationRuns.createdAt, d7)),
-    ),
-    one(
-      db()
-        .select({
-          pending: sql<number>`count(*) filter (where ${schema.jobs.status} = 'pending')::int`,
-          running: sql<number>`count(*) filter (where ${schema.jobs.status} = 'running')::int`,
-          dead: sql<number>`count(*) filter (where ${schema.jobs.status} = 'failed')::int`,
-        })
-        .from(schema.jobs),
-    ),
-    db().select({ provider: schema.integrations.provider, n: count() }).from(schema.integrations).where(eq(schema.integrations.status, "connected")).groupBy(schema.integrations.provider).orderBy(desc(count())),
-    one(db().select({ n: count() }).from(schema.tasks).where(gte(schema.tasks.createdAt, d7))),
-    one(db().select({ n: count() }).from(schema.emails).where(gte(schema.emails.createdAt, d7))),
-    one(db().select({ n: count() }).from(schema.notifications).where(gte(schema.notifications.createdAt, d7))),
-  ]);
-  const num = (v: unknown) => Number(v ?? 0);
+  // Raw SQL parameters must be strings (postgres-js doesn't serialize Date here).
+  const d1 = daysAgo(1).toISOString();
+  const d7 = daysAgo(7).toISOString();
+  const d30 = daysAgo(30).toISOString();
+  const [row] = rowsOf<Record<string, number | string | null>>(
+    await db().execute(sql`
+      select
+        (select count(*) from ${schema.users})::int as users,
+        (select count(*) from ${schema.users} where ${schema.users.createdAt} >= ${d7}::timestamptz)::int as new_users7,
+        (select count(*) from ${schema.users} where ${schema.users.createdAt} >= ${d30}::timestamptz)::int as new_users30,
+        (select count(*) from ${schema.users} where ${schema.users.disabledAt} is not null)::int as disabled,
+        (select count(distinct ${schema.sessions.userId}) from ${schema.sessions} where ${schema.sessions.lastSeenAt} >= ${d1}::timestamptz)::int as active1,
+        (select count(distinct ${schema.sessions.userId}) from ${schema.sessions} where ${schema.sessions.lastSeenAt} >= ${d7}::timestamptz)::int as active7,
+        (select count(*) from ${schema.pushSubscriptions})::int as devices,
+        (select coalesce(sum(${schema.aiRuns.inputTokens} + ${schema.aiRuns.outputTokens}), 0) from ${schema.aiRuns} where ${schema.aiRuns.createdAt} >= ${d30}::timestamptz)::bigint as tokens30,
+        (select coalesce(sum(${schema.aiRuns.inputTokens} + ${schema.aiRuns.outputTokens}), 0) from ${schema.aiRuns} where ${schema.aiRuns.createdAt} >= ${d1}::timestamptz)::bigint as tokens_today,
+        (select count(*) from ${schema.aiRuns} where ${schema.aiRuns.ok} and ${schema.aiRuns.createdAt} >= ${d7}::timestamptz)::int as ai_ok7,
+        (select count(*) from ${schema.aiRuns} where not ${schema.aiRuns.ok} and ${schema.aiRuns.createdAt} >= ${d7}::timestamptz)::int as ai_failed7,
+        (select count(*) from ${schema.automationRuns} where ${schema.automationRuns.status} = 'succeeded' and ${schema.automationRuns.createdAt} >= ${d7}::timestamptz)::int as auto_ok7,
+        (select count(*) from ${schema.automationRuns} where ${schema.automationRuns.status} in ('failed','dead') and ${schema.automationRuns.createdAt} >= ${d7}::timestamptz)::int as auto_failed7,
+        (select count(*) from ${schema.jobs} where ${schema.jobs.status} = 'pending')::int as jobs_pending,
+        (select count(*) from ${schema.jobs} where ${schema.jobs.status} = 'running')::int as jobs_running,
+        (select count(*) from ${schema.jobs} where ${schema.jobs.status} = 'failed')::int as jobs_dead,
+        (select count(*) from ${schema.tasks} where ${schema.tasks.createdAt} >= ${d7}::timestamptz)::int as tasks7,
+        (select count(*) from ${schema.emails} where ${schema.emails.createdAt} >= ${d7}::timestamptz)::int as emails7,
+        (select count(*) from ${schema.notifications} where ${schema.notifications.createdAt} >= ${d7}::timestamptz)::int as notifications7,
+        (select coalesce(json_agg(x order by x.n desc), '[]') from (select ${schema.integrations.provider} as provider, count(*)::int as n from ${schema.integrations} where ${schema.integrations.status} = 'connected' group by 1) x) as integrations
+    `),
+  );
+  const n = (k: string) => Number(row?.[k] ?? 0);
+  const integrations = (typeof row?.integrations === "string" ? JSON.parse(row.integrations) : (row?.integrations ?? [])) as { provider: string; n: number }[];
   return {
-    users: num(users?.n),
-    newUsers7: num(newUsers7?.n),
-    newUsers30: num(newUsers30?.n),
-    disabled: num(disabled?.n),
-    active1: num(active1?.n),
-    active7: num(active7?.n),
-    devices: num(devices?.n),
-    tokens30: num(tokens30?.i) + num(tokens30?.o),
-    tokensToday: num(tokensToday?.i) + num(tokensToday?.o),
-    aiOk7: num(runs7?.ok),
-    aiFailed7: num(runs7?.failed),
-    autoOk7: num(autoRuns7?.ok),
-    autoFailed7: num(autoRuns7?.failed),
-    jobsPending: num(jobs?.pending),
-    jobsRunning: num(jobs?.running),
-    jobsDead: num(jobs?.dead),
-    integrations: integrations.map((r) => ({ provider: r.provider, n: num(r.n) })),
-    tasks7: num(tasks7?.n),
-    emails7: num(emails7?.n),
-    notifications7: num(notif7?.n),
+    users: n("users"),
+    newUsers7: n("new_users7"),
+    newUsers30: n("new_users30"),
+    disabled: n("disabled"),
+    active1: n("active1"),
+    active7: n("active7"),
+    devices: n("devices"),
+    tokens30: n("tokens30"),
+    tokensToday: n("tokens_today"),
+    aiOk7: n("ai_ok7"),
+    aiFailed7: n("ai_failed7"),
+    autoOk7: n("auto_ok7"),
+    autoFailed7: n("auto_failed7"),
+    jobsPending: n("jobs_pending"),
+    jobsRunning: n("jobs_running"),
+    jobsDead: n("jobs_dead"),
+    integrations,
+    tasks7: n("tasks7"),
+    emails7: n("emails7"),
+    notifications7: n("notifications7"),
   };
 }
 

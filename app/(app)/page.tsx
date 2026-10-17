@@ -8,7 +8,7 @@ import { requireOwner } from "@/lib/auth/session";
 import type { User } from "@/lib/db/schema";
 import { getSettings } from "@/lib/db/queries/settings";
 import { errMessage, log } from "@/lib/log";
-import { ensureFreshNews, listNews } from "@/lib/news/fetch";
+import { backfillNewsImages, ensureFreshNews, listNews } from "@/lib/news/fetch";
 import { toNewsCard } from "@/lib/news/card";
 import { after } from "next/server";
 
@@ -24,7 +24,10 @@ async function News({ user }: { user: User }) {
     items = await listNews(user.id, s.newsTopics, 24).catch(() => []);
   } else {
     // Stale? Refresh after the response is sent; the ribbon picks it up via /api/news.
-    after(() => ensureFreshNews(user.id, s.newsTopics).catch((err) => log.warn("news.refresh_failed", { error: errMessage(err) })));
+    after(async () => {
+      await ensureFreshNews(user.id, s.newsTopics).catch((err) => log.warn("news.refresh_failed", { error: errMessage(err) }));
+      await backfillNewsImages(user.id).catch(() => 0);
+    });
   }
   return <NewsRibbon items={items.map(toNewsCard)} />;
 }

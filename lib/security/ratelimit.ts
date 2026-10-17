@@ -12,7 +12,8 @@ const LIMITS: Record<LimitName, { tokens: number; window: `${number} s` | `${num
   oauth: { tokens: 30, window: "1 m" },
   ai: { tokens: 30, window: "1 m" },
   otpEmail: { tokens: 5, window: "15 m" },
-  otpIp: { tokens: 20, window: "15 m" },
+  // Offices and campuses share one IP: allow many people per network, still capped per address.
+  otpIp: { tokens: 80, window: "15 m" },
   otpVerify: { tokens: 10, window: "15 m" },
   webhook: { tokens: 60, window: "1 m" },
   // Update emails per user per day: a runaway automation can never flood an inbox.

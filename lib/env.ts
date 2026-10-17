@@ -10,8 +10,8 @@ const schema = z.object({
   // Auth
   ALLOWED_EMAILS: z.string().optional(),
   ALLOWED_EMAIL: z.string().optional(),
-  /** "open": anyone with an email can sign up. "allowlist" (default): only ALLOWED_EMAILS. */
-  SIGNUP_MODE: z.enum(["open", "allowlist"]).default("allowlist"),
+  /** "open" (default): any email address, personal or organization, can sign up. "allowlist": only ALLOWED_EMAILS. */
+  SIGNUP_MODE: z.enum(["open", "allowlist"]).default("open"),
   /** Admins get Telegram alerts and system mail. Defaults to ALLOWED_EMAILS. */
   ADMIN_EMAILS: z.string().optional(),
   AUTH_SECRET: z.string().min(32).optional(),

@@ -108,3 +108,18 @@ export function dedupeItems(items: ParsedItem[]): ParsedItem[] {
   }
   return out;
 }
+
+/** Article preview image (og:image / twitter:image) from the page head. https only. */
+export function pageImage(html: string): string | undefined {
+  const head = html.slice(0, 200_000);
+  const metas = head.match(/<meta\b[^>]*>/gi) ?? [];
+  for (const key of ["og:image:secure_url", "og:image", "twitter:image", "twitter:image:src"]) {
+    for (const m of metas) {
+      const name = /(?:property|name)\s*=\s*["']([^"']+)["']/i.exec(m)?.[1]?.toLowerCase();
+      if (name !== key) continue;
+      const content = /content\s*=\s*["']([^"']+)["']/i.exec(m)?.[1]?.replace(/&amp;/g, "&").trim();
+      if (content && /^https:\/\/\S+$/.test(content) && content.length < 1000) return content;
+    }
+  }
+  return undefined;
+}

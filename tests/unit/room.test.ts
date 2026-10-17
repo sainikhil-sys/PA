@@ -49,3 +49,13 @@ describe("news images", () => {
     expect(feedImage({ title: "no image" })).toBeUndefined();
   });
 });
+
+describe("article preview images", () => {
+  it("reads og:image and twitter:image from the page head", async () => {
+    const { pageImage } = await import("@/lib/news/parse");
+    expect(pageImage('<head><meta property="og:image" content="https://cdn.example/a.jpg?w=1&amp;h=2"></head>')).toBe("https://cdn.example/a.jpg?w=1&h=2");
+    expect(pageImage('<meta content="https://cdn.example/b.png" name="twitter:image">')).toBe("https://cdn.example/b.png");
+    expect(pageImage('<meta property="og:image" content="http://insecure.example/c.jpg">')).toBeUndefined();
+    expect(pageImage("<title>none</title>")).toBeUndefined();
+  });
+});

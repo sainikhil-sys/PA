@@ -174,7 +174,7 @@ function NewsCard({ item, onOpen, hiddenCopy }: { item: NewsCardData; onOpen: (i
       type="button"
       tabIndex={hiddenCopy ? -1 : 0}
       onClick={() => onOpen(item)}
-      className="group flex h-[72px] w-[288px] items-center gap-3 rounded-[12px] border border-border bg-background/90 p-2 pr-3 text-left transition-[border-color] duration-150 hover:border-border-strong sm:w-[320px]"
+      className="group flex h-[72px] w-[288px] items-center gap-3 rounded-[12px] border border-border bg-background/90 p-2 pl-3 text-left transition-[border-color] duration-150 hover:border-border-strong sm:w-[320px]"
     >
       <NewsThumb item={item} className="size-14 rounded-[9px]" />
       <span className="flex min-w-0 flex-1 flex-col gap-0.5">
@@ -189,16 +189,10 @@ function NewsCard({ item, onOpen, hiddenCopy }: { item: NewsCardData; onOpen: (i
   );
 }
 
-/** Lead image (proxied), or a quiet monogram tile when the feed has none or it fails to load. */
+/** Lead image (proxied). Nothing at all when the story has none or it fails to load. */
 function NewsThumb({ item, className }: { item: NewsCardData; className?: string }) {
   const [failed, setFailed] = React.useState(false);
-  if (!item.image || failed) {
-    return (
-      <span className={cn("grid shrink-0 place-items-center bg-surface-2 text-[11px] font-medium uppercase tracking-wide text-muted", className)} aria-hidden>
-        {item.category.slice(0, 3)}
-      </span>
-    );
-  }
+  if (!item.image || failed) return null;
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img src={item.image} alt="" loading="lazy" decoding="async" onError={() => setFailed(true)} className={cn("shrink-0 bg-surface-2 object-cover", className)} />

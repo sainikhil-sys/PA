@@ -1,10 +1,10 @@
 import "server-only";
-import { and, desc, eq, inArray, lt } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, lt } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { env } from "@/lib/env";
 import { errMessage, log } from "@/lib/log";
 import { sha256 } from "@/lib/security/crypto";
-import { dedupeItems, parseFeed, parseFeedConfig, type ParsedItem } from "./parse";
+import { dedupeItems, pageImage, parseFeed, parseFeedConfig, type ParsedItem } from "./parse";
 
 const MAX_FEED_BYTES = 2_000_000;
 const RETENTION_MS = 3 * 86_400_000;
@@ -108,4 +108,44 @@ export async function listNews(userId: string, topics: string[], limit = 24) {
   const conds = [eq(schema.newsItems.userId, userId)];
   if (topics.length) conds.push(inArray(schema.newsItems.category, topics));
   return db().select().from(schema.newsItems).where(and(...conds)).orderBy(desc(schema.newsItems.publishedAt)).limit(limit);
+}
+
+/**
+ * Fill lead images for recent stories whose feed had none, from the article's own preview image.
+ * Small batch, in parallel, best effort. "" marks "looked, none found" so pages aren't refetched.
+ */
+export async function backfillNewsImages(userId: string, limit = 12) {
+  const rows = await db()
+    .select({ id: schema.newsItems.id, url: schema.newsItems.url })
+    .from(schema.newsItems)
+    .where(and(eq(schema.newsItems.userId, userId), isNull(schema.newsItems.imageUrl)))
+    .orderBy(desc(schema.newsItems.publishedAt))
+    .limit(limit);
+  await Promise.all(
+    rows.map(async (r) => {
+      let image = "";
+      try {
+        if (r.url.startsWith("https://")) {
+          const res = await fetch(r.url, { redirect: "follow", signal: AbortSignal.timeout(6000), headers: { "user-agent": "Mozilla/5.0 (compatible; Cowork-news/1.0)", accept: "text/html" } });
+          if (res.ok && (res.headers.get("content-type") ?? "").includes("html")) {
+            const reader = res.body?.getReader();
+            let html = "";
+            const dec = new TextDecoder();
+            while (reader && html.length < 200_000) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              html += dec.decode(value, { stream: true });
+              if (/<\/head>/i.test(html)) break;
+            }
+            await reader?.cancel().catch(() => {});
+            image = pageImage(html) ?? "";
+          }
+        }
+      } catch {
+        image = "";
+      }
+      await db().update(schema.newsItems).set({ imageUrl: image }).where(eq(schema.newsItems.id, r.id));
+    }),
+  );
+  return rows.length;
 }
