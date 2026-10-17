@@ -632,6 +632,8 @@ export type MessageMeta = {
   attachment?: { name: string; chars: number };
   model?: string;
   runId?: string;
+  /** The model failed; the text is an error notice, not an answer (excluded from history). */
+  error?: boolean;
 };
 
 export const messages = pgTable(

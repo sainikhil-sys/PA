@@ -88,10 +88,16 @@ export async function markFailed(job: Job, err: unknown) {
 
 /** Jobs stuck in "running" (function timed out / crashed) go back to pending. */
 export async function recoverStaleJobs(olderThanMs = 10 * 60_000) {
+  const stale = and(eq(schema.jobs.status, "running"), lt(schema.jobs.lockedAt, new Date(Date.now() - olderThanMs)));
+  // A job that keeps timing out must not retry forever: once it used its attempts, it's a dead letter.
+  await db()
+    .update(schema.jobs)
+    .set({ status: "failed", lockedAt: null, lastError: "Timed out on every attempt" })
+    .where(and(stale, sql`${schema.jobs.attempts} >= ${schema.jobs.maxAttempts}`));
   await db()
     .update(schema.jobs)
     .set({ status: "pending", lockedAt: null, lastError: "Recovered after timeout" })
-    .where(and(eq(schema.jobs.status, "running"), lt(schema.jobs.lockedAt, new Date(Date.now() - olderThanMs))));
+    .where(and(stale, sql`${schema.jobs.attempts} < ${schema.jobs.maxAttempts}`));
 }
 
 export async function queueStats(userId: string) {

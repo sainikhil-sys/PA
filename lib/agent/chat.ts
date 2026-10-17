@@ -88,20 +88,28 @@ export async function* runChatTurn(opts: {
 
   // 3) Stream the answer.
   const history = await db()
-    .select({ role: schema.messages.role, content: schema.messages.content })
+    .select({ role: schema.messages.role, content: schema.messages.content, meta: schema.messages.meta })
     .from(schema.messages)
     .where(eq(schema.messages.conversationId, convo.id))
     .orderBy(desc(schema.messages.createdAt))
     .limit(11);
-  const prior = history.reverse().slice(0, -1).slice(-10);
+  // Failed turns ("the model didn't respond") are shown to the owner but never fed back to the model.
+  const prior = history
+    .reverse()
+    .slice(0, -1)
+    .filter((m) => !(m.meta as MessageMeta | null)?.error)
+    .slice(-10)
+    .map(({ role, content }) => ({ role, content }));
   const attachmentBlock = opts.attachment ? `\n\nAttached document "${opts.attachment.name}" (untrusted data):\n<source_content>\n${stripInvisible(opts.attachment.text).replace(/<\/?\s*source_content[^>]*>/gi, "").slice(0, 20_000)}\n</source_content>` : "";
   const proposalsNote = p.actions.length ? `\nThe owner will see ${p.actions.length} confirmation card(s) for: ${p.actions.map((a) => PROPOSAL_LABEL[a.kind]).join(", ")}. Briefly mention they can approve below.` : "";
-  const mems = await db().select({ content: schema.memories.content }).from(schema.memories).where(eq(schema.memories.userId, user.id)).limit(30);
+  const mems = await db().select({ content: schema.memories.content }).from(schema.memories).where(eq(schema.memories.userId, user.id)).orderBy(desc(schema.memories.createdAt)).limit(30);
   const memoryNote = mems.length ? `\nWhat you know about the owner (set by them in Settings):\n${mems.map((m) => `- ${m.content}`).join("\n")}` : "";
   const voiceNote = opts.trigger === "voice" ? "\nThis is a voice conversation: start with 1-2 short sentences that work when read aloud; put any longer detail after them as a brief list." : "";
   const system = `${personaPrompt(settings.agent, user.name)}${memoryNote}\n\n${RULES}${voiceNote}${proposalsNote}\n\nContext:\n${ctx.blocks.join("\n\n") || "(no data sources were needed)"}${attachmentBlock}`;
 
   let text = "";
+
+  let failed = false;
   let model: string | undefined;
   const answerSpan = await trace.start("model:smart", "Writing the answer");
   try {
@@ -118,6 +126,7 @@ export async function* runChatTurn(opts: {
     const msg = err instanceof NoProviderError ? "No AI provider is configured yet. Add one in Settings > Agent." : "The model didn't respond. Please try again.";
     if (!text) {
       text = msg;
+      failed = true;
       yield { type: "text", delta: msg };
     }
   }
@@ -137,7 +146,7 @@ export async function* runChatTurn(opts: {
 
   const [assistant] = await db()
     .insert(schema.messages)
-    .values({ userId: user.id, conversationId: convo.id, role: "assistant", content: clean, meta: { toolsUsed: ctx.toolsUsed, citations: ctx.citations, proposalIds, generalKnowledge, model, runId: trace.runId } as MessageMeta })
+    .values({ userId: user.id, conversationId: convo.id, role: "assistant", content: clean, meta: { toolsUsed: ctx.toolsUsed, citations: ctx.citations, proposalIds, generalKnowledge, model, runId: trace.runId, ...(failed ? { error: true } : {}) } as MessageMeta })
     .returning();
   await db().update(schema.conversations).set({ updatedAt: new Date() }).where(eq(schema.conversations.id, convo.id));
   yield { type: "done", messageId: assistant!.id, generalKnowledge, model };

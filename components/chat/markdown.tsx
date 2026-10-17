@@ -3,6 +3,7 @@
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { Citation } from "@/lib/db/schema";
+import { mapOutsideCode } from "@/lib/knowledge/rank";
 
 /**
  * Safe markdown: raw HTML is never rendered (react-markdown escapes it by
@@ -10,7 +11,7 @@ import type { Citation } from "@/lib/db/schema";
  * citation links that only point at retrieved sources.
  */
 export function Markdown({ text, citations = [] }: { text: string; citations?: Citation[] }) {
-  const withCites = text.replace(/\[(\d{1,2})\]/g, (m, n: string) => (citations.some((c) => c.n === Number(n)) ? `[[${n}]](#cite-${n})` : m));
+  const withCites = mapOutsideCode(text, (p) => p.replace(/\[(\d{1,2})\]/g, (m, n: string) => (citations.some((c) => c.n === Number(n)) ? `[[${n}]](#cite-${n})` : m)));
   return (
     <div className="prose-pa">
       <ReactMarkdown

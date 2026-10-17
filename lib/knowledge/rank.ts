@@ -41,7 +41,18 @@ export function chunkText(text: string, size = 1200, overlap = 150): string[] {
   return chunks;
 }
 
-/** Citations must only reference retrieved sources: drop any [n] the model invented. */
+/**
+ * Apply `fn` to prose only: fenced code blocks (```…```) and inline code (`…`) are left untouched,
+ * so code like `arr[1]` is never mistaken for a citation.
+ */
+export function mapOutsideCode(text: string, fn: (prose: string) => string): string {
+  return text
+    .split(/(```[\s\S]*?(?:```|$)|`[^`\n]*`)/g)
+    .map((part, i) => (i % 2 === 1 ? part : fn(part)))
+    .join("");
+}
+
+/** Citations must only reference retrieved sources: drop any [n] the model invented (never inside code). */
 export function stripInvalidCitations(text: string, validCount: number): string {
-  return text.replace(/\[(\d{1,2})\]/g, (m, n: string) => (Number(n) >= 1 && Number(n) <= validCount ? m : ""));
+  return mapOutsideCode(text, (p) => p.replace(/\[(\d{1,2})\]/g, (m, n: string) => (Number(n) >= 1 && Number(n) <= validCount ? m : "")));
 }
