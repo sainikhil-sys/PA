@@ -1,5 +1,5 @@
 import { ArrowLeft, ArrowRight, Lightning } from "@phosphor-icons/react/dist/ssr";
-import { and, desc, eq, inArray, like } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, like } from "drizzle-orm";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -15,7 +15,7 @@ import { getSettings, listIntegrations } from "@/lib/db/queries/settings";
 import { env } from "@/lib/env";
 import { listEvents } from "@/lib/integrations/calendar";
 import { CATALOG } from "@/lib/integrations/catalog";
-import { oauthConfigured } from "@/lib/integrations/oauth";
+import { oauthAccessToken, oauthReadyMap } from "@/lib/integrations/oauth";
 import { formatDateTime, formatTime } from "@/lib/time";
 import { timeAgo } from "@/lib/utils";
 
@@ -45,6 +45,21 @@ async function recentRows(userId: string, id: string, tz: string): Promise<{ hea
     const rows = await db().select().from(schema.tasks).where(and(eq(schema.tasks.userId, userId), like(schema.tasks.externalRef, `${id}:%`))).orderBy(desc(schema.tasks.updatedAt)).limit(8);
     return { heading: "Imported tasks", rows: rows.map((t) => ({ key: t.id, title: t.title, meta: `${t.status.replace("_", " ")}${t.dueDate ? ` · due ${t.dueDate}` : ""}`, href: `/tasks?task=${t.id}` })) };
   }
+  if (id === "whatsapp") {
+    const rows = await db()
+      .select()
+      .from(schema.phoneEvents)
+      .where(and(eq(schema.phoneEvents.userId, userId), eq(schema.phoneEvents.kind, "whatsapp")))
+      .orderBy(desc(schema.phoneEvents.postedAt))
+      .limit(8);
+    return { heading: "Latest WhatsApp messages", rows: rows.map((m) => ({ key: m.id, title: m.title || "WhatsApp", meta: `${m.text.slice(0, 80)} · ${timeAgo(m.postedAt.toISOString())}`, href: "/phone" })) };
+  }
+  if (id === "spotify") {
+    const { token } = await oauthAccessToken(userId, "spotify");
+    const r = await fetch("https://api.spotify.com/v1/me/player/recently-played?limit=8", { headers: { authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(8000) });
+    const d = r.ok ? ((await r.json()) as { items?: { played_at: string; track: { id: string; name: string; artists: { name: string }[] } }[] }) : {};
+    return { heading: "Recently played", rows: (d.items ?? []).map((i) => ({ key: `${i.track.id}:${i.played_at}`, title: i.track.name, meta: `${i.track.artists.map((a) => a.name).join(", ")} · ${timeAgo(i.played_at)}`, href: "/" })) };
+  }
   if (id === "linkedin" || id === "canva") {
     const rows = await db().select().from(schema.contentDrafts).where(eq(schema.contentDrafts.userId, userId)).orderBy(desc(schema.contentDrafts.updatedAt)).limit(8);
     return { heading: "Your drafts", rows: rows.map((d) => ({ key: d.id, title: d.title, meta: `${d.status} · ${timeAgo(d.updatedAt.toISOString())}`, href: `/content/${d.id}` })) };
@@ -72,8 +87,18 @@ export default async function IntegrationPage({ params }: { params: Promise<{ id
   const e = env();
   const telegramConfigured = admin && Boolean(e.TELEGRAM_BOT_TOKEN && e.TELEGRAM_CHAT_ID);
   const row = integrations.find((i) => i.provider === entry.provider);
+  // WhatsApp has no login of its own: it's "connected" once an Android phone is linked.
+  const phones = id === "whatsapp" ? await db().select({ name: schema.phoneDevices.name }).from(schema.phoneDevices).where(and(eq(schema.phoneDevices.userId, user.id), isNull(schema.phoneDevices.revokedAt))).limit(1) : [];
   const state: ConnState =
-    entry.provider === "telegram" ? { status: telegramConfigured ? "connected" : "none" } : row ? { status: row.status as ConnState["status"], label: row.accountLabel, error: row.lastError } : { status: "none" };
+    id === "whatsapp"
+      ? phones.length
+        ? { status: "connected", label: `via ${phones[0]!.name}` }
+        : { status: "none" }
+      : entry.provider === "telegram"
+        ? { status: telegramConfigured ? "connected" : "none" }
+        : row
+          ? { status: row.status as ConnState["status"], label: row.accountLabel, error: row.lastError }
+          : { status: "none" };
   const connected = state.status === "connected" || state.status === "syncing";
   const recent = connected ? await recentRows(user.id, id, s.timezone).catch(() => ({ heading: "Recently synced", rows: [] as Row[] })) : null;
   const recipes = TEMPLATES.filter((t) => t.uses?.includes(id));
@@ -95,7 +120,7 @@ export default async function IntegrationPage({ params }: { params: Promise<{ id
             </p>
           </div>
         </div>
-        <IntegrationActions entry={entry} state={state} telegramConfigured={telegramConfigured} oauthReady={{ linkedin: oauthConfigured("linkedin"), canva: oauthConfigured("canva") }} />
+        <IntegrationActions entry={entry} state={state} telegramConfigured={telegramConfigured} oauthReady={oauthReadyMap()} />
       </div>
       {state.error ? <p className="rounded-[12px] border border-border bg-surface px-3 py-2 text-[13px] text-danger">{state.error}</p> : null}
 

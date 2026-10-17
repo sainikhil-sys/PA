@@ -53,7 +53,27 @@ export const OAUTH_PROVIDERS: Record<string, OAuthProvider> = {
     },
     knowledgeSource: "Canva designs",
   },
+  spotify: {
+    name: "Spotify",
+    clientIdEnv: "SPOTIFY_CLIENT_ID",
+    clientSecretEnv: "SPOTIFY_CLIENT_SECRET",
+    authorizeUrl: "https://accounts.spotify.com/authorize",
+    tokenUrl: "https://accounts.spotify.com/api/token",
+    scopes: ["user-read-currently-playing", "user-read-playback-state", "user-modify-playback-state", "playlist-read-private", "user-read-recently-played"],
+    pkce: true,
+    tokenAuth: "basic",
+    profile: async (token) => {
+      const r = await fetch("https://api.spotify.com/v1/me", { headers: { authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(10_000) });
+      const d = r.ok ? ((await r.json()) as { display_name?: string; product?: string }) : {};
+      return { label: d.display_name ?? "Spotify", config: { premium: d.product === "premium" } };
+    },
+  },
 };
+
+/** Which OAuth providers have app credentials configured (for the connect buttons). */
+export function oauthReadyMap(): Record<string, boolean> {
+  return Object.fromEntries(Object.keys(OAUTH_PROVIDERS).map((k) => [k, oauthConfigured(k)]));
+}
 
 export function oauthConfigured(provider: string): boolean {
   const p = OAUTH_PROVIDERS[provider];

@@ -5,6 +5,7 @@ import {
   GearSix,
   Lightning,
   PenNib,
+  DeviceMobile,
   PuzzlePiece,
   Robot,
   SunHorizon,
@@ -26,6 +27,7 @@ export const PRIMARY_NAV: NavItem[] = [
 ];
 
 export const SECONDARY_NAV: NavItem[] = [
+  { href: "/phone", label: "Phone", icon: DeviceMobile },
   { href: "/agents", label: "Agents & sprints", icon: Robot },
   { href: "/integrations", label: "Integrations", icon: PuzzlePiece },
   { href: "/settings", label: "Settings", icon: GearSix },

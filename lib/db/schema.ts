@@ -468,6 +468,61 @@ export const pairTokens = pgTable("pair_tokens", {
   createdAt: createdAt(),
 });
 
+// ---------- Phone link (Android companion app forwards the phone's notifications) ----------
+export const phoneDevices = pgTable(
+  "phone_devices",
+  {
+    id: id(),
+    userId: userId(),
+    name: text("name").notNull(),
+    model: text("model"),
+    /** sha256 of the device's secret token (the app keeps the token). */
+    tokenHash: text("token_hash").notNull().unique(),
+    battery: integer("battery"),
+    charging: boolean("charging"),
+    /** Paused: the app keeps running but Cowork ignores what it sends. */
+    paused: boolean("paused").notNull().default(false),
+    lastSeenAt: ts("last_seen_at"),
+    revokedAt: ts("revoked_at"),
+    createdAt: createdAt(),
+  },
+  (t) => [index("phone_devices_user_idx").on(t.userId)],
+);
+
+/** One-time 6-character codes shown in Cowork and typed or scanned in the phone app (10 minutes). */
+export const phonePairCodes = pgTable("phone_pair_codes", {
+  id: id(),
+  userId: userId(),
+  codeHash: text("code_hash").notNull().unique(),
+  expiresAt: ts("expires_at").notNull(),
+  usedAt: ts("used_at"),
+  createdAt: createdAt(),
+});
+
+/** Calls, messages and app notifications from a linked phone. Kept 3 days, then deleted. */
+export const phoneEvents = pgTable(
+  "phone_events",
+  {
+    id: id(),
+    userId: userId(),
+    deviceId: uuid("device_id")
+      .notNull()
+      .references(() => phoneDevices.id, { onDelete: "cascade" }),
+    /** call | sms | whatsapp | notification */
+    kind: text("kind").notNull(),
+    appPackage: text("app_package").notNull(),
+    appName: text("app_name").notNull(),
+    title: text("title").notNull().default(""),
+    text: text("text").notNull().default(""),
+    /** Android notification key, to drop duplicates. */
+    externalKey: text("external_key"),
+    postedAt: ts("posted_at").notNull(),
+    readAt: ts("read_at"),
+    createdAt: createdAt(),
+  },
+  (t) => [index("phone_events_user_idx").on(t.userId, t.postedAt), uniqueIndex("phone_events_dedupe_idx").on(t.deviceId, t.externalKey)],
+);
+
 // ---------- Admin broadcasts ----------
 export const broadcasts = pgTable("broadcasts", {
   id: id(),

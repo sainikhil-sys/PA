@@ -18,8 +18,20 @@ const T = () => AbortSignal.timeout(15_000);
 
 async function getJson<R>(url: string, init: RequestInit, what: string): Promise<R> {
   const res = await fetch(url, { ...init, signal: T() });
-  if (!res.ok) throw new ProviderError(`${what} returned ${res.status}`);
+  if (!res.ok) throw new ProviderError(`${what} returned ${res.status}${await providerReason(res)}`);
   return (await res.json()) as R;
+}
+
+/** The provider's own short error message, if it sent one (shown to the person connecting). */
+async function providerReason(res: Response): Promise<string> {
+  try {
+    const t = (await res.text()).slice(0, 2000);
+    const j = JSON.parse(t) as Record<string, unknown>;
+    const msg = [j.reason, j.message, j.error_description, j.error, (j.errors as { message?: string }[] | undefined)?.[0]?.message].find((v) => typeof v === "string" && v.trim());
+    return msg ? `: ${String(msg).replace(/\s+/g, " ").slice(0, 160)}` : "";
+  } catch {
+    return "";
+  }
 }
 
 export async function loadCreds(userId: string, provider: string): Promise<Creds> {
@@ -40,7 +52,7 @@ async function zoomToken(c: Creds): Promise<string> {
     headers: { authorization: `Basic ${Buffer.from(`${c.clientId}:${c.clientSecret}`).toString("base64")}` },
     signal: T(),
   });
-  if (!res.ok) throw new ProviderError(`Zoom rejected the credentials (${res.status})`);
+  if (!res.ok) throw new ProviderError(`Zoom rejected the credentials (${res.status})${await providerReason(res)}. Check the app is activated and the Account ID belongs to it.`);
   return ((await res.json()) as { access_token: string }).access_token;
 }
 
@@ -69,8 +81,9 @@ export async function validateCreds(provider: string, c: Creds): Promise<string>
     }
     case "zoom": {
       const token = await zoomToken(c);
-      const d = await getJson<{ first_name?: string; last_name?: string; email?: string }>("https://api.zoom.us/v2/users/me", { headers: { authorization: `Bearer ${token}` } }, "Zoom");
-      return [d.first_name, d.last_name].filter(Boolean).join(" ") || d.email || "Zoom";
+      // Check with the scope Cowork actually uses (listing meetings), not a profile read it doesn't ask for.
+      await getJson("https://api.zoom.us/v2/users/me/meetings?type=upcoming&page_size=1", { headers: { authorization: `Bearer ${token}` } }, "Zoom meetings");
+      return "Zoom account";
     }
     case "youtube": {
       const d = await getJson<{ items?: { snippet: { title: string } }[] }>(`https://www.googleapis.com/youtube/v3/channels?part=snippet&id=${encodeURIComponent(c.channelId ?? "")}&key=${encodeURIComponent(c.token ?? "")}`, {}, "YouTube");

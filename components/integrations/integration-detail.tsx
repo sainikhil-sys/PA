@@ -1,6 +1,7 @@
 "use client";
 
 import { ChatCircleText, Plugs } from "@phosphor-icons/react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import * as React from "react";
 import { useShell } from "@/components/layout/shell-context";
@@ -16,9 +17,18 @@ export function IntegrationActions({ entry, state, telegramConfigured, oauthRead
   const connected = state.status === "connected" || state.status === "syncing";
   return (
     <div className="flex flex-wrap gap-2">
-      <Button variant={connected ? "secondary" : "primary"} onClick={() => setOpen(true)}>
-        <Plugs /> {connected ? "Manage connection" : "Connect"}
-      </Button>
+      {entry.id === "whatsapp" ? (
+        // WhatsApp arrives through the linked phone, so its "connection" lives on the Phone page.
+        <Button variant={connected ? "secondary" : "primary"} asChild>
+          <Link href="/phone">
+            <Plugs /> {connected ? "Open Phone" : "Link your phone"}
+          </Link>
+        </Button>
+      ) : (
+        <Button variant={connected ? "secondary" : "primary"} onClick={() => setOpen(true)}>
+          <Plugs /> {connected ? "Manage connection" : "Connect"}
+        </Button>
+      )}
       {connected ? (
         <Button variant="ghost" onClick={() => openChat(`Using my ${entry.name} data, what should I know or do today?`)}>
           <ChatCircleText /> Ask about {entry.name}

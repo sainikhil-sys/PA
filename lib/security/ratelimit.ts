@@ -2,7 +2,7 @@ import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
 import { log } from "@/lib/log";
 
-export type LimitName = "mcp" | "api" | "auth" | "oauth" | "ai" | "otpEmail" | "otpIp" | "otpVerify" | "webhook" | "notifyEmail";
+export type LimitName = "mcp" | "api" | "auth" | "oauth" | "ai" | "otpEmail" | "otpIp" | "otpVerify" | "webhook" | "notifyEmail" | "phone";
 
 /** Requests per window. Tuned for a single user plus Claude. */
 const LIMITS: Record<LimitName, { tokens: number; window: `${number} s` | `${number} m` }> = {
@@ -18,6 +18,8 @@ const LIMITS: Record<LimitName, { tokens: number; window: `${number} s` | `${num
   webhook: { tokens: 60, window: "1 m" },
   // Update emails per user per day: a runaway automation can never flood an inbox.
   notifyEmail: { tokens: 30, window: "1440 m" },
+  // Linked phones post in small batches; generous but bounded.
+  phone: { tokens: 120, window: "1 m" },
 };
 
 export type LimitResult = { success: boolean; limit: number; remaining: number; reset: number };

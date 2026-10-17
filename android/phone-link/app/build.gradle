@@ -1,0 +1,27 @@
+plugins {
+    id "com.android.application"
+}
+
+android {
+    namespace "me.antropic.phonelink"
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "me.antropic.phonelink"
+        minSdk 26
+        targetSdk 34
+        versionCode 1
+        versionName "1.0"
+        // Cowork server the app talks to.
+        buildConfigField "String", "SERVER", '"https://antropic.me"'
+    }
+
+    buildFeatures {
+        buildConfig true
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
