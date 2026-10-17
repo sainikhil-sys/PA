@@ -1,8 +1,27 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { BRAND } from "@/lib/brand";
+import { appUrl } from "@/lib/env";
+import { publicPage, SEO } from "@/lib/seo";
 
-export const metadata: Metadata = { title: "Home", description: `${BRAND.name}: your inbox, calendar, tasks and notes in one calm place.` };
+export const metadata: Metadata = publicPage({ path: "/home" });
+
+const JSON_LD = {
+  "@context": "https://schema.org",
+  "@graph": [
+    { "@type": "Organization", name: BRAND.name, url: appUrl(), logo: `${appUrl()}/api/brand/logo?size=512`, email: BRAND.supportEmail },
+    { "@type": "WebSite", name: BRAND.name, url: appUrl() },
+    {
+      "@type": "SoftwareApplication",
+      name: BRAND.name,
+      applicationCategory: "BusinessApplication",
+      operatingSystem: "Web",
+      url: `${appUrl()}/home`,
+      description: SEO.description,
+      offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+    },
+  ],
+};
 
 const FEATURES: [string, string][] = [
   ["Daily briefing", "Each morning, a short summary of your meetings, priorities and the emails that need you."],
@@ -15,8 +34,9 @@ const FEATURES: [string, string][] = [
 export default function HomePage() {
   return (
     <article>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD).replace(/</g, "\\u003c") }} />
       <section className="py-12">
-        <h1 className="font-serif text-[40px] leading-[1.1] tracking-[-0.02em]">{BRAND.name} keeps your work in one calm place.</h1>
+        <h1 className="font-serif text-[40px] leading-[1.1] tracking-[-0.02em]">{BRAND.name}, the AI work assistant that keeps your work in one calm place.</h1>
         <p className="mt-4 max-w-[560px] text-[17px] leading-7 text-muted">
           A personal work assistant for your email, calendar, tasks and notes. It reads and organizes; it never sends, posts or deletes anything without your click.
         </p>

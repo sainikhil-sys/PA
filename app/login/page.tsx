@@ -2,9 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { LoginFlow } from "@/components/auth/login-flow";
+import { BRAND } from "@/lib/brand";
+import { publicPage } from "@/lib/seo";
 import { getOwner } from "@/lib/auth/session";
 
-export const metadata: Metadata = { title: "Sign in" };
+export const metadata: Metadata = publicPage({ title: "Sign in", description: `Sign in or create your ${BRAND.name} account with a one-time email code. No password needed.`, path: "/login" });
 export const dynamic = "force-dynamic";
 
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ next?: string }> }) {

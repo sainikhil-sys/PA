@@ -31,6 +31,10 @@ export function middleware(req: NextRequest) {
   const hasSession = req.cookies.has("__Host-pa_session") || req.cookies.has("pa_session");
   const isPublic = PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 
+  if (pathname === "/" && !hasSession) {
+    // Visitors and crawlers land on the public home page, not a sign-in wall.
+    return NextResponse.redirect(new URL("/home", req.nextUrl.origin));
+  }
   if (!isPublic && !hasSession) {
     const url = new URL("/login", req.nextUrl.origin);
     if (pathname !== "/") url.searchParams.set("next", `${pathname}${search}`);
@@ -51,6 +55,6 @@ export function middleware(req: NextRequest) {
 export const config = {
   matcher: [
     // Pages only. API routes and well-known documents authenticate themselves.
-    "/((?!api/|_next/static|_next/image|brands/|favicon.ico|icon.svg|robots.txt|\\.well-known).*)",
+    "/((?!api/|_next/static|_next/image|brands/|favicon.ico|icon.svg|robots.txt|sitemap.xml|manifest.webmanifest|opengraph-image|\\.well-known).*)",
   ],
 };

@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { BRAND } from "@/lib/brand";
+import { publicPage } from "@/lib/seo";
 
-export const metadata: Metadata = { title: "Privacy policy" };
+export const metadata: Metadata = publicPage({ title: "Privacy policy", description: `How ${BRAND.name} collects, uses and protects your data, including Google user data under the Limited Use policy.`, path: "/privacy" });
 
 const UPDATED = "October 17, 2026";
 

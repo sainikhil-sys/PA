@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { BRAND } from "@/lib/brand";
+import { publicPage } from "@/lib/seo";
 
-export const metadata: Metadata = { title: "Terms of service" };
+export const metadata: Metadata = publicPage({ title: "Terms of service", description: `The terms for using ${BRAND.name}, the AI work assistant.`, path: "/terms" });
 
 function H({ children }: { children: React.ReactNode }) {
   return <h2 className="mt-10 text-[18px] font-medium">{children}</h2>;

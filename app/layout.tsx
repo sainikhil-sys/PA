@@ -4,6 +4,8 @@ import { headers } from "next/headers";
 import { Toaster } from "sonner";
 import { INTRO_BOOT_SCRIPT, LaunchIntro } from "@/components/layout/launch-intro";
 import { BRAND } from "@/lib/brand";
+import { appUrl } from "@/lib/env";
+import { SEO } from "@/lib/seo";
 import "./globals.css";
 
 // Two weights for UI text (400/500) and one for editorial headings — the "max two weights" rule.
@@ -11,9 +13,16 @@ const hanken = Hanken_Grotesk({ subsets: ["latin"], weight: ["400", "500"], vari
 const newsreader = Newsreader({ subsets: ["latin"], weight: ["400"], style: ["normal", "italic"], variable: "--font-newsreader", display: "swap" });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(appUrl()),
+  applicationName: BRAND.name,
   title: { default: BRAND.name, template: `%s · ${BRAND.name}` },
-  description: BRAND.tagline,
+  description: SEO.description,
+  keywords: SEO.keywords,
+  authors: [{ name: BRAND.name }],
+  creator: BRAND.name,
+  // Private by default: the signed-in app never appears in search. Public pages opt in via publicPage().
   robots: { index: false, follow: false },
+  formatDetection: { email: false, telephone: false, address: false },
 };
 
 export const viewport: Viewport = {
