@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { and, desc, eq, gt, isNull } from "drizzle-orm";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
@@ -45,7 +46,7 @@ async function currentToken(): Promise<string | null> {
 }
 
 /** Validates the session cookie against the DB and re-checks the allowlist every time. */
-export async function getSession(): Promise<{ user: User; sessionId: string } | null> {
+async function loadSession(): Promise<{ user: User; sessionId: string } | null> {
   const token = await currentToken();
   if (!token || token.length < 32) return null;
   const now = new Date();
@@ -58,10 +59,14 @@ export async function getSession(): Promise<{ user: User; sessionId: string } | 
   if (!row) return null;
   if (!isEmailAllowed(row.user.email, allowedEmails())) return null;
   if (now.getTime() - row.session.lastSeenAt.getTime() > TOUCH_INTERVAL_MS) {
-    await db().update(schema.sessions).set({ lastSeenAt: now }).where(eq(schema.sessions.id, row.session.id));
+    // Fire-and-forget: never make a page wait on a bookkeeping write.
+    void db().update(schema.sessions).set({ lastSeenAt: now }).where(eq(schema.sessions.id, row.session.id)).catch(() => {});
   }
   return { user: row.user, sessionId: row.session.id };
 }
+
+/** Memoized per request: layout + page + cards share ONE session lookup (each DB round trip costs ~300ms from India to Sydney). */
+export const getSession = cache(loadSession);
 
 export async function getOwner(): Promise<User | null> {
   return (await getSession())?.user ?? null;

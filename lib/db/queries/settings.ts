@@ -1,9 +1,13 @@
 import "server-only";
+import { cache } from "react";
 import { and, eq } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { DEFAULT_AGENT, type AgentSettings, type UserSettings } from "@/lib/db/schema";
 
-export async function getSettings(userId: string): Promise<UserSettings> {
+/** Memoized per request (React cache) so cards on one page share a single settings read. */
+export const getSettings = cache(loadSettings);
+
+async function loadSettings(userId: string): Promise<UserSettings> {
   const s = await db().query.userSettings.findFirst({ where: eq(schema.userSettings.userId, userId) });
   if (s) return { ...s, agent: { ...DEFAULT_AGENT, ...s.agent, capabilities: { ...DEFAULT_AGENT.capabilities, ...s.agent?.capabilities } } };
   const [created] = await db().insert(schema.userSettings).values({ userId }).onConflictDoNothing().returning();

@@ -15,6 +15,10 @@ const nextConfig: NextConfig = {
   // The e2e build must not type-check the dev server's live .next/types.
   typescript: process.env.NEXT_DIST_DIR ? { tsconfigPath: "tsconfig.e2e.json" } : undefined,
   poweredByHeader: false,
+  experimental: {
+    // Import only the icons/functions actually used (big win for Phosphor in dev and prod).
+    optimizePackageImports: ["@phosphor-icons/react", "date-fns", "date-fns-tz", "motion", "@xyflow/react", "chrono-node"],
+  },
   reactStrictMode: true,
   // Prompts are read from disk at runtime; make sure Vercel ships them.
   outputFileTracingIncludes: { "/**": ["./lib/ai/prompts/*.md"] },

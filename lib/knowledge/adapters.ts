@@ -7,6 +7,7 @@ import { googleClient } from "@/lib/integrations/google";
 import { decrypt } from "@/lib/security/crypto";
 import { extractText } from "./extract";
 import { upsertItem } from "./ingest";
+import { syncAsana, syncCanva, syncFigma, syncHubspot, syncLinear, syncStripe, syncYoutube, syncZoom } from "@/lib/integrations/providers";
 
 /**
  * Read-only source adapters. Each sync call processes a SMALL batch and returns
@@ -165,5 +166,13 @@ export const ADAPTERS: Record<string, (s: KnowledgeSource) => Promise<SyncResult
   notion: syncNotion,
   slack: syncSlack,
   github: syncGithub,
+  asana: syncAsana,
+  linear: syncLinear,
+  hubspot: syncHubspot,
+  stripe: syncStripe,
+  zoom: syncZoom,
+  youtube: syncYoutube,
+  figma: syncFigma,
+  canva: syncCanva,
 };
 

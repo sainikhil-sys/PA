@@ -98,6 +98,24 @@ Create a Redis database at upstash.com and copy the REST URL and token into `UPS
 - **Telegram:** message @BotFather → `/newbot` → token into `TELEGRAM_BOT_TOKEN`. Send your bot a message, open `https://api.telegram.org/bot<TOKEN>/getUpdates`, and copy `chat.id` into `TELEGRAM_CHAT_ID`. It's notifications only, to your own chat.
 - **Notion / Slack / GitHub knowledge:** connect with read-only tokens on the Integrations page (instructions are in each panel).
 
+### 7b. More integrations
+
+All on the Integrations page, read-only unless noted. Credentials are validated before saving and stored encrypted.
+
+| Tool | Credentials | What PA does |
+|---|---|---|
+| Asana | Personal access token | Imports your open assigned tasks into Tasks (deduped, linked back) |
+| Linear | Personal API key (read) | Imports your open assigned issues into Tasks |
+| HubSpot | Private app token (contacts read) | Contacts into Knowledge for meeting prep |
+| Stripe | Restricted key `rk_` (Balance + Charges read) | 7-day revenue summary into Knowledge (secret `sk_` keys are refused) |
+| Zoom | Server-to-Server OAuth (account ID, client ID, secret) | Upcoming meetings and recent recordings into Knowledge |
+| YouTube | Data API key + channel ID | Channel stats and latest videos into Knowledge |
+| Figma | Personal token + team ID | Project and file index into Knowledge |
+| Canva | OAuth (`CANVA_CLIENT_ID/SECRET`) | Design index into Knowledge |
+| LinkedIn | OAuth (`LINKEDIN_CLIENT_ID/SECRET`, `w_member_social`) | Publishes an **approved** draft only when you click Publish and confirm |
+
+Syncs run in the background every few hours via the dispatcher, and on demand with **Sync now**.
+
 ### 8. Deploy to Vercel
 
 1. Push the repo and import it in Vercel (framework: Next.js).
@@ -231,7 +249,7 @@ lib/trace.ts     run tracing (trace_spans) shared by chat, voice, automations, M
 ## Known gaps and next steps
 
 - **Flow page** is a minimal run view (recent runs + per-run map and steps). Prompt-to-flow (natural language → automation plan) isn’t built; the panel already supports dashed draft previews, which the automation builder uses today.
-- Asana, Linear, HubSpot, Stripe, Zoom, YouTube, Canva, Figma and LinkedIn publishing are listed as "coming soon" (no fake connections). LinkedIn uses copy + open, with no automation.
+- LinkedIn and Canva need OAuth apps you register with them (set LINKEDIN_* / CANVA_* env vars); until then their cards say "App credentials needed". LinkedIn's Share API may require app review for some accounts.
 - Model choice is environment-driven (keys never live in the database). The Agent page shows the configuration and tests it but doesn't edit it.
 - Slack and LinkedIn logos aren't in Simple Icons, so they show a neutral monogram until official assets are added to `/public/brands` per each brand's guidelines.
 - Dark mode is token-ready (redefine variables under `[data-theme="dark"]`) but not designed yet.

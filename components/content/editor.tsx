@@ -1,10 +1,11 @@
 "use client";
 
-import { ArrowSquareOut, Check, Copy, Globe, SealCheck } from "@phosphor-icons/react";
+import { ArrowSquareOut, Check, Copy, Globe, PaperPlaneTilt, SealCheck } from "@phosphor-icons/react";
 import { useRouter } from "next/navigation";
 import * as React from "react";
 import { toast } from "sonner";
-import { approveDraft, markPublished, saveDraft, scheduleDraft } from "@/app/actions/content";
+import { approveDraft, markPublished, publishDraftToLinkedIn, saveDraft, scheduleDraft } from "@/app/actions/content";
+import { Dialog } from "@/components/ui/dialog";
 import { Avatar } from "@/components/ui/misc";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,7 +16,8 @@ import { cn } from "@/lib/utils";
 const LIMIT = 3000;
 const FOLD = 210;
 
-export function ContentEditor({ draft, author }: { draft: { id: string; title: string; body: string; status: string; writtenBy: string; approved: boolean; scheduledFor: string | null }; author: { name: string | null; role: string | null; avatarUrl: string | null; email: string } }) {
+export function ContentEditor({ draft, author, linkedinConnected }: { draft: { id: string; title: string; body: string; status: string; writtenBy: string; approved: boolean; scheduledFor: string | null }; author: { name: string | null; role: string | null; avatarUrl: string | null; email: string }; linkedinConnected: boolean }) {
+  const [confirmPublish, setConfirmPublish] = React.useState(false);
   const router = useRouter();
   const [title, setTitle] = React.useState(draft.title);
   const [body, setBody] = React.useState(draft.body);
@@ -127,6 +129,11 @@ export function ContentEditor({ draft, author }: { draft: { id: string; title: s
             >
               <Copy /> Copy & open LinkedIn <ArrowSquareOut size={14} />
             </Button>
+            {linkedinConnected ? (
+              <Button variant="primary" disabled={!approved || dirty || pending || draft.status === "published"} onClick={() => setConfirmPublish(true)}>
+                <PaperPlaneTilt /> Publish to LinkedIn
+              </Button>
+            ) : null}
           </div>
           <div className="flex flex-wrap items-end gap-2">
             <div className="flex flex-col gap-2">
@@ -164,6 +171,36 @@ export function ContentEditor({ draft, author }: { draft: { id: string; title: s
           ) : null}
         </Card>
       </div>
+      <Dialog
+        open={confirmPublish}
+        onOpenChange={setConfirmPublish}
+        title="Publish to LinkedIn now?"
+        description="This posts the approved text below publicly on your LinkedIn profile."
+        footer={
+          <>
+            <Button onClick={() => setConfirmPublish(false)}>Cancel</Button>
+            <Button
+              variant="primary"
+              disabled={pending}
+              onClick={() =>
+                start(async () => {
+                  const res = await publishDraftToLinkedIn({ id: draft.id, confirm: true });
+                  if (!res.ok) return void toast.error(res.error);
+                  setConfirmPublish(false);
+                  toast.success("Published to LinkedIn", { action: { label: "View", onClick: () => window.open(res.data.url, "_blank", "noopener,noreferrer") } });
+                  router.push("/content");
+                })
+              }
+            >
+              {pending ? "Publishing…" : "Publish"}
+            </Button>
+          </>
+        }
+      >
+        <p className="max-h-60 overflow-y-auto whitespace-pre-wrap rounded-[10px] bg-surface p-3 text-[13px]" data-lenis-prevent>
+          {body}
+        </p>
+      </Dialog>
     </div>
   );
 }

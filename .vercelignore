@@ -1,0 +1,10 @@
+node_modules
+.next
+.next-e2e
+.env
+.env*.local
+.pglite*
+test-results
+playwright-report
+coverage
+*.tsbuildinfo

@@ -5,7 +5,7 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import * as React from "react";
 import { toast } from "sonner";
-import { connectWithToken, disconnectIntegration, requestIntegration } from "@/app/actions/integrations";
+import { connectWithToken, disconnectIntegration, requestIntegration, syncIntegrationNow } from "@/app/actions/integrations";
 import { sendTestTelegram } from "@/app/actions/notifications";
 import { StatusDot } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -20,7 +20,7 @@ export type ConnState = { status: "connected" | "error" | "syncing" | "disconnec
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 
-export function IntegrationGrid({ catalog, states, telegramConfigured }: { catalog: CatalogEntry[]; states: Record<string, ConnState>; telegramConfigured: boolean }) {
+export function IntegrationGrid({ catalog, states, telegramConfigured, oauthReady }: { catalog: CatalogEntry[]; states: Record<string, ConnState>; telegramConfigured: boolean; oauthReady: Record<string, boolean> }) {
   const router = useRouter();
   const params = useSearchParams();
   const [category, setCategory] = React.useState<"All" | IntegrationCategory>("All");
@@ -31,7 +31,7 @@ export function IntegrationGrid({ catalog, states, telegramConfigured }: { catal
 
   React.useEffect(() => {
     const err = params.get("error");
-    if (err) toast.error(err === "google_not_configured" ? "Google isn't configured on the server yet (GOOGLE_CLIENT_ID)." : "That connection didn't complete. Please try again.");
+    if (err) toast.error(err.endsWith("_not_configured") ? `${err.replace("_not_configured", "")} isn't configured on the server yet. Add its app credentials to the environment.` : "That connection didn't complete. Please try again.");
     if (params.get("connected")) toast.success("Connected");
     const t = setTimeout(() => setJustConnected(null), 2400);
     return () => clearTimeout(t);
@@ -68,7 +68,7 @@ export function IntegrationGrid({ catalog, states, telegramConfigured }: { catal
         </AnimatePresence>
       </motion.ul>
 
-      <ConnectPanel entry={open} state={open ? stateOf(open) : { status: "none" }} onClose={() => setOpen(null)} onChanged={() => router.refresh()} telegramConfigured={telegramConfigured} />
+      <ConnectPanel entry={open} state={open ? stateOf(open) : { status: "none" }} onClose={() => setOpen(null)} onChanged={() => router.refresh()} telegramConfigured={telegramConfigured} oauthReady={oauthReady} />
       <RequestDialog open={requestOpen} onOpenChange={setRequestOpen} />
     </div>
   );
@@ -76,8 +76,7 @@ export function IntegrationGrid({ catalog, states, telegramConfigured }: { catal
 
 function IntegrationCard({ entry, state, celebrate, onOpen }: { entry: CatalogEntry; state: ConnState; celebrate: boolean; onOpen: () => void }) {
   const reduce = useReducedMotion();
-  const soon = entry.connect === "soon";
-  const statusText = soon ? "Coming soon" : state.status === "connected" ? "Connected" : state.status === "error" ? "Needs attention" : state.status === "syncing" ? "Syncing" : "Not connected";
+  const statusText = state.status === "connected" ? "Connected" : state.status === "error" ? "Needs attention" : state.status === "syncing" ? "Syncing" : "Not connected";
   return (
     <motion.button
       type="button"
@@ -97,7 +96,7 @@ function IntegrationCard({ entry, state, celebrate, onOpen }: { entry: CatalogEn
             whileHover={reduce ? undefined : { rotate: -4, y: -1 }}
             transition={{ duration: 0.35, ease: EASE }}
           >
-            <span className={cn("block", (soon || state.status === "disconnected") && "opacity-60 grayscale")}>
+            <span className={cn("block", state.status === "disconnected" && "opacity-60 grayscale")}>
               <BrandLogo id={entry.logo} size={28} box />
             </span>
           </motion.div>
@@ -137,13 +136,34 @@ function CheckBurst() {
   );
 }
 
-function ConnectPanel({ entry, state, onClose, onChanged, telegramConfigured }: { entry: CatalogEntry | null; state: ConnState; onClose: () => void; onChanged: () => void; telegramConfigured: boolean }) {
-  const [token, setToken] = React.useState("");
+const SYNCABLE = new Set(["asana", "linear", "hubspot", "stripe", "zoom", "youtube", "figma", "canva"]);
+
+function ConnectPanel({ entry, state, onClose, onChanged, telegramConfigured, oauthReady }: { entry: CatalogEntry | null; state: ConnState; onClose: () => void; onChanged: () => void; telegramConfigured: boolean; oauthReady: Record<string, boolean> }) {
+  const [values, setValues] = React.useState<Record<string, string>>({});
   const [pending, start] = React.useTransition();
   const [confirm, setConfirm] = React.useState(false);
-  React.useEffect(() => setToken(""), [entry]);
+  React.useEffect(() => setValues({}), [entry]);
   if (!entry) return <Sheet open={false} onOpenChange={() => {}} title="">{null}</Sheet>;
   const connected = state.status === "connected";
+  const fields = entry.fields ?? [{ name: "token", label: "Access token", secret: true }];
+  const complete = fields.every((f) => (values[f.name] ?? "").trim().length >= (f.secret ? 10 : 1));
+  const ready = entry.connect !== "oauth" || Boolean(oauthReady[entry.provider ?? ""]);
+
+  const syncNow = (
+    <Button
+      disabled={pending}
+      onClick={() =>
+        start(async () => {
+          const res = await syncIntegrationNow({ provider: entry.provider! });
+          if (!res.ok) return void toast.error(res.error);
+          toast.success(`Synced · ${res.data.items} items`);
+          onChanged();
+        })
+      }
+    >
+      <ArrowClockwise /> {pending ? "Syncing…" : "Sync now"}
+    </Button>
+  );
 
   return (
     <>
@@ -153,7 +173,7 @@ function ConnectPanel({ entry, state, onClose, onChanged, telegramConfigured }: 
         title={entry.name}
         description={entry.description}
         footer={
-          entry.connect === "soon" ? null : entry.connect === "google" ? (
+          entry.connect === "google" ? (
             connected ? (
               <>
                 <Button variant="danger" onClick={() => setConfirm(true)}>
@@ -170,20 +190,40 @@ function ConnectPanel({ entry, state, onClose, onChanged, telegramConfigured }: 
                 <a href={`/api/integrations/google/start?returnTo=/integrations`}>Connect with Google</a>
               </Button>
             )
+          ) : entry.connect === "oauth" ? (
+            connected ? (
+              <>
+                <Button variant="danger" onClick={() => setConfirm(true)}>
+                  Disconnect
+                </Button>
+                {SYNCABLE.has(entry.provider!) ? syncNow : null}
+              </>
+            ) : ready ? (
+              <Button asChild variant="primary">
+                <a href={`/api/integrations/${entry.provider}/start`}>Connect with {entry.name}</a>
+              </Button>
+            ) : (
+              <Button variant="primary" disabled>
+                App credentials needed
+              </Button>
+            )
           ) : entry.connect === "token" ? (
             connected ? (
-              <Button variant="danger" onClick={() => setConfirm(true)}>
-                Disconnect
-              </Button>
+              <>
+                <Button variant="danger" onClick={() => setConfirm(true)}>
+                  Disconnect
+                </Button>
+                {SYNCABLE.has(entry.provider!) ? syncNow : null}
+              </>
             ) : (
               <Button
                 variant="primary"
-                disabled={pending || token.length < 10}
+                disabled={pending || !complete}
                 onClick={() =>
                   start(async () => {
-                    const res = await connectWithToken({ provider: entry.provider as "notion", token });
+                    const res = await connectWithToken({ provider: entry.provider as "notion", fields: values });
                     if (!res.ok) return void toast.error(res.error);
-                    toast.success(`Connected to ${res.data.label}`);
+                    toast.success(`Connected to ${res.data.label}. First sync started.`);
                     onChanged();
                     onClose();
                   })
@@ -211,7 +251,7 @@ function ConnectPanel({ entry, state, onClose, onChanged, telegramConfigured }: 
           <div className="flex items-center gap-3">
             <BrandLogo id={entry.logo} size={32} box />
             <div className="text-[13px]">
-              <p className="font-medium">{connected ? `Connected${state.label ? ` as ${state.label}` : ""}` : entry.connect === "soon" ? "Coming soon" : "Not connected"}</p>
+              <p className="font-medium">{connected ? `Connected${state.label ? ` as ${state.label}` : ""}` : "Not connected"}</p>
               {state.error ? <p className="text-danger">{state.error}</p> : null}
             </div>
           </div>
@@ -226,7 +266,7 @@ function ConnectPanel({ entry, state, onClose, onChanged, telegramConfigured }: 
                 </li>
               ))}
               <li className="flex gap-2 text-[13px] text-muted">
-                <Lock size={16} className="mt-0.5 shrink-0" /> Never sends, posts or deletes on your behalf.
+                <Lock size={16} className="mt-0.5 shrink-0" /> {entry.provider === "linkedin" ? "Never posts by itself. Every post needs your Publish click on an approved draft." : "Never sends, posts or deletes on your behalf."}
               </li>
             </ul>
           </section>
@@ -240,18 +280,22 @@ function ConnectPanel({ entry, state, onClose, onChanged, telegramConfigured }: 
                   </li>
                 ))}
               </ul>
-              <p className="mt-2 text-[12px] text-muted">Read-only by default. Tokens are encrypted at rest (AES-256-GCM).</p>
+              <p className="mt-2 text-[12px] text-muted">Read-only by default. Credentials are encrypted at rest (AES-256-GCM).</p>
             </section>
           ) : null}
           {entry.connect === "token" && !connected ? (
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="int-token">Access token</Label>
-              <Input id="int-token" type="password" autoComplete="off" value={token} onChange={(e) => setToken(e.target.value)} placeholder="Paste a read-only token" />
+            <div className="flex flex-col gap-3">
+              {fields.map((f) => (
+                <div key={f.name} className="flex flex-col gap-2">
+                  <Label htmlFor={`int-${f.name}`}>{f.label}</Label>
+                  <Input id={`int-${f.name}`} type={f.secret ? "password" : "text"} autoComplete="off" value={values[f.name] ?? ""} onChange={(e) => setValues((v) => ({ ...v, [f.name]: e.target.value }))} />
+                </div>
+              ))}
               <FieldHint>{entry.tokenHelp}</FieldHint>
             </div>
           ) : null}
+          {entry.connect === "oauth" && !connected ? <FieldHint>{ready ? `You'll be sent to ${entry.name} to approve access, then back here.` : entry.tokenHelp}</FieldHint> : null}
           {entry.connect === "none" ? <p className="text-[13px] text-muted">{entry.tokenHelp}</p> : null}
-          {entry.connect === "soon" ? <p className="text-[13px] text-muted">This integration isn't available yet. You can request it from the grid; it's added to your tasks.</p> : null}
         </div>
       </Sheet>
       <Dialog

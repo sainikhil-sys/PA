@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/ui/states";
 import { requireOwner } from "@/lib/auth/session";
 import { db, schema } from "@/lib/db";
 import { sha256 } from "@/lib/security/crypto";
+import { getIntegration } from "@/lib/db/queries/settings";
 
 export const metadata: Metadata = { title: "Editor" };
 export const dynamic = "force-dynamic";
@@ -22,6 +23,7 @@ export default async function EditorPage({ params }: { params: Promise<{ id: str
       <ContentEditor
         draft={{ id: d.id, title: d.title, body: d.body, status: d.status, writtenBy: d.writtenBy, approved: Boolean(d.approvedHash && d.approvedHash === sha256(d.body)), scheduledFor: d.scheduledFor?.toISOString() ?? null }}
         author={{ name: user.name, role: user.role, avatarUrl: user.avatarUrl, email: user.email }}
+        linkedinConnected={(await getIntegration(user.id, "linkedin"))?.status === "connected"}
       />
     </>
   );

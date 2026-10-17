@@ -9,6 +9,7 @@ import { draftPostFromIdea, suggestDailyIdeas } from "@/lib/content/ideas";
 import { db, schema } from "@/lib/db";
 import { logActivity } from "@/lib/db/queries/activity";
 import { sha256 } from "@/lib/security/crypto";
+import { publishToLinkedIn } from "@/lib/integrations/linkedin";
 
 const uuid = z.string().uuid();
 
@@ -75,6 +76,30 @@ export const scheduleDraft = ownerAction(z.object({ id: uuid, at: z.string().dat
   if (at && (!d.approvedHash || d.approvedHash !== sha256(d.body))) throw new UserFacingError("Approve this exact version before scheduling.");
   await db().update(schema.contentDrafts).set({ scheduledFor: at ? new Date(at) : null, status: at ? "scheduled" : "approved" }).where(eq(schema.contentDrafts.id, id));
   revalidatePath("/content");
+});
+
+/**
+ * Explicit, per-click publishing. Only the exact approved text can go out;
+ * any edit since approval blocks it. Never called by agents or automations.
+ */
+export const publishDraftToLinkedIn = ownerAction(z.object({ id: uuid, confirm: z.literal(true) }), async ({ id }, user) => {
+  const d = await db().query.contentDrafts.findFirst({ where: and(eq(schema.contentDrafts.id, id), eq(schema.contentDrafts.userId, user.id)) });
+  if (!d) throw new UserFacingError("Draft not found.");
+  if (d.status === "published") throw new UserFacingError("This post was already published.");
+  if (!d.approvedHash || d.approvedHash !== sha256(d.body)) throw new UserFacingError("Approve this exact version before publishing.");
+  if (d.body.length > 3000) throw new UserFacingError("LinkedIn posts are limited to 3,000 characters.");
+  let result;
+  try {
+    result = await publishToLinkedIn(user.id, d.body);
+  } catch (err) {
+    await logActivity({ userId: user.id, actor: "me", tool: "content.publish_failed", inputSummary: `draft=${id}`, outcome: "error", detail: err instanceof Error ? err.message : "error" });
+    throw new UserFacingError(err instanceof Error ? err.message.slice(0, 200) : "Publishing failed.");
+  }
+  await db().update(schema.contentDrafts).set({ status: "published" }).where(eq(schema.contentDrafts.id, id));
+  await logActivity({ userId: user.id, actor: "me", tool: "content.published_linkedin", inputSummary: `draft=${id}`, outcome: "success", detail: result.urn });
+  revalidatePath("/content");
+  revalidatePath(`/content/${id}`);
+  return result;
 });
 
 export const markPublished = ownerAction(z.object({ id: uuid }), async ({ id }, user) => {

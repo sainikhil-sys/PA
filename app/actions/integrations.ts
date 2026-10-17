@@ -8,6 +8,10 @@ import { db, schema } from "@/lib/db";
 import { logActivity } from "@/lib/db/queries/activity";
 import { createTask } from "@/lib/db/queries/tasks";
 import { decrypt, encrypt } from "@/lib/security/crypto";
+import { ProviderError, validateCreds } from "@/lib/integrations/providers";
+import { ensureSource } from "@/lib/knowledge/ingest";
+import { syncKnowledgeSource } from "@/lib/knowledge/sync";
+import { enqueue } from "@/lib/jobs/queue";
 
 /** Validate a read-only token against the provider before storing it (encrypted). */
 async function validate(provider: "notion" | "slack" | "github", token: string): Promise<string> {
@@ -30,21 +34,73 @@ async function validate(provider: "notion" | "slack" | "github", token: string):
   return d.login ?? "GitHub";
 }
 
+/** Token providers whose data PA syncs automatically (source name shown on the Knowledge page). */
+const AUTO_SOURCES: Record<string, string> = {
+  asana: "Asana tasks",
+  linear: "Linear issues",
+  hubspot: "HubSpot contacts",
+  stripe: "Stripe revenue",
+  zoom: "Zoom meetings",
+  youtube: "YouTube channel",
+  figma: "Figma files",
+};
+
 export const connectWithToken = ownerAction(
-  z.object({ provider: z.enum(["notion", "slack", "github"]), token: z.string().trim().min(10).max(500) }),
-  async ({ provider, token }, user) => {
-    const label = await validate(provider, token);
-    const values = { status: "connected", accountLabel: label.slice(0, 120), accessTokenEnc: encrypt(token), lastError: null };
+  z.object({
+    provider: z.enum(["notion", "slack", "github", "asana", "linear", "hubspot", "stripe", "zoom", "youtube", "figma"]),
+    token: z.string().trim().max(500).optional(),
+    fields: z.record(z.string().max(60), z.string().trim().max(500)).optional(),
+  }),
+  async ({ provider, token, fields }, user) => {
+    let label: string;
+    let stored: string;
+    if (provider === "notion" || provider === "slack" || provider === "github") {
+      const t = token ?? fields?.token ?? "";
+      if (t.length < 10) throw new UserFacingError("Paste the full token.");
+      label = await validate(provider, t);
+      stored = t;
+    } else {
+      const creds = { ...fields, ...(token ? { token } : {}) };
+      if (Object.values(creds).some((v) => !v)) throw new UserFacingError("Fill in every field.");
+      try {
+        label = await validateCreds(provider, creds);
+      } catch (err) {
+        throw new UserFacingError(err instanceof ProviderError ? err.message : "Couldn't reach the provider. Check the credentials.");
+      }
+      stored = JSON.stringify(creds);
+    }
+    const values = { status: "connected", accountLabel: label.slice(0, 120), accessTokenEnc: encrypt(stored), lastError: null };
     await db()
       .insert(schema.integrations)
       .values({ userId: user.id, provider, ...values })
       .onConflictDoUpdate({ target: [schema.integrations.userId, schema.integrations.provider], set: values });
     await logActivity({ userId: user.id, actor: "me", tool: "integration.connected", inputSummary: provider, outcome: "success" });
+    if (AUTO_SOURCES[provider]) {
+      const source = await ensureSource(user.id, provider, AUTO_SOURCES[provider]!);
+      await db().update(schema.knowledgeSources).set({ included: true, status: "idle", lastError: null }).where(eq(schema.knowledgeSources.id, source.id));
+      await enqueue(user.id, "knowledge_sync", { sourceId: source.id }, { dedupeKey: `ksync:${source.id}` });
+    }
     revalidatePath("/integrations");
     revalidatePath("/knowledge");
     return { label };
   },
 );
+
+/** "Sync now" from the integration panel (first sync also runs right after connecting). */
+export const syncIntegrationNow = ownerAction(z.object({ provider: z.string().min(2).max(40) }), async ({ provider }, user) => {
+  const source = await db().query.knowledgeSources.findFirst({ where: and(eq(schema.knowledgeSources.userId, user.id), eq(schema.knowledgeSources.type, provider)) });
+  if (!source) throw new UserFacingError("Nothing to sync for this integration yet.");
+  try {
+    await syncKnowledgeSource(user.id, source.id);
+  } catch (err) {
+    throw new UserFacingError(err instanceof Error ? err.message.slice(0, 160) : "Sync failed.");
+  }
+  revalidatePath("/integrations");
+  revalidatePath("/knowledge");
+  revalidatePath("/tasks");
+  const fresh = await db().query.knowledgeSources.findFirst({ where: eq(schema.knowledgeSources.id, source.id) });
+  return { items: fresh?.itemCount ?? 0 };
+});
 
 /** Destructive (confirm in UI): forget tokens. For Google, also revoke the grant at Google. */
 export const disconnectIntegration = ownerAction(z.object({ provider: z.string().min(2).max(40) }), async ({ provider }, user) => {

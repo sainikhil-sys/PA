@@ -234,7 +234,7 @@ export async function IdeasCard({ user }: { user: User }) {
 export async function IntegrationsStrip({ user }: { user: User }) {
   const rows = await listIntegrations(user.id).catch(() => []);
   const byProvider = new Map(rows.map((r) => [r.provider, r]));
-  const shown = CATALOG.filter((c) => c.connect !== "soon").slice(0, 7);
+  const shown = CATALOG.slice(0, 7);
   return (
     <Card>
       <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center">

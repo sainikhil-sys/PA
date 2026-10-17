@@ -259,10 +259,14 @@ export const tasks = pgTable(
     resultAt: ts("result_at"),
     completedAt: ts("completed_at"),
     sourceEmailId: uuid("source_email_id").references(() => emails.id, { onDelete: "set null" }),
+    /** Imported from another tool, e.g. "asana:1203" or "linear:ENG-12" (dedupe key). */
+    externalRef: text("external_ref"),
+    externalUrl: text("external_url"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
   (t) => [
+    uniqueIndex("tasks_user_external_idx").on(t.userId, t.externalRef),
     index("tasks_user_status_idx").on(t.userId, t.status, t.position),
     index("tasks_user_scheduled_idx").on(t.userId, t.scheduledAt),
     index("tasks_parent_idx").on(t.parentId),

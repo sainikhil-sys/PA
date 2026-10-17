@@ -15,6 +15,13 @@
       "when": 1792181589734,
       "tag": "0001_link_panel",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792186726235,
+      "tag": "0002_task_external_ref",
+      "breakpoints": true
     }
   ]
 }
