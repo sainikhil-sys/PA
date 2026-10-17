@@ -49,30 +49,49 @@ export function DevicesView({ vapidKey, firebase, devices, justPaired }: { vapid
     void navigator.serviceWorker.register("/sw.js", { scope: "/" });
   }, []);
 
+  const [status, setStatus] = React.useState<string | null>(null);
+  const fail = (msg: string) => {
+    setStatus(msg);
+    toast.error(msg);
+  };
   const enableHere = () =>
     start(async () => {
-      if (!vapidKey && !firebase) return void toast.error("Notifications aren't available right now.");
-      const perm = await Notification.requestPermission();
-      setPermission(perm);
-      if (perm !== "granted") return void toast.error("Notifications are blocked. Allow them in your browser settings.");
-      const reg = await navigator.serviceWorker.register("/sw.js", { scope: "/" });
-      await navigator.serviceWorker.ready;
-      if (firebase) {
-        const token = await fcmToken(firebase.config, firebase.vapidKey, reg).catch(() => null);
-        if (token) {
-          const r = await saveFcmToken({ token });
-          if (!r.ok) return void toast.error(r.error);
-          toast.success("This device will get notifications.");
-          return void router.refresh();
+      setStatus(null);
+      try {
+        if (!vapidKey && !firebase) return fail("Notifications aren't available right now.");
+        const perm = await Notification.requestPermission();
+        setPermission(perm);
+        if (perm !== "granted") return fail(perm === "denied" ? "Notifications are blocked for this site. Allow them in your browser or phone settings, then try again." : "You didn't allow notifications. Tap the button again and choose Allow.");
+        const reg = await navigator.serviceWorker.register("/sw.js", { scope: "/" });
+        await navigator.serviceWorker.ready;
+        let fcmError: string | null = null;
+        if (firebase) {
+          const token = await fcmToken(firebase.config, firebase.vapidKey, reg).catch((e: unknown) => {
+            fcmError = e instanceof Error ? e.message : String(e);
+            return null;
+          });
+          if (token) {
+            const r = await saveFcmToken({ token });
+            if (!r.ok) return fail(r.error);
+            setStatus("Connected through Firebase. Tap “Send a test” to check.");
+            toast.success("This device will get notifications.");
+            return void router.refresh();
+          }
         }
+        if (!vapidKey) return fail(`This browser couldn't register for notifications${fcmError ? ` (${fcmError})` : ""}.`);
+        // A subscription made with a different key can't be reused: replace it.
+        let sub = await reg.pushManager.getSubscription();
+        if (sub) await sub.unsubscribe().catch(() => {});
+        sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64ToBytes(vapidKey) as BufferSource });
+        const json = sub.toJSON() as { endpoint: string; keys: { p256dh: string; auth: string } };
+        const r = await savePushSubscription({ endpoint: json.endpoint, keys: json.keys });
+        if (!r.ok) return fail(r.error);
+        setStatus("Connected. Tap “Send a test” to check.");
+        toast.success("This device will get notifications.");
+        router.refresh();
+      } catch (e) {
+        fail(`Couldn't turn on notifications: ${e instanceof Error ? e.message : String(e)}`);
       }
-      if (!vapidKey) return void toast.error("This browser couldn't register for notifications.");
-      const sub = (await reg.pushManager.getSubscription()) ?? (await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64ToBytes(vapidKey) as BufferSource }));
-      const json = sub.toJSON() as { endpoint: string; keys: { p256dh: string; auth: string } };
-      const r = await savePushSubscription({ endpoint: json.endpoint, keys: json.keys });
-      if (!r.ok) return void toast.error(r.error);
-      toast.success("This device will get notifications.");
-      router.refresh();
     });
 
   return (
@@ -114,6 +133,7 @@ export function DevicesView({ vapidKey, firebase, devices, justPaired }: { vapid
                 Send a test
               </Button>
             ) : null}
+            {status ? <p className="basis-full text-[13px] text-muted" aria-live="polite">{status}</p> : null}
           </div>
         )}
       </Section>
