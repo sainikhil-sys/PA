@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { IntegrationGrid, type ConnState } from "@/components/integrations/integration-grid";
 import { CardSkeleton } from "@/components/today/card-skeleton";
 import { PageHeader } from "@/components/ui/states";
+import { isAdmin } from "@/lib/auth/policy";
 import { requireOwner } from "@/lib/auth/session";
 import { listIntegrations } from "@/lib/db/queries/settings";
 import { env } from "@/lib/env";
@@ -21,7 +22,7 @@ export default async function IntegrationsPage() {
     <>
       <PageHeader title="Integrations" description="Connect the tools you use. Read-only by default; drafts at most. Nothing is ever sent or deleted for you." />
       <Suspense fallback={<CardSkeleton rows={4} />}>
-        <IntegrationGrid catalog={CATALOG} states={states} telegramConfigured={Boolean(e.TELEGRAM_BOT_TOKEN && e.TELEGRAM_CHAT_ID)} oauthReady={{ linkedin: oauthConfigured("linkedin"), canva: oauthConfigured("canva") }} />
+        <IntegrationGrid catalog={CATALOG} states={states} telegramConfigured={isAdmin(user.email) && Boolean(e.TELEGRAM_BOT_TOKEN && e.TELEGRAM_CHAT_ID)} oauthReady={{ linkedin: oauthConfigured("linkedin"), canva: oauthConfigured("canva") }} />
       </Suspense>
       <p className="mt-10 text-[12px] text-subtle">Brand logos are trademarks of their owners, shown in original colors to identify each service. Marks courtesy of Simple Icons (CC0).</p>
     </>

@@ -1,8 +1,8 @@
 import "server-only";
 import { BRAND } from "@/lib/brand";
-import { sendMail } from "@/lib/email/send";
-import { otpEmail } from "@/lib/email/templates";
-import { env, isTestMode } from "@/lib/env";
+import { mailConfigured, sendMail, trySendMail } from "@/lib/email/send";
+import { otpEmail, welcomeEmail } from "@/lib/email/templates";
+import { appUrl, env, isTestMode } from "@/lib/env";
 import { errMessage, log } from "@/lib/log";
 
 /** Branded sign-in email. No tracking pixels, no links to click. */
@@ -26,4 +26,11 @@ export async function sendOtpEmail(to: string, code: string): Promise<void> {
     }
     throw new Error("Could not send the sign-in email");
   }
+}
+
+/** One-time welcome for new accounts. Best effort: a failure never affects sign-in. */
+export async function sendWelcomeEmail(to: string): Promise<void> {
+  if (!mailConfigured()) return;
+  const base = appUrl();
+  await trySendMail(to, welcomeEmail({ appUrl: base, manageUrl: `${base}/settings/notifications` }), { tag: "welcome" });
 }

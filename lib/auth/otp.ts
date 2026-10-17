@@ -5,7 +5,8 @@ import { logActivity } from "@/lib/db/queries/activity";
 import { isTestMode, requireEnv } from "@/lib/env";
 import { log } from "@/lib/log";
 import { rateLimit } from "@/lib/security/ratelimit";
-import { sendOtpEmail } from "./mail";
+import { after } from "next/server";
+import { sendOtpEmail, sendWelcomeEmail } from "./mail";
 import {
   generateOtpCode,
   hashEmail,
@@ -98,9 +99,11 @@ export async function verifyOtp(rawEmail: string, code: string, ip: string): Pro
     .insert(schema.users)
     .values({ email })
     .onConflictDoUpdate({ target: schema.users.email, set: { email } })
-    .returning();
+    .returning({ id: schema.users.id, onboardedAt: schema.users.onboardedAt, created: sql<boolean>`(xmax = 0)` });
   await db().insert(schema.userSettings).values({ userId: user!.id }).onConflictDoNothing();
   await createSession(user!.id);
   await logActivity({ userId: user!.id, actor: "me", tool: "auth.sign_in", inputSummary: "email code", outcome: "success" });
+  // xmax = 0 means this row was inserted, not updated: a brand-new account. Send after the response.
+  if (user!.created) after(() => sendWelcomeEmail(email));
   return { ok: true, message: "Signed in", isNew: !user!.onboardedAt };
 }

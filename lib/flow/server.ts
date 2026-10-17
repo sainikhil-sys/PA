@@ -115,7 +115,7 @@ export async function flowStatus(userId: string): Promise<Record<NodeId, NodeBas
     "output:tasks": { connected: true, enabled: caps.manageTasks, permissions: "read/write" },
     "output:content": { connected: true, enabled: true, permissions: "drafts only" },
     "output:notes": { connected: true, enabled: true, permissions: "read/write" },
-    "output:notify": { connected: true, enabled: s.notifyInApp || s.notifyTelegram, permissions: "notify only" },
+    "output:notify": { connected: true, enabled: s.notifyInApp || s.notifyEmail || s.notifyTelegram, permissions: "notify only" },
   };
 
   const stats = new Map<NodeId, { calls: number; errors: number; last: number; lastErr: number }>();

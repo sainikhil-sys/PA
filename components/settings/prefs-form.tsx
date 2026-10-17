@@ -16,6 +16,7 @@ import { Row, Section } from "./section";
 type Prefs = {
   notifyInApp: boolean;
   notifyEmailDigest: boolean;
+  notifyEmail: boolean;
   notifyTelegram: boolean;
   quietHoursStart: string | null;
   quietHoursEnd: string | null;
@@ -37,7 +38,7 @@ function useSave() {
     });
 }
 
-export function NotificationsForm({ initial, telegramConfigured, digestAvailable }: { initial: Prefs; telegramConfigured: boolean; digestAvailable: boolean }) {
+export function NotificationsForm({ initial, telegramConfigured, telegramAllowed, digestAvailable }: { initial: Prefs; telegramConfigured: boolean; telegramAllowed: boolean; digestAvailable: boolean }) {
   const [p, setP] = React.useState(initial);
   const save = useSave();
   const set = (patch: Partial<Prefs>) => {
@@ -50,9 +51,13 @@ export function NotificationsForm({ initial, telegramConfigured, digestAvailable
         <Row label="In-app" hint="The bell in the top bar.">
           <Switch checked={p.notifyInApp} onCheckedChange={(v) => set({ notifyInApp: v })} aria-label="In-app notifications" />
         </Row>
+        <Row label="Email updates" hint={digestAvailable ? "Urgent mail, reminders, scheduled posts and automation alerts, sent to your sign-in address." : "Needs RESEND_API_KEY on the server."}>
+          <Switch checked={p.notifyEmail} disabled={!digestAvailable} onCheckedChange={(v) => set({ notifyEmail: v })} aria-label="Email updates" />
+        </Row>
         <Row label="Email digest" hint={digestAvailable ? "Your daily briefing, emailed to you each morning." : "Needs RESEND_API_KEY on the server."}>
           <Switch checked={p.notifyEmailDigest} disabled={!digestAvailable} onCheckedChange={(v) => set({ notifyEmailDigest: v })} aria-label="Email digest" />
         </Row>
+        {telegramAllowed ? (
         <Row label="Telegram" hint={telegramConfigured ? "Urgent mail, reminders and failures to your own chat." : "Set TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID to enable."}>
           <div className="flex items-center gap-2 sm:justify-end">
             {telegramConfigured ? (
@@ -71,8 +76,9 @@ export function NotificationsForm({ initial, telegramConfigured, digestAvailable
             <Switch checked={p.notifyTelegram} disabled={!telegramConfigured} onCheckedChange={(v) => set({ notifyTelegram: v })} aria-label="Telegram notifications" />
           </div>
         </Row>
+        ) : null}
       </Section>
-      <Section title="Quiet hours" description="Telegram stays silent in this window. In-app notifications still collect.">
+      <Section title="Quiet hours" description="Email and Telegram stay silent in this window. In-app notifications still collect.">
         <Row label="From – to">
           <div className="flex items-center gap-2 sm:justify-end">
             <input type="time" aria-label="Quiet hours start" defaultValue={p.quietHoursStart ?? ""} onBlur={(e) => set({ quietHoursStart: e.target.value || null })} className={cn(inputClass, "w-auto")} />
