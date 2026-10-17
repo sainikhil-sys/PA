@@ -5,6 +5,7 @@ import { AgentCard, IdeasCard, IntegrationsStrip, MailCard, ScheduleCard, TasksC
 import { NewsRibbon } from "@/components/today/news-ribbon";
 import { PhoneCard } from "@/components/today/phone-card";
 import { RoomRow } from "@/components/today/room";
+import { TodayGrid } from "@/components/today/today-grid";
 import { listPhoneFeed } from "@/lib/phone-server";
 import { requireOwner } from "@/lib/auth/session";
 import type { User } from "@/lib/db/schema";
@@ -50,43 +51,19 @@ export default async function TodayPage() {
         <News user={user} />
       </Suspense>
       <RoomRow room={s.room} />
-      <div className="grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-12">
-        <div className="md:col-span-2 lg:col-span-4">
-          <Suspense fallback={<CardSkeleton rows={2} />}>
-            <AgentCard user={user} />
-          </Suspense>
-        </div>
-        <div className="lg:col-span-4">
-          <Suspense fallback={<CardSkeleton rows={4} />}>
-            <ScheduleCard user={user} />
-          </Suspense>
-        </div>
-        <div className="lg:col-span-4">
-          <Suspense fallback={<CardSkeleton rows={4} />}>
-            <TasksCard user={user} />
-          </Suspense>
-        </div>
-        <div className="md:col-span-2 lg:col-span-7">
-          <Suspense fallback={<CardSkeleton rows={3} />}>
-            <MailCard user={user} />
-          </Suspense>
-        </div>
-        <div className="md:col-span-2 lg:col-span-5">
-          <Suspense fallback={<CardSkeleton rows={3} />}>
-            <PhoneSection user={user} />
-          </Suspense>
-        </div>
-        <div className="md:col-span-2 lg:col-span-12">
-          <Suspense fallback={<CardSkeleton rows={3} />}>
-            <IdeasCard user={user} />
-          </Suspense>
-        </div>
-        <div className="md:col-span-2 lg:col-span-12">
-          <Suspense fallback={<CardSkeleton rows={1} />}>
-            <IntegrationsStrip user={user} />
-          </Suspense>
-        </div>
-      </div>
+      {/* Drag cards by their handle to rearrange; the order is saved per account. */}
+      <TodayGrid
+        initialOrder={s.todayLayout}
+        items={[
+          { id: "agent", label: "Agent", className: "md:col-span-2 lg:col-span-4", node: <Suspense fallback={<CardSkeleton rows={2} />}><AgentCard user={user} /></Suspense> },
+          { id: "schedule", label: "Schedule", className: "lg:col-span-4", node: <Suspense fallback={<CardSkeleton rows={4} />}><ScheduleCard user={user} /></Suspense> },
+          { id: "tasks", label: "Tasks", className: "lg:col-span-4", node: <Suspense fallback={<CardSkeleton rows={4} />}><TasksCard user={user} /></Suspense> },
+          { id: "mail", label: "Mail", className: "md:col-span-2 lg:col-span-7", node: <Suspense fallback={<CardSkeleton rows={3} />}><MailCard user={user} /></Suspense> },
+          { id: "phone", label: "Phone", className: "md:col-span-2 lg:col-span-5", node: <Suspense fallback={<CardSkeleton rows={3} />}><PhoneSection user={user} /></Suspense> },
+          { id: "ideas", label: "Ideas", className: "md:col-span-2 lg:col-span-12", node: <Suspense fallback={<CardSkeleton rows={3} />}><IdeasCard user={user} /></Suspense> },
+          { id: "integrations", label: "Integrations", className: "md:col-span-2 lg:col-span-12", node: <Suspense fallback={<CardSkeleton rows={1} />}><IntegrationsStrip user={user} /></Suspense> },
+        ]}
+      />
     </div>
   );
 }

@@ -37,3 +37,8 @@ export const saveRoom = ownerAction(
     revalidatePath("/");
   },
 );
+
+/** Today card order (ids), saved when you drag cards around. */
+export const saveTodayLayout = ownerAction(z.object({ order: z.array(z.string().max(40)).max(30) }), async ({ order }, user) => {
+  await db().update(schema.userSettings).set({ todayLayout: order }).where(eq(schema.userSettings.userId, user.id));
+});
