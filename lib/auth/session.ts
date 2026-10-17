@@ -57,7 +57,7 @@ async function loadSession(): Promise<{ user: User; sessionId: string } | null> 
     .where(and(eq(schema.sessions.tokenHash, sha256(token)), isNull(schema.sessions.revokedAt), gt(schema.sessions.expiresAt, now)))
     .limit(1);
   if (!row) return null;
-  if (!mayUseApp(row.user.email)) return null;
+  if (!mayUseApp(row.user.email) || row.user.disabledAt) return null;
   if (now.getTime() - row.session.lastSeenAt.getTime() > TOUCH_INTERVAL_MS) {
     // Fire-and-forget: never make a page wait on a bookkeeping write.
     void db().update(schema.sessions).set({ lastSeenAt: now }).where(eq(schema.sessions.id, row.session.id)).catch(() => {});
@@ -82,7 +82,7 @@ export async function requireOwner(): Promise<User> {
 /** Every account that may still use the app, for cron jobs and background work (no session). */
 export async function listUsersForSystem(limit = 1000): Promise<User[]> {
   const users = await db().select().from(schema.users).orderBy(schema.users.createdAt).limit(limit);
-  return users.filter((u) => mayUseApp(u.email));
+  return users.filter((u) => mayUseApp(u.email) && !u.disabledAt);
 }
 
 export async function signOutCurrent() {

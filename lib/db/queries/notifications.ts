@@ -5,6 +5,7 @@ import { isAdmin } from "@/lib/auth/policy";
 import { mailConfigured, topicUnsubscribeUrl, trySendMail } from "@/lib/email/send";
 import { appLink, notificationEmail } from "@/lib/email/templates";
 import { appUrl, env } from "@/lib/env";
+import { sendPush } from "@/lib/push";
 import { rateLimit } from "@/lib/security/ratelimit";
 import { errMessage, log } from "@/lib/log";
 import { inQuietHours, localTime } from "@/lib/time";
@@ -31,7 +32,7 @@ const EMAIL_KINDS = new Set(["urgent_email", "automation", "automation_failed", 
 
 /**
  * Create an in-app notification (deduplicated), then deliver it by email to the
- * account's own address (if on) and by Telegram (admins only; the bot has one chat).
+ * account's own address (if on), to paired devices by push, and by Telegram (admins only; the bot has one chat).
  */
 export async function notify(userId: string, n: { kind: string; title: string; body?: string; href?: string; dedupeKey?: string }) {
   const rows = await db()
@@ -42,6 +43,9 @@ export async function notify(userId: string, n: { kind: string; title: string; b
   if (!rows.length) return false;
   const [s, user] = await Promise.all([getSettings(userId), db().query.users.findFirst({ where: eq(schema.users.id, userId), columns: { email: true } })]);
   if (!user || inQuietHours(localTime(s.timezone), s.quietHoursStart, s.quietHoursEnd)) return true;
+  if (s.notifyPush) {
+    await sendPush(userId, { title: n.title, body: n.body, href: n.href, tag: n.kind }).catch(() => 0);
+  }
   if (s.notifyTelegram && isAdmin(user.email)) {
     await sendTelegram(`${n.title}${n.body ? `\n${n.body}` : ""}`);
   }

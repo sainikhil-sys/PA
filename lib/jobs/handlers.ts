@@ -1,4 +1,5 @@
 import "server-only";
+import { processBroadcast } from "@/lib/admin/broadcast";
 import { and, eq, gte, inArray, lte } from "drizzle-orm";
 import { classifyEmail } from "@/lib/agents/emailAgent";
 import { generateDailyBriefing } from "@/lib/agents/briefingAgent";
@@ -152,6 +153,14 @@ async function dailyBriefing(job: Job) {
   return { created };
 }
 
+/** Admin broadcast: send a slice, then re-queue itself until everyone has it. */
+async function broadcastJob(job: Job) {
+  const id = String(job.payload.broadcastId);
+  const done = await processBroadcast(id, 200_000);
+  if (!done) await enqueue(job.userId, "broadcast", { broadcastId: id }, { dedupeKey: `broadcast:${id}:${Date.now()}` });
+  return { done };
+}
+
 async function runAutomationJob(job: Job) {
   await runAutomation(String(job.payload.runId), job.attempts, job.maxAttempts);
 }
@@ -206,6 +215,7 @@ const HANDLERS: Record<JobType, (job: Job) => Promise<unknown>> = {
   suggest_ideas: suggestIdeas,
   knowledge_sync: knowledgeSync,
   reminders: deliverReminders,
+  broadcast: broadcastJob,
 };
 
 /**

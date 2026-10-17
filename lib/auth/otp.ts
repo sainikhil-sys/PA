@@ -99,7 +99,8 @@ export async function verifyOtp(rawEmail: string, code: string, ip: string): Pro
     .insert(schema.users)
     .values({ email })
     .onConflictDoUpdate({ target: schema.users.email, set: { email } })
-    .returning({ id: schema.users.id, onboardedAt: schema.users.onboardedAt, created: sql<boolean>`(xmax = 0)` });
+    .returning({ id: schema.users.id, onboardedAt: schema.users.onboardedAt, disabledAt: schema.users.disabledAt, created: sql<boolean>`(xmax = 0)` });
+  if (user!.disabledAt) return { ok: false, message: GENERIC_INVALID };
   await db().insert(schema.userSettings).values({ userId: user!.id }).onConflictDoNothing();
   await createSession(user!.id);
   await logActivity({ userId: user!.id, actor: "me", tool: "auth.sign_in", inputSummary: "email code", outcome: "success" });

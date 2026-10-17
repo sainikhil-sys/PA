@@ -1,0 +1,167 @@
+"use client";
+
+import { Bell, DeviceMobile, Desktop, QrCode, Trash, ShareNetwork } from "@phosphor-icons/react";
+import { useRouter } from "next/navigation";
+import * as React from "react";
+import { toast } from "sonner";
+import { createPairCode, removeDevice, savePushSubscription, sendTestPush } from "@/app/actions/devices";
+import { Button } from "@/components/ui/button";
+import { timeAgo } from "@/lib/utils";
+import { Section } from "./section";
+
+type Device = { id: string; label: string; createdAt: string; lastUsedAt: string | null };
+
+function b64ToBytes(b64: string): Uint8Array {
+  const pad = "=".repeat((4 - (b64.length % 4)) % 4);
+  const raw = atob((b64 + pad).replace(/-/g, "+").replace(/_/g, "/"));
+  return Uint8Array.from(raw, (c) => c.charCodeAt(0));
+}
+
+function isIos() {
+  return typeof navigator !== "undefined" && /iPhone|iPad/.test(navigator.userAgent);
+}
+function isStandalone() {
+  return typeof window !== "undefined" && (window.matchMedia("(display-mode: standalone)").matches || (navigator as unknown as { standalone?: boolean }).standalone === true);
+}
+
+export function DevicesView({ vapidKey, devices, justPaired }: { vapidKey: string | null; devices: Device[]; justPaired: boolean }) {
+  const router = useRouter();
+  const [pending, start] = React.useTransition();
+  const [qr, setQr] = React.useState<{ svg: string; expiresAt: string } | null>(null);
+  const [support, setSupport] = React.useState<"ok" | "unsupported" | "ios-install" | null>(null);
+  const [permission, setPermission] = React.useState<NotificationPermission | null>(null);
+
+  React.useEffect(() => {
+    if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) {
+      setSupport(isIos() && !isStandalone() ? "ios-install" : "unsupported");
+      return;
+    }
+    setSupport("ok");
+    setPermission(Notification.permission);
+    void navigator.serviceWorker.register("/sw.js", { scope: "/" });
+  }, []);
+
+  const enableHere = () =>
+    start(async () => {
+      if (!vapidKey) return void toast.error("Notifications aren't available right now.");
+      const perm = await Notification.requestPermission();
+      setPermission(perm);
+      if (perm !== "granted") return void toast.error("Notifications are blocked. Allow them in your browser settings.");
+      const reg = await navigator.serviceWorker.register("/sw.js", { scope: "/" });
+      await navigator.serviceWorker.ready;
+      const sub = (await reg.pushManager.getSubscription()) ?? (await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64ToBytes(vapidKey) as BufferSource }));
+      const json = sub.toJSON() as { endpoint: string; keys: { p256dh: string; auth: string } };
+      const r = await savePushSubscription({ endpoint: json.endpoint, keys: json.keys });
+      if (!r.ok) return void toast.error(r.error);
+      toast.success("This device will get notifications.");
+      router.refresh();
+    });
+
+  return (
+    <div>
+      {justPaired ? (
+        <div className="mb-5 rounded-[14px] border border-border bg-surface p-4 text-[14px]">
+          <p className="font-medium">Phone paired.</p>
+          <p className="mt-1 text-muted">Now turn on notifications below{isIos() ? ", after adding Cowork to your Home Screen" : ""}.</p>
+        </div>
+      ) : null}
+
+      <Section title="This device" description="Get reminders, urgent mail and announcements as notifications.">
+        {support === "ios-install" ? (
+          <div className="flex items-start gap-3 rounded-[14px] border border-border p-4 text-[13px]">
+            <ShareNetwork size={20} className="mt-0.5 shrink-0" />
+            <p>
+              On iPhone, tap <strong>Share</strong> then <strong>Add to Home Screen</strong>, open Cowork from your Home Screen, and come back here to turn on notifications.
+            </p>
+          </div>
+        ) : support === "unsupported" ? (
+          <p className="text-[13px] text-muted">This browser doesn&apos;t support notifications.</p>
+        ) : (
+          <div className="flex flex-wrap items-center gap-2">
+            <Button onClick={enableHere} disabled={pending || support !== "ok"}>
+              <Bell /> {permission === "granted" ? "Re-connect this device" : "Turn on notifications here"}
+            </Button>
+            {devices.length ? (
+              <Button
+                variant="secondary"
+                disabled={pending}
+                onClick={() =>
+                  start(async () => {
+                    const r = await sendTestPush({});
+                    if (!r.ok) toast.error(r.error);
+                    else toast.success(`Sent to ${r.data.devices} device${r.data.devices === 1 ? "" : "s"}`);
+                  })
+                }
+              >
+                Send a test
+              </Button>
+            ) : null}
+          </div>
+        )}
+      </Section>
+
+      <Section title="Pair a phone" description="Scan with your phone's camera to sign in there and get notifications. Only scan it with your own phone.">
+        {qr ? (
+          <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center">
+            <div className="size-[180px] rounded-[14px] border border-border bg-white p-2 [&_svg]:size-full" dangerouslySetInnerHTML={{ __html: qr.svg }} />
+            <div className="text-[13px] text-muted">
+              <p>Valid for 10 minutes, works once.</p>
+              <p className="mt-1">Then tap “Turn on notifications here” on the phone.</p>
+              <Button size="sm" variant="ghost" className="mt-2" onClick={() => setQr(null)}>
+                Hide code
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <Button
+            variant="secondary"
+            className="w-fit"
+            disabled={pending}
+            onClick={() =>
+              start(async () => {
+                const r = await createPairCode({});
+                if (!r.ok) return void toast.error(r.error);
+                setQr({ svg: r.data.svg, expiresAt: r.data.expiresAt });
+              })
+            }
+          >
+            <QrCode /> Show pairing code
+          </Button>
+        )}
+      </Section>
+
+      <Section title="Paired devices">
+        {devices.length === 0 ? (
+          <p className="text-[13px] text-muted">No devices yet.</p>
+        ) : (
+          <ul className="flex flex-col divide-y divide-border rounded-[14px] border border-border">
+            {devices.map((d) => (
+              <li key={d.id} className="flex items-center gap-3 px-4 py-3">
+                {/iPhone|Android/.test(d.label) ? <DeviceMobile size={20} /> : <Desktop size={20} />}
+                <div className="min-w-0 flex-1 text-[13px]">
+                  <p className="truncate font-medium">{d.label}</p>
+                  <p className="text-muted">Added {timeAgo(d.createdAt)}{d.lastUsedAt ? ` · last notified ${timeAgo(d.lastUsedAt)}` : ""}</p>
+                </div>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  aria-label={`Remove ${d.label}`}
+                  disabled={pending}
+                  onClick={() =>
+                    start(async () => {
+                      const r = await removeDevice({ id: d.id });
+                      if (!r.ok) return void toast.error(r.error);
+                      router.refresh();
+                    })
+                  }
+                >
+                  <Trash />
+                </Button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Section>
+    </div>
+  );
+}

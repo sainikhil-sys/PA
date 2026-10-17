@@ -8,7 +8,6 @@ import { db, schema } from "@/lib/db";
 import { logActivity } from "@/lib/db/queries/activity";
 import { updateSettings } from "@/lib/db/queries/settings";
 import { isValidTimezone } from "@/lib/time";
-import { testProvider } from "@/lib/ai/router";
 import { signOutCurrent } from "@/lib/auth/session";
 
 const hhmm = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Use HH:MM");
@@ -68,6 +67,7 @@ export const savePreferences = ownerAction(
     notifyInApp: z.boolean().optional(),
     notifyEmailDigest: z.boolean().optional(),
     notifyEmail: z.boolean().optional(),
+    notifyPush: z.boolean().optional(),
     notifyTelegram: z.boolean().optional(),
     fontScale: z.enum(["sm", "md", "lg"]).optional(),
     density: z.enum(["comfortable", "compact"]).optional(),
@@ -113,7 +113,6 @@ export const deleteMemory = ownerAction(z.object({ id: z.string().uuid() }), asy
   revalidatePath("/settings/agent");
 });
 
-export const testProviderAction = ownerAction(z.object({ name: z.string().max(40) }), async ({ name }) => testProvider(name));
 
 /** Irreversible. UI requires typing DELETE. Removes the user row; everything cascades. */
 export const deleteAccount = ownerAction(z.object({ confirm: z.literal("DELETE") }), async (_i, user) => {

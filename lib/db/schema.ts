@@ -58,6 +58,8 @@ export const users = pgTable("users", {
   role: text("role"),
   bio: text("bio"),
   onboardedAt: ts("onboarded_at"),
+  /** Set by an admin: the account can't sign in and background work skips it. */
+  disabledAt: ts("disabled_at"),
   createdAt: createdAt(),
 });
 
@@ -146,6 +148,8 @@ export const userSettings = pgTable("user_settings", {
   /** Email for urgent mail, reminders and automation alerts. */
   notifyEmail: boolean("notify_email").notNull().default(true),
   notifyTelegram: boolean("notify_telegram").notNull().default(false),
+  /** Push to paired phones/browsers. */
+  notifyPush: boolean("notify_push").notNull().default(true),
   fontScale: text("font_scale").notNull().default("md"),
   density: text("density").notNull().default("comfortable"),
   reduceMotion: boolean("reduce_motion").notNull().default(false),
@@ -400,6 +404,51 @@ export const activityLog = pgTable(
   },
   (t) => [index("activity_user_created_idx").on(t.userId, t.createdAt)],
 );
+
+// ---------- Devices (Web Push) and phone pairing ----------
+export const pushSubscriptions = pgTable(
+  "push_subscriptions",
+  {
+    id: id(),
+    userId: userId(),
+    endpoint: text("endpoint").notNull().unique(),
+    p256dh: text("p256dh").notNull(),
+    auth: text("auth").notNull(),
+    label: text("label").notNull().default("Device"),
+    createdAt: createdAt(),
+    lastUsedAt: ts("last_used_at"),
+  },
+  (t) => [index("push_user_idx").on(t.userId)],
+);
+
+/** Single-use, 10-minute QR tokens that sign a phone in to the account that showed the code. */
+export const pairTokens = pgTable("pair_tokens", {
+  id: id(),
+  userId: userId(),
+  tokenHash: text("token_hash").notNull().unique(),
+  expiresAt: ts("expires_at").notNull(),
+  usedAt: ts("used_at"),
+  createdAt: createdAt(),
+});
+
+// ---------- Admin broadcasts ----------
+export const broadcasts = pgTable("broadcasts", {
+  id: id(),
+  createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
+  title: text("title").notNull(),
+  body: text("body").notNull(),
+  href: text("href"),
+  channels: text("channels").array().notNull(),
+  status: text("status").notNull().default("queued"),
+  recipients: integer("recipients").notNull().default(0),
+  sentInApp: integer("sent_in_app").notNull().default(0),
+  sentEmail: integer("sent_email").notNull().default(0),
+  sentPush: integer("sent_push").notNull().default(0),
+  /** Last processed user id, so a long send resumes across job runs. */
+  cursor: text("cursor"),
+  createdAt: createdAt(),
+  finishedAt: ts("finished_at"),
+});
 
 export const notifications = pgTable(
   "notifications",

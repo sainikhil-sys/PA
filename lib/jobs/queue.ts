@@ -13,7 +13,8 @@ export type JobType =
   | "fetch_news"
   | "suggest_ideas"
   | "knowledge_sync"
-  | "reminders";
+  | "reminders"
+  | "broadcast";
 
 /** Enqueue a job. With a dedupeKey, a duplicate pending/running job is silently skipped. */
 export async function enqueue(

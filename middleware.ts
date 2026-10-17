@@ -5,7 +5,7 @@ import { NextResponse, type NextRequest } from "next/server";
  * session cookie to /login. The cookie is fully validated (DB lookup + allowlist)
  * server-side in requireOwner(); this is only a fast first gate.
  */
-const PUBLIC_PATHS = ["/login", "/home", "/privacy", "/terms"];
+const PUBLIC_PATHS = ["/login", "/home", "/privacy", "/terms", "/pair"];
 
 function buildCsp(nonce: string, local: boolean): string {
   const dev = process.env.NODE_ENV !== "production";
@@ -57,6 +57,6 @@ export function middleware(req: NextRequest) {
 export const config = {
   matcher: [
     // Pages only. API routes and well-known documents authenticate themselves.
-    "/((?!api/|_next/static|_next/image|brands/|favicon.ico|icon.svg|robots.txt|sitemap.xml|manifest.webmanifest|opengraph-image|\\.well-known).*)",
+    "/((?!api/|_next/static|_next/image|brands/|favicon.ico|icon.svg|sw.js|robots.txt|sitemap.xml|manifest.webmanifest|opengraph-image|\\.well-known).*)",
   ],
 };

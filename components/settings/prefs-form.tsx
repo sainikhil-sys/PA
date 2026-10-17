@@ -17,6 +17,7 @@ type Prefs = {
   notifyInApp: boolean;
   notifyEmailDigest: boolean;
   notifyEmail: boolean;
+  notifyPush: boolean;
   notifyTelegram: boolean;
   quietHoursStart: string | null;
   quietHoursEnd: string | null;
@@ -50,6 +51,9 @@ export function NotificationsForm({ initial, telegramConfigured, telegramAllowed
       <Section title="Channels">
         <Row label="In-app" hint="The bell in the top bar.">
           <Switch checked={p.notifyInApp} onCheckedChange={(v) => set({ notifyInApp: v })} aria-label="In-app notifications" />
+        </Row>
+        <Row label="Phone & browser" hint="Push notifications to devices you paired in Settings → Devices.">
+          <Switch checked={p.notifyPush} onCheckedChange={(v) => set({ notifyPush: v })} aria-label="Push notifications" />
         </Row>
         <Row label="Email updates" hint={digestAvailable ? "Urgent mail, reminders, scheduled posts and automation alerts, sent to your sign-in address." : "Email isn't available right now."}>
           <Switch checked={p.notifyEmail} disabled={!digestAvailable} onCheckedChange={(v) => set({ notifyEmail: v })} aria-label="Email updates" />

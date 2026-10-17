@@ -8,6 +8,7 @@ const ITEMS = [
   { href: "/settings/agent", label: "Agent" },
   { href: "/settings/account", label: "Account" },
   { href: "/settings/notifications", label: "Notifications" },
+  { href: "/settings/devices", label: "Devices" },
   { href: "/settings/privacy", label: "Data & privacy" },
   { href: "/settings/appearance", label: "Appearance" },
   { href: "/settings/claude", label: "Connect Claude" },

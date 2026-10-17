@@ -56,6 +56,9 @@ const schema = z.object({
   // Notifications
   TELEGRAM_BOT_TOKEN: z.string().optional(),
   TELEGRAM_CHAT_ID: z.string().optional(),
+  VAPID_PUBLIC_KEY: z.string().optional(),
+  VAPID_PRIVATE_KEY: z.string().optional(),
+  VAPID_SUBJECT: z.string().optional(),
   // Platform
   VERCEL: z.string().optional(),
   VERCEL_ENV: z.string().optional(),

@@ -110,6 +110,7 @@ const KIND_LABEL: Record<string, string> = {
   automation_failed: "Automation failed",
   reminder: "Reminder",
   post_reminder: "Scheduled post",
+  announcement: "Announcement",
 };
 
 export function notificationEmail(o: { kind: string; title: string; body?: string | null; url: string; manageUrl: string; unsubscribeUrl: string }): Email {
