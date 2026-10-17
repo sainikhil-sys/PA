@@ -67,5 +67,12 @@ describe("sign-in policy", () => {
   it("open mode admits any well-formed address", () => {
     expect(canSignIn("anyone@example.com", { open: true, allowed: [] })).toBe(true);
     expect(canSignIn("not-an-email", { open: true, allowed: [] })).toBe(false);
+    // Regression: addresses containing the letter "s" were rejected by a broken pattern.
+    expect(canSignIn("sainikhil6300725603@gmail.com", { open: true, allowed: [] })).toBe(true);
+    expect(canSignIn("sainikhilbhoopathirao@gmail.com", { open: true, allowed: [] })).toBe(true);
+    expect(canSignIn("students.office@mallareddyuniversity.ac.in", { open: true, allowed: [] })).toBe(true);
+    expect(canSignIn("ss@ss.ss", { open: true, allowed: [] })).toBe(true);
+    expect(canSignIn("has space@example.com", { open: true, allowed: [] })).toBe(false);
+    expect(canSignIn("no-dot@localhost", { open: true, allowed: [] })).toBe(false);
   });
 });
