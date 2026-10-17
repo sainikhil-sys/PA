@@ -273,6 +273,16 @@ html[data-intro="1"] .pa-intro {
 .pa-intro-letter {
   display: inline-block;
 }
+/* Start states for the mark: the C undrawn, the dot hidden (GSAP animates both in). */
+.pa-intro-arc {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+}
+.pa-intro-dot {
+  transform-box: fill-box;
+  transform-origin: center;
+  transform: scale(0);
+}
 .pa-intro-line {
   display: block;
   width: 96px;
