@@ -8,6 +8,7 @@ import { proposalFromAction } from "@/lib/agent/proposals";
 import { generateDailyBriefing } from "@/lib/agents/briefingAgent";
 import { draftReply } from "@/lib/agents/emailAgent";
 import { draftPostFromIdeaText } from "@/lib/content/drafts";
+import { createYoutubePackage, writeEmailDraft } from "@/lib/content/studio";
 import { db, schema } from "@/lib/db";
 import type { Automation, AutomationAction, AutomationRun, RunStep, User } from "@/lib/db/schema";
 import { logActivity } from "@/lib/db/queries/activity";
@@ -70,6 +71,10 @@ function describe(action: AutomationAction, vars: Record<string, unknown>): stri
       return "Create a LinkedIn draft for review";
     case "create_draft":
       return "Create a Gmail reply draft for review";
+    case "write_email":
+      return `Write an email to ${fillTemplate(action.to, vars)} (draft, not sent)`;
+    case "create_youtube_package":
+      return `Create a YouTube video package: “${truncate(fillTemplate(action.topic, vars), 60)}”`;
     default:
       return ACTION_LABEL[action.type];
   }
@@ -109,6 +114,16 @@ async function execute(user: User, a: Automation, run: AutomationRun, action: Au
       const out = await callAgent(user, fillTemplate(action.prompt, vars), trace, run.id);
       vars.agent_output = out;
       return truncate(out, 600);
+    }
+    case "write_email": {
+      const to = fillTemplate(action.to, vars).trim();
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) throw new PermanentError(`"${to}" isn't an email address`);
+      const r = await writeEmailDraft(user, { to, subject: action.subject ? fillTemplate(action.subject, vars) : undefined, instructions: fillTemplate(action.instructions, vars) });
+      return r.where === "gmail" ? `Gmail draft “${r.subject}” ready to review (not sent)` : `Email draft “${r.subject}” saved in Content (connect Google to save to Gmail)`;
+    }
+    case "create_youtube_package": {
+      const d = await createYoutubePackage(user, fillTemplate(action.topic, vars));
+      return `YouTube package “${truncate(d.title, 60)}” saved in Content (not uploaded)`;
     }
     case "call_webhook": {
       const url = new URL(action.url);

@@ -42,6 +42,8 @@ const NEW_ACTION: Record<ActionType, AutomationAction> = {
   notify: { type: "notify", title: "" },
   call_agent: { type: "call_agent", prompt: "" },
   call_webhook: { type: "call_webhook", url: "https://" },
+  write_email: { type: "write_email", to: "", instructions: "" },
+  create_youtube_package: { type: "create_youtube_package", topic: "" },
 };
 
 function Step({ n, title, hint, children }: { n: number; title: string; hint?: string; children: React.ReactNode }) {
@@ -204,6 +206,20 @@ export function AutomationBuilder({ initial }: { initial: BuilderInitial }) {
             {a.type === "call_agent" ? <Textarea aria-label="Prompt" placeholder="What should the agent do?" value={a.prompt} onChange={(e) => setAction(i, { ...a, prompt: e.target.value })} className="min-h-16" /> : null}
             {a.type === "create_linkedin_draft" ? <Input aria-label="Topic" placeholder="Topic (defaults to {{title}})" value={a.prompt ?? ""} onChange={(e) => setAction(i, { ...a, prompt: e.target.value })} /> : null}
             {a.type === "create_draft" ? <Input aria-label="Instructions" placeholder="Reply instructions (optional). Needs an email trigger." value={a.instructions ?? ""} onChange={(e) => setAction(i, { ...a, instructions: e.target.value })} /> : null}
+            {a.type === "write_email" ? (
+              <>
+                <Input aria-label="To" type="email" placeholder="To, e.g. ravi@company.com or {{from}}" value={a.to} onChange={(e) => setAction(i, { ...a, to: e.target.value })} />
+                <Input aria-label="Subject" placeholder="Subject (optional, written for you)" value={a.subject ?? ""} onChange={(e) => setAction(i, { ...a, subject: e.target.value })} />
+                <Textarea aria-label="What it should say" placeholder="What should the email say? e.g. Thank them and propose Tuesday 3pm" value={a.instructions} onChange={(e) => setAction(i, { ...a, instructions: e.target.value })} className="min-h-16" />
+                <FieldHint>Saved as a Gmail draft for you to review and send. Never sent automatically.</FieldHint>
+              </>
+            ) : null}
+            {a.type === "create_youtube_package" ? (
+              <>
+                <Input aria-label="Video topic" placeholder="Video topic, e.g. {{title}} or 5 study habits that work" value={a.topic} onChange={(e) => setAction(i, { ...a, topic: e.target.value })} />
+                <FieldHint>Title options, description, script with chapters, tags and a thumbnail idea, saved in Content. Never uploaded.</FieldHint>
+              </>
+            ) : null}
             {a.type === "call_webhook" ? (
               <>
                 <Input aria-label="Webhook URL" value={a.url} onChange={(e) => setAction(i, { ...a, url: e.target.value })} />

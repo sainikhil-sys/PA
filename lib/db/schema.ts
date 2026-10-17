@@ -161,6 +161,8 @@ export const userSettings = pgTable("user_settings", {
   aiProvider: jsonb("ai_provider").$type<UserAiProvider | null>(),
   /** Today "room": wallpaper, music and video widgets. */
   room: jsonb("room").$type<RoomSettings>().notNull().default({}),
+  /** Order of the Today cards (card ids), set by dragging. Empty = default order. */
+  todayLayout: jsonb("today_layout").$type<string[]>().notNull().default([]),
   updatedAt: updatedAt(),
 });
 
@@ -689,7 +691,9 @@ export type AutomationAction =
   | { type: "add_note"; title: string; content?: string }
   | { type: "notify"; title: string; body?: string }
   | { type: "call_agent"; prompt: string }
-  | { type: "call_webhook"; url: string };
+  | { type: "call_webhook"; url: string }
+  | { type: "write_email"; to: string; subject?: string; instructions: string }
+  | { type: "create_youtube_package"; topic: string };
 
 export type RunStep = {
   index: number;

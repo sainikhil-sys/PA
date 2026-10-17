@@ -1,0 +1,1 @@
+ALTER TABLE "user_settings" ADD COLUMN "today_layout" jsonb DEFAULT '[]'::jsonb NOT NULL;

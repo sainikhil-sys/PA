@@ -34,6 +34,8 @@ export const actionSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("notify"), title: text(200).min(1), body: text(1000).optional() }),
   z.object({ type: z.literal("call_agent"), prompt: text(1000).min(1) }),
   z.object({ type: z.literal("call_webhook"), url: httpsUrl }),
+  z.object({ type: z.literal("write_email"), to: text(320).min(3, "Who is it to?"), subject: text(150).optional(), instructions: text(1000).min(3, "What should it say?") }),
+  z.object({ type: z.literal("create_youtube_package"), topic: text(300).min(3, "Give it a topic") }),
 ]);
 
 export const automationSchema = z.object({
@@ -44,7 +46,7 @@ export const automationSchema = z.object({
   trigger: triggerSchema,
   conditions: z.array(conditionSchema).max(5).default([]),
   actions: z.array(actionSchema).min(1, "Add at least one action").max(6),
-  permissions: z.array(z.enum(["create_task", "create_draft", "generate_briefing", "create_linkedin_draft", "add_note", "notify", "call_agent", "call_webhook"])).max(8),
+  permissions: z.array(z.enum(["create_task", "create_draft", "generate_briefing", "create_linkedin_draft", "add_note", "notify", "call_agent", "call_webhook", "write_email", "create_youtube_package"])).max(10),
   timeoutMs: z.number().int().min(5_000).max(240_000).default(60_000),
   enabled: z.boolean().default(true),
 });

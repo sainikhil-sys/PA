@@ -31,6 +31,13 @@ export function extractBody(payload: gmail_v1.Schema$MessagePart | undefined): s
 }
 
 /** RFC 2822 reply message. Header values are stripped of CR/LF to prevent header injection. */
+/** A brand-new plain-text email (no "Re:", no thread headers). */
+export function buildComposeMime(opts: { to: string; subject: string; body: string }): string {
+  const clean = (v: string) => v.replace(/[\r\n]+/g, " ").trim();
+  const lines = [`To: ${clean(opts.to)}`, `Subject: ${clean(opts.subject)}`, "MIME-Version: 1.0", "Content-Type: text/plain; charset=UTF-8", "Content-Transfer-Encoding: 8bit"];
+  return `${lines.join("\r\n")}\r\n\r\n${opts.body}`;
+}
+
 export function buildReplyMime(opts: {
   to: string;
   subject: string;

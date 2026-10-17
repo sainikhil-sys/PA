@@ -127,6 +127,8 @@ export const ACTION_LABEL: Record<AutomationAction["type"], string> = {
   notify: "Notify me",
   call_agent: "Ask the agent",
   call_webhook: "Call webhook",
+  write_email: "Write an email (Gmail draft)",
+  create_youtube_package: "Create a YouTube video package",
 };
 
 export const TRIGGER_LABEL: Record<AutomationTrigger["type"], string> = {

@@ -297,7 +297,7 @@ export function RoomRow({ room }: { room: RoomSettings }) {
   );
 }
 
-type SpotifyNow = { connected: boolean; premium?: boolean; now?: { playing: boolean; track: string; artists: string; album: string; image: string | null; url: string | null; progressMs: number; durationMs: number; device: string | null } | null };
+type SpotifyNow = { connected: boolean; blocked?: boolean; premium?: boolean; now?: { playing: boolean; track: string; artists: string; album: string; image: string | null; url: string | null; progressMs: number; durationMs: number; device: string | null } | null };
 type Playlist = { id: string; name: string; uri: string; image: string | null; tracks: number };
 
 /** Music: live Spotify (now playing + controls) when connected; otherwise the embedded player. */
@@ -306,6 +306,16 @@ export function MusicCard({ url, onSettings }: { url?: string; onSettings: () =>
   const [playlists, setPlaylists] = React.useState<Playlist[] | null>(null);
   const [pending, setPending] = React.useState(false);
   if (!data?.connected) return <EmbedCard kind="spotify" url={url} onSettings={onSettings} />;
+  // Spotify blocks its Web API unless the account that OWNS the Spotify app has Premium:
+  // fall back to the embedded player (works on free accounts) and say why.
+  if (data.blocked) {
+    return (
+      <div className="flex h-full flex-col gap-2">
+        <EmbedCard kind="spotify" url={url} onSettings={onSettings} />
+        <p className="px-1 text-[11.5px] text-subtle">Live “now playing” and controls need Spotify Premium on the account that created your Spotify app. Using the player instead.</p>
+      </div>
+    );
+  }
   const now = data.now;
 
   const control = async (action: "play" | "pause" | "next" | "previous", contextUri?: string) => {

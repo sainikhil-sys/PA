@@ -93,7 +93,7 @@ export function mapSpanNode(node: string): NodeId | null {
   if (node.startsWith("action:")) {
     const a = node.slice(7);
     return (
-      { create_task: "output:tasks", create_draft: "output:draft", notify: "output:notify", call_webhook: "output:notify", create_linkedin_draft: "output:content", add_note: "output:notes", call_agent: "agent", generate_briefing: "agent" } as Record<string, NodeId>
+      { create_task: "output:tasks", create_draft: "output:draft", notify: "output:notify", call_webhook: "output:notify", create_linkedin_draft: "output:content", add_note: "output:notes", call_agent: "agent", generate_briefing: "agent", write_email: "output:draft", create_youtube_package: "output:content" } as Record<string, NodeId>
     )[a] ?? null;
   }
   return null;

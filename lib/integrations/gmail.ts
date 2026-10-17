@@ -24,8 +24,8 @@ export type GmailMeta = {
   references: string | null;
 };
 
-export { parseFrom, extractBody, buildReplyMime } from "./mime";
-import { parseFrom, extractBody, buildReplyMime } from "./mime";
+export { parseFrom, extractBody, buildReplyMime, buildComposeMime } from "./mime";
+import { parseFrom, extractBody, buildReplyMime, buildComposeMime } from "./mime";
 
 function header(msg: gmail_v1.Schema$Message, name: string): string | null {
   return msg.payload?.headers?.find((h) => h.name?.toLowerCase() === name.toLowerCase())?.value ?? null;
@@ -97,3 +97,12 @@ export async function createReplyDraft(
   return res.data.id;
 }
 
+
+/** Create a Gmail DRAFT for a new email (never sends). Returns the draft id. */
+export async function createComposeDraft(userId: string, opts: { to: string; subject: string; body: string }): Promise<string> {
+  const g = await gmail(userId);
+  const raw = Buffer.from(buildComposeMime(opts), "utf8").toString("base64url");
+  const res = await g.users.drafts.create({ userId: "me", requestBody: { message: { raw } } });
+  if (!res.data.id) throw new Error("Gmail did not return a draft id");
+  return res.data.id;
+}
