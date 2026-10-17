@@ -3,6 +3,7 @@ import { eq, inArray } from "drizzle-orm";
 import webpush from "web-push";
 import { db, schema } from "@/lib/db";
 import { env } from "@/lib/env";
+import { sendFcm } from "@/lib/fcm";
 import { errMessage, log } from "@/lib/log";
 
 let configured: boolean | undefined;
@@ -19,7 +20,6 @@ export type PushMessage = { title: string; body?: string | null; href?: string |
 
 /** Send to every paired device of one user. Expired subscriptions (404/410) are removed. Returns devices reached. */
 export async function sendPush(userId: string, msg: PushMessage): Promise<number> {
-  if (!pushConfigured()) return 0;
   const subs = await db().select().from(schema.pushSubscriptions).where(eq(schema.pushSubscriptions.userId, userId));
   if (!subs.length) return 0;
   const payload = JSON.stringify({
@@ -31,8 +31,17 @@ export async function sendPush(userId: string, msg: PushMessage): Promise<number
   });
   const dead: string[] = [];
   let ok = 0;
+  const { title, body, href, tag } = JSON.parse(payload) as { title: string; body: string; href: string; tag?: string };
   await Promise.all(
     subs.map(async (s) => {
+      // Firebase Cloud Messaging devices are stored with an "fcm:" endpoint.
+      if (s.endpoint.startsWith("fcm:")) {
+        const r = await sendFcm(s.endpoint.slice(4), { title, body, href, tag });
+        if (r === "ok") ok++;
+        else if (r === "dead") dead.push(s.id);
+        return;
+      }
+      if (!pushConfigured()) return;
       try {
         await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payload, { TTL: 60 * 60 * 12, urgency: "normal" });
         ok++;

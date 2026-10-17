@@ -14,7 +14,7 @@ export const INTRO_KEY = "pa:intro-played";
 export const INTRO_BOOT_SCRIPT = `try{var d=document.documentElement;if(!sessionStorage.getItem("${INTRO_KEY}")&&!matchMedia("(prefers-reduced-motion: reduce)").matches&&d.dataset.reduceMotion!=="true"){d.dataset.intro="1"}}catch(e){}`;
 
 /**
- * Launch animation (GSAP timeline, ~2s): the C draws itself and the dot drops in,
+ * Launch animation (GSAP timeline, ~1.6s): the C draws itself and the dot drops in,
  * then the mark slides left as the wordmark appears beside it, and the overlay lifts.
  * Transform/opacity (plus a light blur) only; never blocks input (pointer-events: none).
  */
@@ -57,24 +57,24 @@ export function LaunchIntro() {
 
       t.set(mark, { x: centre })
         .set(arc, { opacity: 1, strokeDasharray: `${len} ${len + 20}`, strokeDashoffset: len + 10 })
-        .fromTo(mark, { rotate: -140, scale: 0.9 }, { rotate: 0, scale: 1, duration: 0.7, ease: "power3.out" }, 0)
-        .to(arc, { strokeDashoffset: 0, duration: 0.6, ease: "power2.inOut" }, 0)
-        .fromTo(q(".pa-intro-dot"), { opacity: 1, scale: 0, transformOrigin: "50% 50%" }, { scale: 1, duration: 0.34, ease: "back.out(2.6)" }, 0.5)
-        .to(mark, { x: 0, duration: 0.5, ease: "power3.inOut" }, 0.86)
+        .fromTo(mark, { rotate: -140, scale: 0.9 }, { rotate: 0, scale: 1, duration: 0.5, ease: "power3.out" }, 0)
+        .to(arc, { strokeDashoffset: 0, duration: 0.42, ease: "power2.inOut" }, 0)
+        .fromTo(q(".pa-intro-dot"), { opacity: 1, scale: 0, transformOrigin: "50% 50%" }, { scale: 1, duration: 0.26, ease: "back.out(2.6)" }, 0.34)
+        .to(mark, { x: 0, duration: 0.38, ease: "power3.inOut" }, 0.56)
         // Letters start only once the mark has cleared the word, so the two never overlap.
-        .fromTo(q(".pa-intro-letter"), { opacity: 0, x: -10, filter: "blur(3px)" }, { opacity: 1, x: 0, filter: "blur(0px)", duration: 0.4, stagger: 0.045, ease: "power2.out" }, 1.3)
-        .to(q(".pa-intro-stack"), { opacity: 0, scale: 0.97, duration: 0.3, ease: "power2.in" }, "+=0.38")
-        .to(ref.current, { opacity: 0, duration: 0.26, ease: "power1.out" }, "-=0.1");
+        .fromTo(q(".pa-intro-letter"), { opacity: 0, x: -10, filter: "blur(3px)" }, { opacity: 1, x: 0, filter: "blur(0px)", duration: 0.28, stagger: 0.03, ease: "power2.out" }, 0.95)
+        .to(q(".pa-intro-stack"), { opacity: 0, scale: 0.97, duration: 0.22, ease: "power2.in" }, "+=0.18")
+        .to(ref.current, { opacity: 0, duration: 0.2, ease: "power1.out" }, "-=0.08");
       tl = t;
       // Dev only: lets the timeline be scrubbed from the console when tuning the intro.
       if (process.env.NODE_ENV !== "production") (window as unknown as { __introTl?: unknown }).__introTl = t;
     });
-    // Hard cap: whatever happens (slow device, throttled frames, failed import), the page is usable within 3.4s.
+    // Hard cap: whatever happens (slow device, throttled frames, failed import), the page is usable within 2.4s.
     const cap = setTimeout(() => {
       if (process.env.NODE_ENV !== "production" && sessionStorage.getItem("pa:intro-hold")) return;
       delete root.dataset.intro;
       setDone(true);
-    }, 3400);
+    }, 2400);
     return () => {
       killed = true;
       clearTimeout(cap);

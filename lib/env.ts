@@ -59,6 +59,10 @@ const schema = z.object({
   VAPID_PUBLIC_KEY: z.string().optional(),
   VAPID_PRIVATE_KEY: z.string().optional(),
   VAPID_SUBJECT: z.string().optional(),
+  // Firebase Cloud Messaging (optional extra push channel)
+  FIREBASE_SERVICE_ACCOUNT: z.string().optional(),
+  NEXT_PUBLIC_FIREBASE_CONFIG: z.string().optional(),
+  NEXT_PUBLIC_FIREBASE_VAPID_KEY: z.string().optional(),
   // Platform
   VERCEL: z.string().optional(),
   VERCEL_ENV: z.string().optional(),

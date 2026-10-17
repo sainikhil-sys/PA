@@ -19,7 +19,8 @@ function buildCsp(nonce: string, local: boolean): string {
     "media-src 'self' blob:",
     // Only the Today room's music and video players may be framed.
     "frame-src https://open.spotify.com https://www.youtube-nocookie.com",
-    `connect-src 'self'${dev ? " ws:" : ""}`,
+    // Firebase Cloud Messaging registers devices through these Google endpoints.
+    `connect-src 'self' https://fcmregistrations.googleapis.com https://firebaseinstallations.googleapis.com${dev ? " ws:" : ""}`,
     "frame-ancestors 'none'",
     "form-action 'self'",
     "base-uri 'self'",

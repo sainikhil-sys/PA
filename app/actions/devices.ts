@@ -33,6 +33,17 @@ export const savePushSubscription = ownerAction(
   },
 );
 
+/** Save this device's Firebase Cloud Messaging token (stored as an "fcm:" endpoint). */
+export const saveFcmToken = ownerAction(z.object({ token: z.string().min(20).max(4096).regex(/^[\w:.-]+$/) }), async ({ token }, user) => {
+  const ua = (await headers()).get("user-agent") ?? "";
+  const endpoint = `fcm:${token}`;
+  await db()
+    .insert(schema.pushSubscriptions)
+    .values({ userId: user.id, endpoint, p256dh: "fcm", auth: "fcm", label: `${deviceLabel(ua)} · Firebase` })
+    .onConflictDoUpdate({ target: schema.pushSubscriptions.endpoint, set: { userId: user.id, label: `${deviceLabel(ua)} · Firebase` } });
+  await logActivity({ userId: user.id, actor: "me", tool: "devices.fcm_enabled", inputSummary: deviceLabel(ua), outcome: "success" });
+});
+
 export const removeDevice = ownerAction(z.object({ id: z.string().uuid() }), async ({ id }, user) => {
   await db().delete(schema.pushSubscriptions).where(and(eq(schema.pushSubscriptions.id, id), eq(schema.pushSubscriptions.userId, user.id)));
 });

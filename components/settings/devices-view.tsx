@@ -4,7 +4,7 @@ import { Bell, DeviceMobile, Desktop, QrCode, Trash, ShareNetwork } from "@phosp
 import { useRouter } from "next/navigation";
 import * as React from "react";
 import { toast } from "sonner";
-import { createPairCode, removeDevice, savePushSubscription, sendTestPush } from "@/app/actions/devices";
+import { createPairCode, removeDevice, saveFcmToken, savePushSubscription, sendTestPush } from "@/app/actions/devices";
 import { Button } from "@/components/ui/button";
 import { timeAgo } from "@/lib/utils";
 import { Section } from "./section";
@@ -24,7 +24,15 @@ function isStandalone() {
   return typeof window !== "undefined" && (window.matchMedia("(display-mode: standalone)").matches || (navigator as unknown as { standalone?: boolean }).standalone === true);
 }
 
-export function DevicesView({ vapidKey, devices, justPaired }: { vapidKey: string | null; devices: Device[]; justPaired: boolean }) {
+/** Firebase Cloud Messaging token via OUR service worker (sw.js shows the notification). */
+async function fcmToken(config: Record<string, string>, vapidKey: string, reg: ServiceWorkerRegistration): Promise<string | null> {
+  const [{ initializeApp, getApps }, { getMessaging, getToken, isSupported }] = await Promise.all([import("firebase/app"), import("firebase/messaging")]);
+  if (!(await isSupported())) return null;
+  const app = getApps()[0] ?? initializeApp(config);
+  return getToken(getMessaging(app), { vapidKey, serviceWorkerRegistration: reg });
+}
+
+export function DevicesView({ vapidKey, firebase, devices, justPaired }: { vapidKey: string | null; firebase: { config: Record<string, string>; vapidKey: string } | null; devices: Device[]; justPaired: boolean }) {
   const router = useRouter();
   const [pending, start] = React.useTransition();
   const [qr, setQr] = React.useState<{ svg: string; expiresAt: string } | null>(null);
@@ -43,12 +51,22 @@ export function DevicesView({ vapidKey, devices, justPaired }: { vapidKey: strin
 
   const enableHere = () =>
     start(async () => {
-      if (!vapidKey) return void toast.error("Notifications aren't available right now.");
+      if (!vapidKey && !firebase) return void toast.error("Notifications aren't available right now.");
       const perm = await Notification.requestPermission();
       setPermission(perm);
       if (perm !== "granted") return void toast.error("Notifications are blocked. Allow them in your browser settings.");
       const reg = await navigator.serviceWorker.register("/sw.js", { scope: "/" });
       await navigator.serviceWorker.ready;
+      if (firebase) {
+        const token = await fcmToken(firebase.config, firebase.vapidKey, reg).catch(() => null);
+        if (token) {
+          const r = await saveFcmToken({ token });
+          if (!r.ok) return void toast.error(r.error);
+          toast.success("This device will get notifications.");
+          return void router.refresh();
+        }
+      }
+      if (!vapidKey) return void toast.error("This browser couldn't register for notifications.");
       const sub = (await reg.pushManager.getSubscription()) ?? (await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64ToBytes(vapidKey) as BufferSource }));
       const json = sub.toJSON() as { endpoint: string; keys: { p256dh: string; auth: string } };
       const r = await savePushSubscription({ endpoint: json.endpoint, keys: json.keys });

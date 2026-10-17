@@ -6,6 +6,18 @@ import { db, schema } from "@/lib/db";
 import { env } from "@/lib/env";
 
 export const metadata: Metadata = { title: "Devices" };
+
+/** Public Firebase web config + Web Push key (both safe to send to the browser), if FCM is set up. */
+function firebaseClient(): { config: Record<string, string>; vapidKey: string } | null {
+  const e = env();
+  if (!e.NEXT_PUBLIC_FIREBASE_CONFIG || !e.NEXT_PUBLIC_FIREBASE_VAPID_KEY) return null;
+  try {
+    const config = JSON.parse(e.NEXT_PUBLIC_FIREBASE_CONFIG) as Record<string, string>;
+    return config.apiKey && config.projectId && config.messagingSenderId && config.appId ? { config, vapidKey: e.NEXT_PUBLIC_FIREBASE_VAPID_KEY } : null;
+  } catch {
+    return null;
+  }
+}
 export const dynamic = "force-dynamic";
 
 export default async function DevicesPage({ searchParams }: { searchParams: Promise<{ paired?: string }> }) {
@@ -19,6 +31,7 @@ export default async function DevicesPage({ searchParams }: { searchParams: Prom
   return (
     <DevicesView
       vapidKey={env().VAPID_PUBLIC_KEY ?? null}
+      firebase={firebaseClient()}
       justPaired={paired === "1"}
       devices={devices.map((d) => ({ id: d.id, label: d.label, createdAt: d.createdAt.toISOString(), lastUsedAt: d.lastUsedAt?.toISOString() ?? null }))}
     />

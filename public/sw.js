@@ -10,6 +10,8 @@ self.addEventListener("push", (event) => {
   } catch {
     data = { title: "Cowork", body: event.data ? event.data.text() : "" };
   }
+  // Firebase Cloud Messaging wraps our fields in "data"; standard Web Push sends them directly.
+  if (data && data.data && data.data.title) data = data.data;
   const title = data.title || "Cowork";
   event.waitUntil(
     self.registration.showNotification(title, {
