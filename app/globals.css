@@ -257,37 +257,30 @@ html[data-intro="1"] .pa-intro {
 }
 .pa-intro-stack {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 18px;
+  gap: 14px;
+}
+.pa-intro-mark {
+  flex: none;
+  width: clamp(48px, 8.5vw, 76px);
+  height: clamp(48px, 8.5vw, 76px);
 }
 .pa-intro-word {
   display: flex;
-  overflow: hidden;
   font-family: var(--font-ui);
   font-weight: 500;
   font-size: clamp(44px, 8vw, 72px);
   letter-spacing: -0.04em;
   line-height: 1;
 }
+/* Start states, so nothing flashes before GSAP takes over. */
 .pa-intro-letter {
   display: inline-block;
+  opacity: 0;
 }
-/* Start states for the mark: the C undrawn, the dot hidden (GSAP animates both in). */
 .pa-intro-arc {
-  stroke-dasharray: 1;
-  stroke-dashoffset: 1;
+  opacity: 0;
 }
 .pa-intro-dot {
-  transform-box: fill-box;
-  transform-origin: center;
-  transform: scale(0);
-}
-.pa-intro-line {
-  display: block;
-  width: 96px;
-  height: 1px;
-  background: var(--foreground);
-  transform-origin: left center;
-  transform: scaleX(0);
+  opacity: 0;
 }

@@ -28,7 +28,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html lang="en" data-theme="light" className={`${hanken.variable} ${newsreader.variable}`} suppressHydrationWarning>
       <head>
         {/* Decides before first paint whether the launch intro plays (no flash). */}
-        <script nonce={nonce} dangerouslySetInnerHTML={{ __html: INTRO_BOOT_SCRIPT }} />
+        {/* Browsers hide nonce attributes from script, so hydration would always see a mismatch. */}
+        <script nonce={nonce} suppressHydrationWarning dangerouslySetInnerHTML={{ __html: INTRO_BOOT_SCRIPT }} />
       </head>
       <body className="min-h-dvh">
         <LaunchIntro />

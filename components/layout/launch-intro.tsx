@@ -14,9 +14,9 @@ export const INTRO_KEY = "pa:intro-played";
 export const INTRO_BOOT_SCRIPT = `try{var d=document.documentElement;if(!sessionStorage.getItem("${INTRO_KEY}")&&!matchMedia("(prefers-reduced-motion: reduce)").matches&&d.dataset.reduceMotion!=="true"){d.dataset.intro="1"}}catch(e){}`;
 
 /**
- * Launch animation (GSAP timeline, ~1.4s): the C draws itself, the dot drops in, the wordmark
- * letters rise, a hairline sweeps beneath, then the overlay lifts away.
- * Transform/opacity only; never blocks input (pointer-events: none).
+ * Launch animation (GSAP timeline, ~2s): the C draws itself and the dot drops in,
+ * then the mark slides left as the wordmark appears beside it, and the overlay lifts.
+ * Transform/opacity (plus a light blur) only; never blocks input (pointer-events: none).
  */
 export function LaunchIntro() {
   const ref = React.useRef<HTMLDivElement>(null);
@@ -45,21 +45,36 @@ export function LaunchIntro() {
           setDone(true);
         },
       });
-      // The C draws itself, then the dot drops into its opening.
-      t.set(q(".pa-intro-mark"), { opacity: 1 })
-        .fromTo(q(".pa-intro-arc"), { strokeDasharray: 1, strokeDashoffset: 1, rotate: -90, transformOrigin: "50% 50%" }, { strokeDashoffset: 0, rotate: 0, duration: 0.55, ease: "power2.inOut" })
-        .fromTo(q(".pa-intro-dot"), { scale: 0, transformOrigin: "50% 50%" }, { scale: 1, duration: 0.32, ease: "back.out(2.4)" }, "-=0.12")
-        .fromTo(q(".pa-intro-letter"), { yPercent: 70, opacity: 0 }, { yPercent: 0, opacity: 1, duration: 0.42, stagger: 0.07 }, "-=0.2")
-        .fromTo(q(".pa-intro-line"), { scaleX: 0 }, { scaleX: 1, duration: 0.38, ease: "power2.inOut" }, "-=0.18")
-        .to(q(".pa-intro-stack"), { y: -10, opacity: 0, duration: 0.3, ease: "power2.in" }, "+=0.12")
-        .to(ref.current, { opacity: 0, duration: 0.28, ease: "power1.out" }, "-=0.12");
+      const mark = ref.current.querySelector<SVGSVGElement>(".pa-intro-mark")!;
+      const arc = ref.current.querySelector<SVGPathElement>(".pa-intro-arc")!;
+      const word = ref.current.querySelector<HTMLElement>(".pa-intro-word")!;
+      // Real path length in user units; the gap is longer than the dash so the round cap
+      // never shows as a stray dot before the stroke starts drawing.
+      const len = arc.getTotalLength();
+      const gap = parseFloat(getComputedStyle(ref.current.querySelector(".pa-intro-stack")!).columnGap) || 14;
+      // The mark starts centred on screen, then slides left as the wordmark appears beside it.
+      const centre = (word.offsetWidth + gap) / 2;
+
+      t.set(mark, { x: centre })
+        .set(arc, { opacity: 1, strokeDasharray: `${len} ${len + 20}`, strokeDashoffset: len + 10 })
+        .fromTo(mark, { rotate: -140, scale: 0.9 }, { rotate: 0, scale: 1, duration: 0.7, ease: "power3.out" }, 0)
+        .to(arc, { strokeDashoffset: 0, duration: 0.6, ease: "power2.inOut" }, 0)
+        .fromTo(q(".pa-intro-dot"), { opacity: 1, scale: 0, transformOrigin: "50% 50%" }, { scale: 1, duration: 0.34, ease: "back.out(2.6)" }, 0.5)
+        .to(mark, { x: 0, duration: 0.5, ease: "power3.inOut" }, 0.86)
+        // Letters start only once the mark has cleared the word, so the two never overlap.
+        .fromTo(q(".pa-intro-letter"), { opacity: 0, x: -10, filter: "blur(3px)" }, { opacity: 1, x: 0, filter: "blur(0px)", duration: 0.4, stagger: 0.045, ease: "power2.out" }, 1.3)
+        .to(q(".pa-intro-stack"), { opacity: 0, scale: 0.97, duration: 0.3, ease: "power2.in" }, "+=0.38")
+        .to(ref.current, { opacity: 0, duration: 0.26, ease: "power1.out" }, "-=0.1");
       tl = t;
+      // Dev only: lets the timeline be scrubbed from the console when tuning the intro.
+      if (process.env.NODE_ENV !== "production") (window as unknown as { __introTl?: unknown }).__introTl = t;
     });
-    // Hard cap: whatever happens (slow device, throttled frames, failed import), the page is usable within 2.5s.
+    // Hard cap: whatever happens (slow device, throttled frames, failed import), the page is usable within 3.4s.
     const cap = setTimeout(() => {
+      if (process.env.NODE_ENV !== "production" && sessionStorage.getItem("pa:intro-hold")) return;
       delete root.dataset.intro;
       setDone(true);
-    }, 2500);
+    }, 3400);
     return () => {
       killed = true;
       clearTimeout(cap);
@@ -71,8 +86,8 @@ export function LaunchIntro() {
   return (
     <div ref={ref} className="pa-intro" role="presentation" aria-label={BRAND.name}>
       <div className="pa-intro-stack">
-        <svg className="pa-intro-mark" width="64" height="64" viewBox="0 0 32 32">
-          <path className="pa-intro-arc" d={MARK_ARC} pathLength={1} fill="none" stroke="var(--primary)" strokeWidth={MARK_STROKE} strokeLinecap="round" />
+        <svg className="pa-intro-mark" viewBox="0 0 32 32">
+          <path className="pa-intro-arc" d={MARK_ARC} fill="none" stroke="var(--primary)" strokeWidth={MARK_STROKE} strokeLinecap="round" />
           <circle className="pa-intro-dot" {...MARK_DOT} fill="var(--primary)" />
         </svg>
         <div className="pa-intro-word">
@@ -82,7 +97,6 @@ export function LaunchIntro() {
             </span>
           ))}
         </div>
-        <span className="pa-intro-line" />
       </div>
     </div>
   );
