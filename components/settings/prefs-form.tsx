@@ -55,7 +55,7 @@ export function NotificationsForm({ initial, telegramConfigured, telegramAllowed
         <Row label="Phone & browser" hint="Push notifications to devices you paired in Settings → Devices.">
           <Switch checked={p.notifyPush} onCheckedChange={(v) => set({ notifyPush: v })} aria-label="Push notifications" />
         </Row>
-        <Row label="Email updates" hint={digestAvailable ? "Urgent mail, reminders, scheduled posts and automation alerts, sent to your sign-in address." : "Email isn't available right now."}>
+        <Row label="Email updates" hint={digestAvailable ? "Reminders, scheduled posts and automation alerts, sent to your sign-in address." : "Email isn't available right now."}>
           <Switch checked={p.notifyEmail} disabled={!digestAvailable} onCheckedChange={(v) => set({ notifyEmail: v })} aria-label="Email updates" />
         </Row>
         <Row label="Email digest" hint={digestAvailable ? "Your daily briefing, emailed to you each morning." : "Email isn't available right now."}>

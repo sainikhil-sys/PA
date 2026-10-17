@@ -28,7 +28,8 @@ async function sendTelegram(text: string) {
 }
 
 /** Kinds worth an email. Briefings have their own digest email. */
-const EMAIL_KINDS = new Set(["urgent_email", "automation", "automation_failed", "reminder", "post_reminder"]);
+// Not "urgent_email": emailing someone about an email they already have is noise (and could loop).
+const EMAIL_KINDS = new Set(["automation", "automation_failed", "reminder", "post_reminder"]);
 
 /**
  * Create an in-app notification (deduplicated), then deliver it by email to the

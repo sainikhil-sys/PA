@@ -23,6 +23,7 @@ import { createSession } from "./session";
 /** Same message whether or not the email is allowed: never reveal the allowlist. */
 export const GENERIC_SENT = "If that email can sign in, a code is on its way.";
 export const GENERIC_INVALID = "That code didn't work. Check it and try again, or request a new one.";
+export const ACCOUNT_DISABLED = "This account has been disabled. Contact support@antropic.me if you think that's a mistake.";
 export const RATE_LIMITED = "Too many attempts. Please wait a few minutes and try again.";
 
 export async function requestOtp(rawEmail: string, ip: string): Promise<{ ok: boolean; message: string }> {
@@ -39,6 +40,10 @@ export async function requestOtp(rawEmail: string, ip: string): Promise<{ ok: bo
     log.info("otp.requested", { allowed: false });
     return { ok: true, message: GENERIC_SENT };
   }
+
+  // A disabled account gets a clear answer instead of a code that can never work.
+  const existing = await db().query.users.findFirst({ where: eq(schema.users.email, email), columns: { disabledAt: true } });
+  if (existing?.disabledAt) return { ok: false, message: ACCOUNT_DISABLED };
 
   const code = isTestMode() ? TEST_OTP_CODE : generateOtpCode();
   // Invalidate any earlier unused codes for this email (single active code).
@@ -100,7 +105,7 @@ export async function verifyOtp(rawEmail: string, code: string, ip: string): Pro
     .values({ email })
     .onConflictDoUpdate({ target: schema.users.email, set: { email } })
     .returning({ id: schema.users.id, onboardedAt: schema.users.onboardedAt, disabledAt: schema.users.disabledAt, created: sql<boolean>`(xmax = 0)` });
-  if (user!.disabledAt) return { ok: false, message: GENERIC_INVALID };
+  if (user!.disabledAt) return { ok: false, message: ACCOUNT_DISABLED };
   await db().insert(schema.userSettings).values({ userId: user!.id }).onConflictDoNothing();
   await createSession(user!.id);
   await logActivity({ userId: user!.id, actor: "me", tool: "auth.sign_in", inputSummary: "email code", outcome: "success" });

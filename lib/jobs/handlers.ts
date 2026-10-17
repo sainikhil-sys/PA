@@ -117,7 +117,8 @@ async function classifyEmails(job: Job) {
         category: c.category,
         summary: c.summary,
       }).catch(() => 0);
-      if (c.category === "URGENT") {
+      const fromCowork = /@antropic\.me$/i.test(email.fromEmail ?? "") || /onboarding@resend\.dev$/i.test(email.fromEmail ?? "");
+      if (c.category === "URGENT" && !fromCowork) {
         await notify(job.userId, { kind: "urgent_email", title: `Urgent: ${email.subject}`.slice(0, 200), body: c.summary, href: "/inbox", dedupeKey: `urgent:${email.id}` });
       }
     } catch (err) {
