@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { CardSkeleton, RibbonSkeleton } from "@/components/today/card-skeleton";
 import { AgentCard, IdeasCard, IntegrationsStrip, MailCard, ScheduleCard, TasksCard } from "@/components/today/cards";
 import { NewsRibbon } from "@/components/today/news-ribbon";
+import { RoomRow } from "@/components/today/room";
 import { requireOwner } from "@/lib/auth/session";
 import type { User } from "@/lib/db/schema";
 import { getSettings } from "@/lib/db/queries/settings";
@@ -28,15 +29,17 @@ async function News({ user }: { user: User }) {
   return <NewsRibbon items={items.map(toNewsCard)} />;
 }
 
-/** Bento grid: news ribbon, agent, schedule, tasks, mail, ideas, integrations. Each card streams in with its own skeleton. */
+/** Room: wallpaper, focus clock, music and video. Then the bento grid: news ribbon, agent, schedule, tasks, mail, ideas, integrations. Each card streams in with its own skeleton. */
 export default async function TodayPage() {
   const user = await requireOwner();
+  const s = await getSettings(user.id);
   return (
     <div className="flex flex-col gap-3 sm:gap-4">
       <h1 className="sr-only">Today</h1>
       <Suspense fallback={<RibbonSkeleton />}>
         <News user={user} />
       </Suspense>
+      <RoomRow room={s.room} />
       <div className="grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-12">
         <div className="md:col-span-2 lg:col-span-4">
           <Suspense fallback={<CardSkeleton rows={2} />}>

@@ -284,3 +284,31 @@ html[data-intro="1"] .pa-intro {
 .pa-intro-dot {
   opacity: 0;
 }
+
+/* ── Today "room" (wallpaper behind the dashboard; see components/today/room.tsx) ── */
+html[data-room] body {
+  background: transparent;
+}
+html[data-room="dark"] {
+  color-scheme: dark;
+  background: #0e0f13;
+  --background: #0e0f13;
+  --foreground: #f4f4f5;
+  --muted: #a1a1aa;
+  --subtle: #8b8b94;
+  --surface: #17181d;
+  --surface-2: #1f2026;
+  --surface-hover: #26272e;
+  --border: #2a2b33;
+  --border-strong: #41424b;
+  --primary: #f4f4f5;
+  --primary-foreground: #0a0a0a;
+  --primary-hover: #e4e4e7;
+  --ring: #f4f4f5;
+  --overlay: rgb(0 0 0 / 0.5);
+}
+html[data-room] .card {
+  background: color-mix(in srgb, var(--background) 78%, transparent);
+  -webkit-backdrop-filter: blur(16px) saturate(1.15);
+  backdrop-filter: blur(16px) saturate(1.15);
+}
