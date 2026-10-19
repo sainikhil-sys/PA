@@ -1,5 +1,5 @@
 import "server-only";
-import { and, asc, desc, eq, gte } from "drizzle-orm";
+import { and, asc, desc, eq, exists, gte, ilike, or, sql } from "drizzle-orm";
 import { generateObject, NoProviderError, streamGenerate } from "@/lib/ai/router";
 import { db, schema } from "@/lib/db";
 import type { Citation, MessageMeta, User } from "@/lib/db/schema";
@@ -152,18 +152,30 @@ export async function* runChatTurn(opts: {
   yield { type: "done", messageId: assistant!.id, generalKnowledge, model };
 }
 
+/** `%` and `_` match literally (ILIKE with the default `\` escape). */
+export function likePattern(q: string): string {
+  return `%${q.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
+}
+
+/** Newest 50 chats, or every chat whose title or any message contains `q` (searched in the database, all history). */
 export async function listConversations(userId: string, q?: string) {
-  const rows = await db().select().from(schema.conversations).where(eq(schema.conversations.userId, userId)).orderBy(desc(schema.conversations.updatedAt)).limit(100);
-  if (!q?.trim()) return rows.slice(0, 50);
-  const needle = q.toLowerCase();
-  const hits = await db()
-    .select({ conversationId: schema.messages.conversationId, content: schema.messages.content })
-    .from(schema.messages)
-    .where(eq(schema.messages.userId, userId))
-    .orderBy(desc(schema.messages.createdAt))
-    .limit(500);
-  const ids = new Set(hits.filter((h) => h.content.toLowerCase().includes(needle)).map((h) => h.conversationId));
-  return rows.filter((r) => ids.has(r.id) || r.title.toLowerCase().includes(needle)).slice(0, 50);
+  const needle = q?.trim();
+  const c = schema.conversations;
+  const where = needle
+    ? and(
+        eq(c.userId, userId),
+        or(
+          ilike(c.title, likePattern(needle)),
+          exists(
+            db()
+              .select({ one: sql`1` })
+              .from(schema.messages)
+              .where(and(eq(schema.messages.conversationId, c.id), ilike(schema.messages.content, likePattern(needle)))),
+          ),
+        ),
+      )
+    : eq(c.userId, userId);
+  return db().select().from(c).where(where).orderBy(desc(c.updatedAt)).limit(50);
 }
 
 export async function getConversation(userId: string, id: string) {
