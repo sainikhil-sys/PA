@@ -1,5 +1,6 @@
 import {
   Books,
+  SealCheck,
   ChatCircle,
   CheckSquare,
   GearSix,
@@ -15,6 +16,9 @@ import {
 
 export type NavItem = { href: string; label: string; icon: Icon; match?: string[] };
 
+/** Small counts shown next to nav items, keyed by href (e.g. pending approvals). */
+export type NavBadges = Record<string, number>;
+
 /** Primary group (max 7 items) and a secondary group, per the taste rules. */
 export const PRIMARY_NAV: NavItem[] = [
   { href: "/", label: "Today", icon: SunHorizon },
@@ -27,6 +31,7 @@ export const PRIMARY_NAV: NavItem[] = [
 ];
 
 export const SECONDARY_NAV: NavItem[] = [
+  { href: "/approvals", label: "Approvals", icon: SealCheck },
   { href: "/phone", label: "Phone", icon: DeviceMobile },
   { href: "/agents", label: "Agents & sprints", icon: Robot },
   { href: "/integrations", label: "Integrations", icon: PuzzlePiece },

@@ -8,6 +8,7 @@ import { TooltipProvider } from "@/components/ui/misc";
 import { AppilixSync } from "./appilix-sync";
 import { CommandPalette } from "./command-palette";
 import { MobileNav } from "./mobile-nav";
+import type { NavBadges } from "./nav";
 import { ShellContext } from "./shell-context";
 import { Sidebar } from "./sidebar";
 import { SmoothScroll } from "./smooth-scroll";
@@ -31,10 +32,12 @@ export function AppShell(props: Parameters<typeof ShellInner>[0]) {
 function ShellInner({
   user,
   prefs,
+  badges,
   children,
 }: {
   user: ShellUser;
   prefs: { reduceMotion: boolean; fontScale: string; density: string; linkPanel: unknown };
+  badges?: NavBadges;
   children: React.ReactNode;
 }) {
   const [chatOpen, setChatOpen] = React.useState(false);
@@ -94,7 +97,7 @@ function ShellInner({
           <SmoothScroll disabled={prefs.reduceMotion} />
           {/* Docked Live Link panel pushes content via --lp-right / --lp-bottom. */}
           <div className="flex min-h-dvh pb-[var(--lp-bottom,0px)] pr-[var(--lp-right,0px)] transition-[padding] duration-200">
-            <Sidebar />
+            <Sidebar badges={badges} />
             <div className="flex min-w-0 flex-1 flex-col">
               <Topbar />
               <main id="main" tabIndex={-1} className="mx-auto w-full max-w-[1280px] flex-1 px-3 pb-24 pt-4 focus:outline-none sm:px-6 sm:pt-6 lg:px-8 lg:pb-12">
@@ -102,7 +105,7 @@ function ShellInner({
               </main>
             </div>
           </div>
-          <MobileNav />
+          <MobileNav badges={badges} />
           <AppilixSync email={user.email} />
           <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
           {chatOpen ? <ChatPanel /> : null}

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { BriefingCard } from "@/components/today/briefing-card";
 import { CardSkeleton, RibbonSkeleton } from "@/components/today/card-skeleton";
 import { AgentCard, IdeasCard, IntegrationsStrip, MailCard, ScheduleCard, TasksCard } from "@/components/today/cards";
 import { NewsRibbon } from "@/components/today/news-ribbon";
@@ -58,6 +59,7 @@ export default async function TodayPage() {
           { id: "agent", label: "Agent", className: "md:col-span-2 lg:col-span-4", node: <Suspense fallback={<CardSkeleton rows={2} />}><AgentCard user={user} /></Suspense> },
           { id: "schedule", label: "Schedule", className: "lg:col-span-4", node: <Suspense fallback={<CardSkeleton rows={4} />}><ScheduleCard user={user} /></Suspense> },
           { id: "tasks", label: "Tasks", className: "lg:col-span-4", node: <Suspense fallback={<CardSkeleton rows={4} />}><TasksCard user={user} /></Suspense> },
+          { id: "briefing", label: "Briefing", className: "md:col-span-2 lg:col-span-12", node: <Suspense fallback={<CardSkeleton rows={3} />}><BriefingCard user={user} /></Suspense> },
           { id: "mail", label: "Mail", className: "md:col-span-2 lg:col-span-7", node: <Suspense fallback={<CardSkeleton rows={3} />}><MailCard user={user} /></Suspense> },
           { id: "phone", label: "Phone", className: "md:col-span-2 lg:col-span-5", node: <Suspense fallback={<CardSkeleton rows={3} />}><PhoneSection user={user} /></Suspense> },
           { id: "ideas", label: "Ideas", className: "md:col-span-2 lg:col-span-12", node: <Suspense fallback={<CardSkeleton rows={3} />}><IdeasCard user={user} /></Suspense> },

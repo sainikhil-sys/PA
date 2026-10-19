@@ -1,6 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { getOwner } from "@/lib/auth/session";
 import { db, schema } from "@/lib/db";
+import { safeFetch } from "@/lib/security/safe-fetch";
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +24,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     .limit(1);
   if (!row?.url || !row.url.startsWith("https://")) return new Response(null, { status: 404 });
 
-  const upstream = await fetch(row.url, { redirect: "follow", signal: AbortSignal.timeout(8000), headers: { accept: "image/avif,image/webp,image/*", "user-agent": "Mozilla/5.0 (compatible; Cowork-news/1.0)" } }).catch(() => null);
+  const upstream = await safeFetch(row.url, { signal: AbortSignal.timeout(8000), headers: { accept: "image/avif,image/webp,image/*", "user-agent": "Mozilla/5.0 (compatible; Cowork-news/1.0)" } }).catch(() => null);
   const type = upstream?.headers.get("content-type") ?? "";
   if (!upstream?.ok || !/^image\/(jpeg|png|webp|gif|avif)/.test(type)) return new Response(null, { status: 404 });
   const len = Number(upstream.headers.get("content-length") ?? 0);

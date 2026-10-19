@@ -109,7 +109,7 @@ export async function syncSlack(source: KnowledgeSource): Promise<SyncResult> {
   const channels = list(source.config, "channels");
   const oldest = (source.cursor?.oldest as Record<string, string> | undefined) ?? {};
   let processed = 0;
-  for (const ch of channels.slice(0, 5)) {
+  for (const ch of channels.slice(0, 25)) {
     const url = new URL("https://slack.com/api/conversations.history");
     url.searchParams.set("channel", ch);
     url.searchParams.set("limit", "100");
@@ -140,7 +140,7 @@ export async function syncGithub(source: KnowledgeSource): Promise<SyncResult> {
   const repos = list(source.config, "repos").filter((r) => /^[\w.-]+\/[\w.-]+$/.test(r));
   const headers = { authorization: `Bearer ${token}`, accept: "application/vnd.github+json", "user-agent": "Cowork-knowledge" };
   let processed = 0;
-  for (const repo of repos.slice(0, 5)) {
+  for (const repo of repos.slice(0, 25)) {
     const readme = await fetch(`https://api.github.com/repos/${repo}/readme`, { headers: { ...headers, accept: "application/vnd.github.raw" }, signal: AbortSignal.timeout(15_000) });
     if (readme.ok) {
       await upsertItem(source, { externalId: `${repo}:README`, title: `${repo} · README`, url: `https://github.com/${repo}`, mimeType: "text/markdown", text: await readme.text() });

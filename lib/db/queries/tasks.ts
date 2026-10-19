@@ -101,13 +101,33 @@ export async function updateTask(
     recurrence?: Recurrence | null;
   },
 ) {
+  // Moving a task's time moves its reminder too (and re-arms it if it already fired).
+  const reminder = input.scheduledAt !== undefined ? { remindAt: input.scheduledAt, reminderSentAt: null } : {};
   const [task] = await db()
     .update(schema.tasks)
-    .set(input)
+    .set({ ...input, ...reminder })
     .where(and(eq(schema.tasks.id, id), eq(schema.tasks.userId, userId)))
     .returning();
   if (!task) throw new TaskError("Task not found", "not_found");
   return task;
+}
+
+/** A recurring task that gets completed (any way: checkbox, board, approval) spawns its next occurrence. */
+async function spawnNextOccurrence(userId: string, task: typeof schema.tasks.$inferSelect) {
+  if (!task.recurrence || task.parentId) return;
+  const { timezone } = await getSettings(userId);
+  const next = nextOccurrence(task.recurrence, timezone, task.scheduledAt && task.scheduledAt > new Date() ? task.scheduledAt : new Date());
+  await createTask(userId, {
+    title: task.title,
+    description: task.description,
+    createdBy: task.createdBy,
+    assignee: task.assignee,
+    priority: task.priority,
+    tags: task.tags,
+    recurrence: task.recurrence,
+    scheduledAt: next,
+    durationMinutes: task.durationMinutes,
+  });
 }
 
 async function mustGet(userId: string, id: string) {
@@ -130,6 +150,7 @@ export async function moveTask(userId: string, id: string, to: TaskStatus, posit
     })
     .where(and(eq(schema.tasks.id, id), eq(schema.tasks.userId, userId)))
     .returning();
+  if (to === "done" && task.status !== "done") await spawnNextOccurrence(userId, task);
   return updated!;
 }
 
@@ -195,6 +216,9 @@ export async function approveTask(userId: string, id: string) {
       .returning();
     await tx.insert(schema.taskComments).values({ userId, taskId: id, author: "me", kind: "comment", body: "Approved." });
     return updated!;
+  }).then(async (updated) => {
+    await spawnNextOccurrence(userId, task);
+    return updated;
   });
 }
 
@@ -244,24 +268,8 @@ export async function taskCounts(userId: string) {
 
 /** Checkbox toggle. Completing a recurring task schedules its next occurrence. */
 export async function setTaskDone(userId: string, id: string, done: boolean) {
-  const task = await mustGet(userId, id);
-  const updated = await moveTask(userId, id, done ? "done" : "todo");
-  if (done && task.recurrence && !task.parentId) {
-    const { timezone } = await getSettings(userId);
-    const next = nextOccurrence(task.recurrence, timezone, task.scheduledAt && task.scheduledAt > new Date() ? task.scheduledAt : new Date());
-    await createTask(userId, {
-      title: task.title,
-      description: task.description,
-      createdBy: task.createdBy,
-      assignee: task.assignee,
-      priority: task.priority,
-      tags: task.tags,
-      recurrence: task.recurrence,
-      scheduledAt: next,
-      durationMinutes: task.durationMinutes,
-    });
-  }
-  return updated;
+  // moveTask spawns the next occurrence of a recurring task when it becomes done.
+  return moveTask(userId, id, done ? "done" : "todo");
 }
 
 /** Tasks scheduled in [from, to) for the calendar views. */

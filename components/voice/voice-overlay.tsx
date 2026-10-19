@@ -123,6 +123,8 @@ export function VoiceOverlay() {
       setInterim("");
       if (!t) {
         setOrb("idle");
+        // Hands-free keeps listening after a silent turn instead of ending the conversation.
+        if (modeRef.current === "handsfree") setTimeout(() => void startListeningRef.current?.(), 400);
         return;
       }
       const pending = confirmingRef.current;
@@ -137,6 +139,7 @@ export function VoiceOverlay() {
     [chat], // eslint-disable-line react-hooks/exhaustive-deps
   );
 
+  const startListeningRef = React.useRef<(() => Promise<void>) | null>(null);
   const startListening = React.useCallback(async () => {
     setError(null);
     stopSpeaking(); // interrupt-to-stop
@@ -226,6 +229,7 @@ export function VoiceOverlay() {
       setError("Microphone access was blocked. Allow it in your browser's site settings.");
     }
   }, [Ctor, cfg, handleUtterance, stopSpeaking]);
+  startListeningRef.current = startListening;
 
   // ---------- react to finished answers ----------
   React.useEffect(() => {

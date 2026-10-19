@@ -1,11 +1,12 @@
 import "server-only";
-import { and, desc, eq, ilike, or } from "drizzle-orm";
+import { and, count, desc, eq, ilike, or } from "drizzle-orm";
 import { draftReply } from "@/lib/agents/emailAgent";
 import { queueRun } from "@/lib/automations/events";
 import { draftPostFromIdeaText } from "@/lib/content/drafts";
 import { db, schema } from "@/lib/db";
 import type { Proposal, ProposalKind, User } from "@/lib/db/schema";
 import { logActivity } from "@/lib/db/queries/activity";
+import { notify } from "@/lib/db/queries/notifications";
 import { getSettings } from "@/lib/db/queries/settings";
 import { createTask } from "@/lib/db/queries/tasks";
 import { addTextToKnowledge } from "@/lib/knowledge/ingest";
@@ -126,6 +127,11 @@ export async function executeProposal(user: User, id: string, edits?: { title?: 
         result = { message: "Saved to your knowledge base" };
         break;
       }
+      case "notify": {
+        await notify(user.id, { kind: "automation", title: String(edits?.title ?? payload.title ?? "Reminder").slice(0, 200), body: payload.body ? String(payload.body) : undefined, dedupeKey: `proposal:${p.id}` });
+        result = { message: "Notification sent to you" };
+        break;
+      }
       default:
         throw new Error("Unsupported request");
     }
@@ -149,4 +155,13 @@ export async function dismissProposal(userId: string, id: string) {
 
 export async function pendingProposals(userId: string, limit = 20) {
   return db().select().from(schema.proposals).where(and(eq(schema.proposals.userId, userId), eq(schema.proposals.status, "pending"))).orderBy(desc(schema.proposals.createdAt)).limit(limit);
+}
+
+/** How many proposals wait for a decision (the Approvals nav badge). */
+export async function pendingProposalCount(userId: string): Promise<number> {
+  const [row] = await db()
+    .select({ n: count() })
+    .from(schema.proposals)
+    .where(and(eq(schema.proposals.userId, userId), eq(schema.proposals.status, "pending")));
+  return row?.n ?? 0;
 }

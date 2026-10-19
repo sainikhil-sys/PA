@@ -1,5 +1,6 @@
 import "server-only";
 import { htmlToText } from "@/lib/security/sanitize";
+import { safeFetch } from "@/lib/security/safe-fetch";
 
 /** Vercel request bodies are capped (~4.5MB); stay under it. */
 export const MAX_UPLOAD_BYTES = 4 * 1024 * 1024;
@@ -42,7 +43,7 @@ export async function fetchPageText(url: string): Promise<{ title: string; text:
   if (/^(localhost|127\.|10\.|192\.168\.|169\.254\.|0\.|\[?::1\]?$)/.test(u.hostname) || /^172\.(1[6-9]|2\d|3[01])\./.test(u.hostname)) {
     throw new Error("Private addresses are not allowed");
   }
-  const res = await fetch(u, { redirect: "follow", signal: AbortSignal.timeout(10_000), headers: { "user-agent": "Cowork-knowledge/1.0", accept: "text/html,text/plain" } });
+  const res = await safeFetch(u, { signal: AbortSignal.timeout(10_000), headers: { "user-agent": "Cowork-knowledge/1.0", accept: "text/html,text/plain" } });
   if (!res.ok) throw new Error(`The page returned ${res.status}`);
   const type = res.headers.get("content-type") ?? "";
   if (!/text\/(html|plain)/.test(type)) throw new Error("That URL isn't a web page");

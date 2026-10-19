@@ -8,11 +8,11 @@ import * as React from "react";
 import { Tooltip } from "@/components/ui/misc";
 import { cn } from "@/lib/utils";
 import { Logo } from "./logo";
-import { isActive, PRIMARY_NAV, SECONDARY_NAV, type NavItem } from "./nav";
+import { isActive, PRIMARY_NAV, SECONDARY_NAV, type NavBadges, type NavItem } from "./nav";
 
 const KEY = "pa:sidebar-collapsed";
 
-export function Sidebar() {
+export function Sidebar({ badges = {} }: { badges?: NavBadges }) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = React.useState(false);
 
@@ -56,21 +56,22 @@ export function Sidebar() {
         </button>
       </div>
       <nav className="flex flex-1 flex-col gap-6 overflow-y-auto px-3 pb-4 pt-2" data-lenis-prevent>
-        <NavGroup items={PRIMARY_NAV} pathname={pathname} collapsed={collapsed} />
+        <NavGroup items={PRIMARY_NAV} pathname={pathname} collapsed={collapsed} badges={badges} />
         <div className="mt-auto">
-          <NavGroup items={SECONDARY_NAV} pathname={pathname} collapsed={collapsed} />
+          <NavGroup items={SECONDARY_NAV} pathname={pathname} collapsed={collapsed} badges={badges} />
         </div>
       </nav>
     </aside>
   );
 }
 
-function NavGroup({ items, pathname, collapsed }: { items: NavItem[]; pathname: string; collapsed: boolean }) {
+function NavGroup({ items, pathname, collapsed, badges }: { items: NavItem[]; pathname: string; collapsed: boolean; badges: NavBadges }) {
   return (
     <ul className="flex flex-col gap-0.5">
       {items.map((item) => {
         const active = isActive(pathname, item);
         const Icon = item.icon;
+        const count = badges[item.href] ?? 0;
         const link = (
           <Link
             href={item.href}
@@ -86,6 +87,17 @@ function NavGroup({ items, pathname, collapsed }: { items: NavItem[]; pathname: 
             ) : null}
             <Icon size={20} weight={active ? "fill" : "regular"} className="relative shrink-0" />
             {!collapsed ? <span className={cn("relative truncate", active && "font-medium")}>{item.label}</span> : <span className="sr-only">{item.label}</span>}
+            {count > 0 ? (
+              <span
+                className={cn(
+                  "relative grid h-5 min-w-5 place-items-center rounded-full bg-foreground px-1.5 text-[11px] font-medium tabular-nums text-background",
+                  collapsed ? "absolute right-2 top-1.5 h-4 min-w-4 px-1 text-[10px]" : "ml-auto",
+                )}
+              >
+                {count > 99 ? "99+" : count}
+                <span className="sr-only"> waiting</span>
+              </span>
+            ) : null}
           </Link>
         );
         return (

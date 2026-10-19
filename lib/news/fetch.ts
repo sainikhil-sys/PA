@@ -5,16 +5,16 @@ import { env } from "@/lib/env";
 import { errMessage, log } from "@/lib/log";
 import { sha256 } from "@/lib/security/crypto";
 import { dedupeItems, pageImage, parseFeed, parseFeedConfig, type ParsedItem } from "./parse";
+import { safeFetch } from "@/lib/security/safe-fetch";
 
 const MAX_FEED_BYTES = 2_000_000;
 const RETENTION_MS = 3 * 86_400_000;
 
 async function fetchFeed(url: string): Promise<string | null> {
   try {
-    const res = await fetch(url, {
+    const res = await safeFetch(url, {
       headers: { "user-agent": "Cowork-news/1.0 (+personal assistant; RSS reader)", accept: "application/rss+xml, application/atom+xml, application/xml, text/xml" },
       signal: AbortSignal.timeout(8000),
-      redirect: "follow",
     });
     if (!res.ok) return null;
     const text = await res.text();
@@ -126,7 +126,7 @@ export async function backfillNewsImages(userId: string, limit = 12) {
       let image = "";
       try {
         if (r.url.startsWith("https://")) {
-          const res = await fetch(r.url, { redirect: "follow", signal: AbortSignal.timeout(6000), headers: { "user-agent": "Mozilla/5.0 (compatible; Cowork-news/1.0)", accept: "text/html" } });
+          const res = await safeFetch(r.url, { signal: AbortSignal.timeout(6000), headers: { "user-agent": "Mozilla/5.0 (compatible; Cowork-news/1.0)", accept: "text/html" } });
           if (res.ok && (res.headers.get("content-type") ?? "").includes("html")) {
             const reader = res.body?.getReader();
             let html = "";
