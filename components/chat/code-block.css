@@ -1,0 +1,50 @@
+/*
+ * Quiet syntax theme for chat code blocks (components/chat/code-block.tsx).
+ * Mostly weight, italic and muted tones; three low-chroma hues, each at least
+ * 4.5:1 on --surface in both rooms.
+ */
+:root {
+  --code-string: #2f6b57;
+  --code-number: #8a4a12;
+  --code-fn: #2f5d7c;
+}
+html[data-room="dark"],
+html[data-theme="dark"] {
+  --code-string: #8fcbb3;
+  --code-number: #e0b07a;
+  --code-fn: #9cc3dc;
+}
+
+.prose-pa .pa-code {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  overflow: hidden;
+  margin: 0.75em 0;
+}
+.prose-pa .pa-code pre {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  margin: 0;
+  padding: 12px 14px;
+  overflow-x: auto;
+}
+.prose-pa .pa-code code {
+  font-size: 0.8125rem;
+  line-height: 1.6;
+  tab-size: 2;
+}
+
+.pa-tok-comment { color: var(--subtle); font-style: italic; }
+.pa-tok-keyword { color: var(--foreground); font-weight: 500; }
+.pa-tok-string { color: var(--code-string); }
+.pa-tok-number,
+.pa-tok-literal { color: var(--code-number); }
+.pa-tok-fn,
+.pa-tok-prop { color: var(--code-fn); }
+.pa-tok-punct { color: var(--muted); }
+
+@media print {
+  .pa-code-copy { display: none; }
+}

@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import type { ChatAttachmentInput, TransformKind, TranslateLanguage } from "@/lib/chat/attachments";
 import type { Citation } from "@/lib/db/schema";
 
 export type UiProposal = { id: string; kind: string; label: string; summary: string; status?: string };
@@ -45,10 +46,20 @@ export function useChat(opts: { conversationId?: string; initial?: UiMessage[]; 
   }, [opts.conversationId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const send = React.useCallback(
-    async (text: string, extra: { attachment?: { name: string; text: string }; replaceFromMessageId?: string; trigger?: "text" | "voice" } = {}) => {
+    async (
+      text: string,
+      extra: {
+        attachment?: ChatAttachmentInput;
+        transform?: { kind: TransformKind; language?: TranslateLanguage };
+        replaceFromMessageId?: string;
+        trigger?: "text" | "voice";
+        /** Edit / regenerate: show the chip of the document the server carries over. Display only. */
+        keepAttachment?: { name: string } | null;
+      } = {},
+    ) => {
       if (!text.trim() || busy) return;
       setBusy(true);
-      const tempUser: UiMessage = { id: `u-${Date.now()}`, role: "user", content: text, attachment: extra.attachment ? { name: extra.attachment.name } : null };
+      const tempUser: UiMessage = { id: `u-${Date.now()}`, role: "user", content: text, attachment: extra.attachment ? { name: extra.attachment.name } : (extra.keepAttachment ?? null) };
       const tempAsst: UiMessage = { id: `a-${Date.now()}`, role: "assistant", content: "", tools: [], proposals: [], pending: true };
       setMessages((prev) => {
         let base = prev;
@@ -65,7 +76,7 @@ export function useChat(opts: { conversationId?: string; initial?: UiMessage[]; 
         const res = await fetch("/api/chat", {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ conversationId, message: text, attachment: extra.attachment, replaceFromMessageId: extra.replaceFromMessageId, trigger: extra.trigger ?? "text" }),
+          body: JSON.stringify({ conversationId, message: text, attachment: extra.attachment, transform: extra.transform, replaceFromMessageId: extra.replaceFromMessageId, trigger: extra.trigger ?? "text" }),
           signal: ctrl.signal,
         });
         if (!res.ok || !res.body) throw new Error(res.status === 429 ? "You're sending messages quickly. Wait a moment." : "Couldn't reach your agent.");
@@ -114,7 +125,7 @@ export function useChat(opts: { conversationId?: string; initial?: UiMessage[]; 
 
   const regenerate = () => {
     const lastUser = [...messages].reverse().find((m) => m.role === "user");
-    if (lastUser) void send(lastUser.content, { replaceFromMessageId: lastUser.id });
+    if (lastUser) void send(lastUser.content, { replaceFromMessageId: lastUser.id, keepAttachment: lastUser.attachment ?? null });
   };
 
   const setProposalStatus = (proposalId: string, status: string) =>

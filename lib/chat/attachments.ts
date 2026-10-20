@@ -103,7 +103,10 @@ export function looksLikeCode(text: string): boolean {
   const lines = text.split("\n");
   let score = 0;
   if (lines.filter((l) => /(;|\{|\}|\))\s*$/.test(l)).length >= 3) score++;
-  if (lines.some((l) => /^\s*(import|export|const|let|var|function|def|class|return|if\s*\(|for\s*\(|#include|package|SELECT|CREATE)\b/.test(l))) score++;
+  const kw = lines.filter((l) => /^\s*(import|export|const|let|var|function|def|class|return|if\s*\(|for\s*\(|#include|package|SELECT|CREATE|FROM|WHERE|INSERT|UPDATE)\b/.test(l)).length;
+  // One code-like line is a hint; two or more is a strong one.
+  if (kw >= 1) score++;
+  if (kw >= 2) score++;
   const braces = (text.match(/[{}[\]]/g) ?? []).length;
   if (text.length > 0 && braces / text.length > 0.01) score++;
   const t = text.trim();

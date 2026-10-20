@@ -1,16 +1,44 @@
 "use client";
 
-import { ArrowClockwise, ArrowUp, CaretDown, Copy, Files, Graph, Paperclip, PencilSimple, Sparkle, Stop, X } from "@phosphor-icons/react";
+import { ArrowClockwise, ArrowUp, CaretDown, ClipboardText, Copy, FileCode, Files, Graph, Paperclip, PencilSimple, Sparkle, Stop, X } from "@phosphor-icons/react";
 import { useLinkPanel } from "@/components/flow/link-panel-context";
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, motion, useReducedMotionConfig } from "motion/react";
 import * as React from "react";
 import { toast } from "sonner";
 import { AgentOrb } from "@/components/voice/agent-orb";
 import { Button } from "@/components/ui/button";
+import {
+  CHAT_ATTACH_ACCEPT,
+  detectChatKind,
+  IMAGE_UNSUPPORTED,
+  isImageFile,
+  isSecretFile,
+  looksLikeCode,
+  MAX_ATTACHMENT_CHARS,
+  MAX_DOC_BYTES,
+  MAX_MESSAGE_CHARS,
+  MAX_TEXT_FILE_BYTES,
+  PASTE_CHIPS_MIN_CHARS,
+  pastedName,
+  SECRET_FILE_REFUSED,
+  shouldAttachPaste,
+  transformMessage,
+  UNSUPPORTED_FILE,
+  type AttachmentKind,
+  type ChatAttachmentInput,
+  type TransformKind,
+  type TranslateLanguage,
+} from "@/lib/chat/attachments";
 import { cn } from "@/lib/utils";
 import { Markdown } from "./markdown";
 import { ProposalCard } from "./proposal-card";
+import { QuickActions } from "./quick-actions";
 import { useChat, type UiMessage } from "./use-chat";
+
+/** A long or pasted text as an attachment chip (UNTRUSTED, like any file). */
+function pasteAttachment(text: string): ChatAttachmentInput {
+  return { name: pastedName(text), text: text.slice(0, MAX_ATTACHMENT_CHARS), kind: looksLikeCode(text) ? "code" : "paste" };
+}
 
 export function ChatView({
   conversationId,
@@ -31,12 +59,18 @@ export function ChatView({
 }) {
   const chat = useChat({ conversationId, initial, onConversation });
   const [input, setInput] = React.useState("");
-  const [attachment, setAttachment] = React.useState<{ name: string; text: string } | null>(null);
+  const [attachment, setAttachment] = React.useState<ChatAttachmentInput | null>(null);
   const [uploading, setUploading] = React.useState(false);
-  const [editingId, setEditingId] = React.useState<string | null>(null);
+  const [editing, setEditing] = React.useState<{ id: string; attachment: { name: string } | null } | null>(null);
+  /** A medium paste that filled the empty box: offers the quick actions until the text is changed. */
+  const [lastPaste, setLastPaste] = React.useState<string | null>(null);
+  const [dragging, setDragging] = React.useState(false);
   const listRef = React.useRef<HTMLDivElement>(null);
   const fileRef = React.useRef<HTMLInputElement>(null);
   const sentInitial = React.useRef(false);
+  /** Follow the stream only while the owner is near the bottom of the list. */
+  const stick = React.useRef(true);
+  const reduceMotion = useReducedMotionConfig();
 
   React.useEffect(() => {
     if (initialPrompt && !sentInitial.current) {
@@ -47,28 +81,40 @@ export function ChatView({
 
   React.useEffect(() => {
     const el = listRef.current;
-    if (el) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
-  }, [chat.messages]);
+    if (el && stick.current) el.scrollTo({ top: el.scrollHeight, behavior: reduceMotion || chat.busy ? "auto" : "smooth" });
+  }, [chat.messages]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const submit = () => {
     const text = input.trim();
     if (!text) return;
-    void chat.send(text, { attachment: attachment ?? undefined, replaceFromMessageId: editingId ?? undefined });
+    stick.current = true;
+    void chat.send(text, { attachment: attachment ?? undefined, replaceFromMessageId: editing?.id, keepAttachment: !attachment && editing?.attachment ? editing.attachment : undefined });
     setInput("");
     setAttachment(null);
-    setEditingId(null);
+    setEditing(null);
+    setLastPaste(null);
+  };
+
+  const attach = (next: ChatAttachmentInput) => {
+    if (attachment) toast.message(`Replaced ${attachment.name}`);
+    setAttachment(next);
   };
 
   const upload = async (file: File) => {
-    if (file.size > 4 * 1024 * 1024) return void toast.error("Files up to 4 MB, please.");
+    if (isImageFile(file.name, file.type)) return void toast.error(IMAGE_UNSUPPORTED);
+    if (isSecretFile(file.name)) return void toast.error(SECRET_FILE_REFUSED);
+    const k = detectChatKind(file.name, file.type);
+    if (!k) return void toast.error(UNSUPPORTED_FILE);
+    const isDoc = k === "pdf" || k === "docx";
+    if (file.size > (isDoc ? MAX_DOC_BYTES : MAX_TEXT_FILE_BYTES)) return void toast.error(isDoc ? "Files up to 4 MB, please." : "Text and code files up to 1 MB, please.");
     setUploading(true);
     try {
       const fd = new FormData();
       fd.set("file", file);
       const res = await fetch("/api/chat/attach", { method: "POST", body: fd });
-      const data = (await res.json()) as { name?: string; text?: string; error?: string; truncated?: boolean };
+      const data = (await res.json().catch(() => ({}))) as { name?: string; text?: string; kind?: AttachmentKind; error?: string; truncated?: boolean };
       if (!res.ok || !data.text) throw new Error(data.error ?? "Couldn't read that file.");
-      setAttachment({ name: data.name ?? file.name, text: data.text });
+      attach({ name: data.name ?? file.name, text: data.text, kind: data.kind ?? k });
       if (data.truncated) toast.message("Long document: I'll use the first part.");
     } catch (err) {
       toast.error((err as Error).message);
@@ -77,11 +123,59 @@ export function ChatView({
     }
   };
 
+  const handleFiles = (list: FileList | File[]) => {
+    const files = Array.from(list);
+    if (!files[0]) return;
+    if (files.length > 1) toast.message("One file at a time. I attached the first.");
+    void upload(files[0]);
+  };
+
+  const onPaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    if (e.clipboardData.files.length) {
+      e.preventDefault();
+      handleFiles(e.clipboardData.files);
+      return;
+    }
+    const t = e.clipboardData.getData("text/plain").replace(/\r\n?/g, "\n");
+    if (shouldAttachPaste(t)) {
+      e.preventDefault();
+      attach(pasteAttachment(t));
+      if (t.length > MAX_ATTACHMENT_CHARS) toast.message("Long text: I'll use the first part.");
+    } else if (t.trim().length >= PASTE_CHIPS_MIN_CHARS && !input.trim()) {
+      setLastPaste(t);
+    }
+  };
+
+  const pasteCandidate = !attachment && !!lastPaste && input === lastPaste;
+
+  const runTransform = (kind: TransformKind, language?: TranslateLanguage) => {
+    const src = attachment ?? (pasteCandidate ? pasteAttachment(input) : null);
+    if (!src || chat.busy) return;
+    stick.current = true;
+    void chat.send(transformMessage(kind, language), { attachment: src, transform: language ? { kind, language } : { kind } });
+    setInput("");
+    setAttachment(null);
+    setLastPaste(null);
+  };
+
+  const showActions = !editing && !chat.busy && !uploading && ((attachment && !input.trim()) || pasteCandidate);
+  const AttachIcon = attachment?.kind === "code" ? FileCode : attachment?.kind === "paste" ? ClipboardText : Files;
+
   const lastAssistant = [...chat.messages].reverse().find((m) => m.role === "assistant");
 
   return (
     <div className={cn("flex h-full min-h-0 flex-col", compact ? "" : "")}>
-      <div ref={listRef} data-lenis-prevent className="min-h-0 flex-1 overflow-y-auto" aria-live="polite" aria-busy={chat.busy}>
+      <div
+        ref={listRef}
+        data-lenis-prevent
+        className="min-h-0 flex-1 overflow-y-auto"
+        aria-live="polite"
+        aria-busy={chat.busy}
+        onScroll={(e) => {
+          const el = e.currentTarget;
+          stick.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+        }}
+      >
         {chat.messages.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center gap-6 px-4 py-10 text-center">
             <AgentOrb state="idle" size={compact ? 64 : 88} />
@@ -92,7 +186,10 @@ export function ChatView({
             <ul className="grid w-full max-w-lg gap-2 sm:grid-cols-2">
               {suggestions.slice(0, 4).map((s) => (
                 <li key={s}>
-                  <button type="button" onClick={() => void chat.send(s)} className="flex min-h-12 w-full items-center gap-2 rounded-[12px] border border-border px-4 py-2.5 text-left text-sm transition-colors hover:border-border-strong">
+                  <button type="button" onClick={() => {
+                      stick.current = true;
+                      void chat.send(s);
+                    }} className="flex min-h-12 w-full items-center gap-2 rounded-[12px] border border-border px-4 py-2.5 text-left text-sm transition-colors hover:border-border-strong">
                     <Sparkle size={16} className="shrink-0 text-muted" /> {s}
                   </button>
                 </li>
@@ -112,7 +209,7 @@ export function ChatView({
                           ? undefined
                           : () => {
                               setInput(m.content);
-                              setEditingId(m.id);
+                              setEditing({ id: m.id, attachment: m.attachment ?? null });
                             }
                       }
                     />
@@ -128,14 +225,16 @@ export function ChatView({
 
       <div className={cn("border-t border-border bg-background", compact ? "p-3" : "px-4 pb-4 pt-3")}>
         <div className={cn("mx-auto", compact ? "" : "max-w-[760px]")}>
-          {editingId ? (
+          {editing ? (
             <div className="mb-2 flex items-center justify-between text-[12px] text-muted">
-              <span>Editing your message. Sending replaces the answer.</span>
+              <span>
+                Editing your message. Sending replaces the answer.{!attachment && editing.attachment ? ` Keeps ${editing.attachment.name}.` : ""}
+              </span>
               <button
                 type="button"
                 className="h-8 px-2 hover:text-foreground"
                 onClick={() => {
-                  setEditingId(null);
+                  setEditing(null);
                   setInput("");
                 }}
               >
@@ -143,12 +242,18 @@ export function ChatView({
               </button>
             </div>
           ) : null}
-          {attachment ? (
-            <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-border bg-surface py-1 pl-3 pr-1 text-[12px]">
-              <Files size={14} /> {attachment.name}
-              <button type="button" onClick={() => setAttachment(null)} className="grid size-7 place-items-center rounded-full hover:bg-surface-hover" aria-label="Remove attachment">
-                <X size={12} />
-              </button>
+          {attachment || showActions ? (
+            <div className="mb-2 flex flex-wrap items-center gap-2">
+              {attachment ? (
+                <div className="inline-flex min-w-0 max-w-full items-center gap-2 rounded-[10px] border border-border bg-surface py-1 pl-3 pr-1 text-[12px]">
+                  <AttachIcon size={14} className="shrink-0" /> <span className="truncate">{attachment.name}</span>
+                  <span className="tabular shrink-0 text-subtle">{attachment.text.length.toLocaleString()} chars</span>
+                  <button type="button" onClick={() => setAttachment(null)} className="grid size-7 shrink-0 place-items-center rounded-md hover:bg-surface-hover" aria-label="Remove attachment">
+                    <X size={12} />
+                  </button>
+                </div>
+              ) : null}
+              {showActions ? <QuickActions kind={attachment?.kind ?? (looksLikeCode(input) ? "code" : "paste")} onRun={runTransform} /> : null}
             </div>
           ) : null}
           <form
@@ -156,10 +261,33 @@ export function ChatView({
               e.preventDefault();
               submit();
             }}
-            className="flex items-end gap-2 rounded-[16px] border border-border bg-background p-2 focus-within:border-foreground"
+            onDragOver={(e) => {
+              if (!e.dataTransfer.types.includes("Files")) return;
+              e.preventDefault();
+              setDragging(true);
+            }}
+            onDragLeave={(e) => {
+              if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setDragging(false);
+            }}
+            onDrop={(e) => {
+              if (!e.dataTransfer.files.length) return;
+              e.preventDefault();
+              setDragging(false);
+              handleFiles(e.dataTransfer.files);
+            }}
+            className={cn("flex items-end gap-2 rounded-[16px] border border-border bg-background p-2 focus-within:border-foreground", dragging && "border-foreground")}
           >
-            <input ref={fileRef} type="file" accept=".pdf,.docx,.txt,.md,application/pdf,text/plain,text/markdown" className="hidden" onChange={(e) => e.target.files?.[0] && void upload(e.target.files[0])} />
-            <Button type="button" variant="quiet" size="icon-sm" aria-label="Attach a document" disabled={uploading} onClick={() => fileRef.current?.click()}>
+            <input
+              ref={fileRef}
+              type="file"
+              accept={CHAT_ATTACH_ACCEPT}
+              className="hidden"
+              onChange={(e) => {
+                if (e.target.files?.length) handleFiles(e.target.files);
+                e.target.value = "";
+              }}
+            />
+            <Button type="button" variant="quiet" size="icon-sm" aria-label="Attach a file" disabled={uploading} onClick={() => fileRef.current?.click()}>
               <Paperclip />
             </Button>
             <label htmlFor={compact ? "chat-input-panel" : "chat-input"} className="sr-only">
@@ -171,13 +299,15 @@ export function ChatView({
               rows={1}
               value={input}
               onChange={(e) => setInput(e.target.value)}
+              onPaste={onPaste}
+              maxLength={MAX_MESSAGE_CHARS}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
                   e.preventDefault();
                   submit();
                 }
               }}
-              placeholder={uploading ? "Reading your file…" : `Message ${agentName}…`}
+              placeholder={uploading ? "Reading your file…" : attachment ? `Ask about ${attachment.name}, or pick an action…` : `Message ${agentName}…`}
               className="max-h-40 min-h-9 flex-1 resize-none bg-transparent py-2 text-[15px] outline-none placeholder:text-subtle"
             />
             {chat.busy ? (
@@ -185,7 +315,7 @@ export function ChatView({
                 <Stop weight="fill" />
               </Button>
             ) : (
-              <Button type="submit" variant="primary" size="icon-sm" disabled={!input.trim()} aria-label="Send">
+              <Button type="submit" variant="primary" size="icon-sm" disabled={!input.trim() || uploading} aria-label="Send">
                 <ArrowUp weight="bold" />
               </Button>
             )}
@@ -235,7 +365,7 @@ function AssistantMessage({
     <div className="flex flex-col gap-3">
       {toolNames.length ? (
         <div>
-          <button type="button" onClick={() => setShowTools((s) => !s)} aria-expanded={showTools} className="inline-flex h-8 items-center gap-1.5 rounded-full border border-border px-3 text-[12px] text-muted hover:border-border-strong hover:text-foreground">
+          <button type="button" onClick={() => setShowTools((s) => !s)} aria-expanded={showTools} className="inline-flex h-8 items-center gap-1.5 rounded-[10px] border border-border px-3 text-[12px] text-muted hover:border-border-strong hover:text-foreground">
             Used: {toolNames.join(", ")} <CaretDown size={12} className={cn("transition-transform", showTools && "rotate-180")} />
           </button>
           <AnimatePresence>
@@ -270,10 +400,17 @@ function AssistantMessage({
           <ol className="flex flex-wrap gap-1.5">
             {m.citations.map((c) => (
               <li key={c.n}>
-                <a href={c.url ?? "#"} target={c.url?.startsWith("http") ? "_blank" : undefined} rel="noopener noreferrer nofollow" className="inline-flex h-8 max-w-[260px] items-center gap-1.5 rounded-full border border-border px-2.5 text-[12px] hover:border-border-strong">
-                  <span className="tabular text-muted">{c.n}</span>
-                  <span className="truncate">{c.title}</span>
-                </a>
+                {c.url ? (
+                  <a href={c.url} target={c.url.startsWith("http") ? "_blank" : undefined} rel="noopener noreferrer nofollow" className="inline-flex h-8 max-w-[260px] items-center gap-1.5 rounded-[10px] border border-border px-2.5 text-[12px] hover:border-border-strong">
+                    <span className="tabular text-muted">{c.n}</span>
+                    <span className="truncate">{c.title}</span>
+                  </a>
+                ) : (
+                  <span className="inline-flex h-8 max-w-[260px] items-center gap-1.5 rounded-[10px] border border-border px-2.5 text-[12px]">
+                    <span className="tabular text-muted">{c.n}</span>
+                    <span className="truncate">{c.title}</span>
+                  </span>
+                )}
               </li>
             ))}
           </ol>
