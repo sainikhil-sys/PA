@@ -36,7 +36,10 @@ const PhoneLink = {
   isAvailable,
   isAccessGranted: (): boolean => guarded((n) => n.isAccessGranted(), false),
   openAccessSettings: (): void => guarded((n) => n.openAccessSettings(), undefined),
-  setLink: (serverUrl: string, deviceToken: string): void => guarded((n) => n.setLink(serverUrl, deviceToken), undefined),
+  /** Throws when the module rejects the URL or token, so the caller can report it; a no-op without the module. */
+  setLink: (serverUrl: string, deviceToken: string): void => {
+    if (isAvailable()) (native as Native).setLink(serverUrl, deviceToken);
+  },
   clearLink: (): void => guarded((n) => n.clearLink(), undefined),
   isLinked: (): boolean => guarded((n) => n.isLinked(), false),
 };

@@ -20,8 +20,13 @@ export function detectKind(name: string, type: string): "pdf" | "docx" | "txt" |
   return ext === "pdf" || ext === "docx" || ext === "txt" || ext === "md" ? ext : null;
 }
 
-/** Extract plain text from an uploaded file. Never executes or renders the file. */
-export async function extractText(buf: ArrayBuffer, kind: "pdf" | "docx" | "txt" | "md"): Promise<string> {
+/** A NUL byte in the first 8 KB means it isn't plain text (images, archives, executables renamed .txt). */
+export function looksBinary(buf: ArrayBuffer): boolean {
+  return new Uint8Array(buf, 0, Math.min(buf.byteLength, 8192)).includes(0);
+}
+
+/** Extract plain text from an uploaded file. Never executes or renders the file. Code takes the plain text path. */
+export async function extractText(buf: ArrayBuffer, kind: "pdf" | "docx" | "txt" | "md" | "code"): Promise<string> {
   if (kind === "pdf") {
     const { extractText: pdfText, getDocumentProxy } = await import("unpdf");
     const pdf = await getDocumentProxy(new Uint8Array(buf));

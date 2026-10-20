@@ -13,7 +13,7 @@ export function mailConfigured(): boolean {
 }
 
 export function mailFrom(): string {
-  return env().MAIL_FROM ?? `${BRAND.name} <onboarding@resend.dev>`;
+  return env().MAIL_FROM ?? `${BRAND.name} <${BRAND.supportEmail}>`;
 }
 
 /** Signed one-click unsubscribe link for a topic (no session needed). */

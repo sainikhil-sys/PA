@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { runChatTurn, type ChatEvent } from "@/lib/agent/chat";
 import { apiGuard } from "@/lib/auth/api";
+import { ATTACHMENT_KINDS, MAX_ATTACHMENT_CHARS, MAX_MESSAGE_CHARS, TRANSFORM_KINDS, TRANSLATE_LANGUAGES } from "@/lib/chat/attachments";
 import { errMessage, log } from "@/lib/log";
 import { rateLimit, rateLimitResponse } from "@/lib/security/ratelimit";
 import { errorJson } from "@/lib/security/request";
@@ -8,13 +9,20 @@ import { errorJson } from "@/lib/security/request";
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
 
-const bodySchema = z.object({
-  conversationId: z.string().uuid().optional(),
-  message: z.string().trim().min(1).max(8000),
-  trigger: z.enum(["text", "voice"]).default("text"),
-  attachment: z.object({ name: z.string().max(200), text: z.string().max(60_000) }).optional(),
-  replaceFromMessageId: z.string().uuid().optional(),
-});
+const bodySchema = z
+  .object({
+    conversationId: z.string().uuid().optional(),
+    message: z.string().trim().min(1).max(MAX_MESSAGE_CHARS),
+    trigger: z.enum(["text", "voice"]).default("text"),
+    attachment: z.object({ name: z.string().max(200), text: z.string().max(MAX_ATTACHMENT_CHARS), kind: z.enum(ATTACHMENT_KINDS).default("txt") }).optional(),
+    /** Quick action on the attachment: skips planning and tools, so nothing can be proposed. */
+    transform: z
+      .object({ kind: z.enum(TRANSFORM_KINDS), language: z.enum(TRANSLATE_LANGUAGES).optional() })
+      .refine((t) => t.kind !== "translate" || !!t.language)
+      .optional(),
+    replaceFromMessageId: z.string().uuid().optional(),
+  })
+  .refine((b) => !b.transform || !!b.attachment);
 
 /** Streams newline-delimited JSON events (meta, tool, citations, text, proposal, done). */
 export async function POST(req: Request) {

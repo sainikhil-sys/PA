@@ -31,7 +31,7 @@ export default async function ConsoleAi() {
             </span>,
             <code key="f" className="text-[12px]">{p.fastModel}</code>,
             <code key="s" className="text-[12px]">{p.smartModel}</code>,
-            <code key="e" className="text-[12px]">{p.embeddingModel ?? "—"}</code>,
+            <code key="e" className="text-[12px]">{p.embeddingModel ?? "None"}</code>,
             <TestAi key="t" name={p.name} />,
           ])}
         />

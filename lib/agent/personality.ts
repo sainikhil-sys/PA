@@ -2,7 +2,7 @@ import type { AgentSettings } from "@/lib/db/schema";
 
 export const PERSONALITIES = [
   { id: "concise", label: "Concise", sample: "Two replies due. Want drafts?", prompt: "Be brief and direct. Lead with the answer. No filler." },
-  { id: "warm", label: "Warm", sample: "Morning! Two people are waiting on you — shall I draft replies?", prompt: "Be warm and encouraging, while staying efficient." },
+  { id: "warm", label: "Warm", sample: "Morning! Two people are waiting on you. Shall I draft replies?", prompt: "Be warm and encouraging, while staying efficient." },
   { id: "formal", label: "Formal", sample: "You have two replies outstanding. Shall I prepare drafts?", prompt: "Be formal, precise and courteous." },
   { id: "coach", label: "Coach", sample: "Two replies due. Knock them out first, then deep work?", prompt: "Act like a supportive coach: suggest priorities and next steps." },
 ] as const;

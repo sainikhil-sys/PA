@@ -84,7 +84,7 @@ export function otpEmail(code: string): Email {
 }
 
 const WELCOME_STEPS: [string, string][] = [
-  ["Connect Google", "Your inbox and calendar feed the daily briefing. Read-only; replies are saved as drafts you send yourself."],
+  ["Connect Google", "Your inbox and calendar feed the daily briefing. Cowork reads your mail and can save reply drafts in Gmail; you send them yourself."],
   ["Add knowledge", "Docs, notes and links you can search and chat with."],
   ["Connect Claude", "Use your tasks and notes from Claude with scoped, revocable access."],
 ];
@@ -96,10 +96,10 @@ export function welcomeEmail(o: { appUrl: string; manageUrl: string }): Email {
   ).join("");
   const body = [
     h1(`Welcome to ${esc(BRAND.name)}`),
-    p("Your account is ready. Three steps to get the most out of it:"),
+    p("Your account is ready. Three things to set up next:"),
     `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:4px 0 12px">${list}</table>`,
     button(`Open ${BRAND.name}`, o.appUrl),
-    `<p style="margin:24px 0 0;font:400 13px/20px ${FONT};color:${MUTED}">Nothing is ever sent, posted or deleted for you without your click.</p>`,
+    `<p style="margin:24px 0 0;font:400 13px/20px ${FONT};color:${MUTED}">Replies wait as Gmail drafts you send yourself, and nothing is posted or deleted without your click.</p>`,
   ].join("\n");
   return {
     subject: `Welcome to ${BRAND.name}`,

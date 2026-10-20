@@ -1,6 +1,6 @@
 import { ArrowLeftIcon } from "phosphor-react-native";
 import * as React from "react";
-import { View, type StyleProp, type ViewStyle } from "react-native";
+import { RefreshControl, View, type StyleProp, type ViewStyle } from "react-native";
 import { router } from "expo-router";
 import { IconButton, Txt } from "@/components/ui";
 import { color, radius, space } from "@/theme/tokens";
@@ -47,4 +47,9 @@ export function timeAgo(iso: string | null | undefined): string {
   if (d === 1) return "Yesterday";
   if (d < 7) return `${d} days ago`;
   return new Date(iso).toLocaleDateString(undefined, { day: "numeric", month: "short", year: new Date(iso).getFullYear() === new Date().getFullYear() ? undefined : "numeric" });
+}
+
+/** Pull-to-refresh in the house colors. */
+export function Refresh({ refreshing, onRefresh }: { refreshing: boolean; onRefresh: () => void }) {
+  return <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={color.orange} colors={[color.orange]} progressBackgroundColor={color.surface2} />;
 }

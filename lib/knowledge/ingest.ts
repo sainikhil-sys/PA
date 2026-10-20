@@ -31,6 +31,8 @@ export function cleanText(raw: string): string {
 export async function upsertItem(
   source: KnowledgeSource,
   item: { externalId: string; title: string; url?: string | null; mimeType?: string | null; text: string; sourceUpdatedAt?: Date | null },
+  /** emit:false skips the knowledge_item automation event (notes use it, so add_note can't re-trigger itself). */
+  opts: { emit?: boolean } = {},
 ): Promise<"created" | "updated" | "unchanged" | "empty"> {
   const text = cleanText(item.text);
   if (!text) return "empty";
@@ -59,7 +61,7 @@ export async function upsertItem(
     const embedding = await embedText(chunks[i]!, { kind: "embed_chunk", userId: source.userId });
     await db().insert(schema.knowledgeChunks).values({ userId: source.userId, itemId, sourceId: source.id, idx: i, content: chunks[i]!, embedding });
   }
-  if (!existing) {
+  if (!existing && opts.emit !== false) {
     await emitEvent(source.userId, { type: "knowledge_item", key: itemId, sourceType: source.type, title: values.title, itemId }).catch(() => 0);
   }
   return existing ? "updated" : "created";

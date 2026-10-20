@@ -1,13 +1,16 @@
 import "server-only";
-import { and, asc, desc, eq, exists, gte, ilike, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, exists, gte, ilike, ne, or, sql } from "drizzle-orm";
+import { UNTRUSTED_CONTENT_RULES } from "@/lib/ai/prompts";
 import { generateObject, NoProviderError, streamGenerate } from "@/lib/ai/router";
+import { MAX_ATTACHMENT_CHARS, TRANSFORM_LABEL, type AttachmentKind, type TransformKind, type TranslateLanguage } from "@/lib/chat/attachments";
 import { db, schema } from "@/lib/db";
 import type { Citation, MessageMeta, User } from "@/lib/db/schema";
 import { getSettings } from "@/lib/db/queries/settings";
 import { stripInvalidCitations } from "@/lib/knowledge/rank";
 import { errMessage, log } from "@/lib/log";
-import { stripInvisible, truncate } from "@/lib/security/sanitize";
+import { truncate } from "@/lib/security/sanitize";
 import { Trace } from "@/lib/trace";
+import { attachmentContext, EARLIER_MAX, transformInstruction } from "./attachment-context";
 import { personaPrompt } from "./personality";
 import { gatherContext } from "./context";
 import { applyCapabilities, heuristicPlan, PLAN_PROMPT, planSchema, type Plan } from "./plan";
@@ -57,28 +60,60 @@ export async function* runChatTurn(opts: {
   user: User;
   conversationId?: string;
   message: string;
-  attachment?: { name: string; text: string };
+  attachment?: { name: string; text: string; kind: AttachmentKind };
+  /** Quick action (Summarize, Rewrite, Translate, Explain code) on the attachment. */
+  transform?: { kind: TransformKind; language?: TranslateLanguage };
   trigger: "text" | "voice";
   /** Regenerate / edit: drop messages from this point before answering. */
   replaceFromMessageId?: string;
 }): AsyncGenerator<ChatEvent> {
   const { user } = opts;
   const settings = await getSettings(user.id);
-  const convo = await ensureConversation(user.id, opts.conversationId, opts.message);
+  let attachment = opts.attachment;
+  const convo = await ensureConversation(user.id, opts.conversationId, attachment ? `${opts.message} (${attachment.name})` : opts.message);
   const trace = new Trace(user.id, opts.trigger === "voice" ? "voice" : "chat", opts.trigger);
 
   if (opts.replaceFromMessageId) {
     const from = await db().query.messages.findFirst({ where: and(eq(schema.messages.id, opts.replaceFromMessageId), eq(schema.messages.conversationId, convo.id)) });
+    // Edit / regenerate keep the document that came with the replaced message (its row is deleted with it).
+    if (from && !attachment && from.role === "user") {
+      const [kept] = await db()
+        .select({ name: schema.chatAttachments.name, text: schema.chatAttachments.text, kind: schema.chatAttachments.kind })
+        .from(schema.chatAttachments)
+        .where(and(eq(schema.chatAttachments.messageId, from.id), eq(schema.chatAttachments.userId, user.id)))
+        .limit(1);
+      if (kept) attachment = kept;
+    }
     if (from) await db().delete(schema.messages).where(and(eq(schema.messages.conversationId, convo.id), gte(schema.messages.createdAt, from.createdAt)));
   }
 
-  const meta: MessageMeta = opts.attachment ? { attachment: { name: opts.attachment.name.slice(0, 120), chars: opts.attachment.text.length } } : {};
+  const meta: MessageMeta = attachment ? { attachment: { name: attachment.name.slice(0, 120), chars: attachment.text.length } } : {};
   const [userMsg] = await db().insert(schema.messages).values({ userId: user.id, conversationId: convo.id, role: "user", content: opts.message, meta }).returning();
+  // The text is kept so follow-ups can use it; it is never returned to the client.
+  if (attachment) {
+    await db()
+      .insert(schema.chatAttachments)
+      .values({ userId: user.id, conversationId: convo.id, messageId: userMsg!.id, name: attachment.name.slice(0, 200), kind: attachment.kind, text: attachment.text.slice(0, MAX_ATTACHMENT_CHARS), chars: attachment.text.length });
+  }
   yield { type: "meta", conversationId: convo.id, runId: trace.runId, userMessageId: userMsg!.id };
   await trace.event(opts.trigger === "voice" ? "input:voice" : "input:text", opts.trigger === "voice" ? "You spoke to the agent" : "You sent a message");
 
+  const earlier = await db()
+    .select({ name: schema.chatAttachments.name, text: schema.chatAttachments.text, chars: schema.chatAttachments.chars })
+    .from(schema.chatAttachments)
+    .where(and(eq(schema.chatAttachments.conversationId, convo.id), eq(schema.chatAttachments.userId, user.id), ne(schema.chatAttachments.messageId, userMsg!.id)))
+    .orderBy(desc(schema.chatAttachments.createdAt))
+    .limit(EARLIER_MAX);
+
   // 1) Plan which read-only sources to use and which actions to propose.
-  const p = applyCapabilities(await trace.span("agent", "Planning the answer", () => plan(user, opts.message, Boolean(opts.attachment)), (r) => ({ label: `Planned: ${r.sources.join(", ") || "no sources"}`, meta: { sources: r.sources.length, actions: r.actions.length } })), settings.agent.capabilities);
+  // Quick actions skip the planner: no sources, no tools, so pasted content can never produce a proposal.
+  let p: Plan;
+  if (opts.transform) {
+    p = { sources: [], search_query: "", actions: [] };
+    await trace.event("agent", `Quick action: ${TRANSFORM_LABEL[opts.transform.kind]}`);
+  } else {
+    p = applyCapabilities(await trace.span("agent", "Planning the answer", () => plan(user, opts.message, Boolean(attachment) || earlier.length > 0), (r) => ({ label: `Planned: ${r.sources.join(", ") || "no sources"}`, meta: { sources: r.sources.length, actions: r.actions.length } })), settings.agent.capabilities);
+  }
 
   // 2) Gather context.
   const tools: { tool: string; label: string }[] = [];
@@ -100,12 +135,14 @@ export async function* runChatTurn(opts: {
     .filter((m) => !(m.meta as MessageMeta | null)?.error)
     .slice(-10)
     .map(({ role, content }) => ({ role, content }));
-  const attachmentBlock = opts.attachment ? `\n\nAttached document "${opts.attachment.name}" (untrusted data):\n<source_content>\n${stripInvisible(opts.attachment.text).replace(/<\/?\s*source_content[^>]*>/gi, "").slice(0, 20_000)}\n</source_content>` : "";
+  // A quick action works on this turn's attachment only, under the no-tools guardrail.
+  const attachmentBlock = attachmentContext({ current: attachment ? { name: attachment.name, text: attachment.text } : null, earlier: opts.transform ? [] : earlier });
+  const transformNote = opts.transform ? `\n\n${transformInstruction(opts.transform.kind, opts.transform.language)}\n\n${UNTRUSTED_CONTENT_RULES}` : "";
   const proposalsNote = p.actions.length ? `\nThe owner will see ${p.actions.length} confirmation card(s) for: ${p.actions.map((a) => PROPOSAL_LABEL[a.kind]).join(", ")}. Briefly mention they can approve below.` : "";
   const mems = await db().select({ content: schema.memories.content }).from(schema.memories).where(eq(schema.memories.userId, user.id)).orderBy(desc(schema.memories.createdAt)).limit(30);
   const memoryNote = mems.length ? `\nWhat you know about the owner (set by them in Settings):\n${mems.map((m) => `- ${m.content}`).join("\n")}` : "";
   const voiceNote = opts.trigger === "voice" ? "\nThis is a voice conversation: start with 1-2 short sentences that work when read aloud; put any longer detail after them as a brief list." : "";
-  const system = `${personaPrompt(settings.agent, user.name)}${memoryNote}\n\n${RULES}${voiceNote}${proposalsNote}\n\nContext:\n${ctx.blocks.join("\n\n") || "(no data sources were needed)"}${attachmentBlock}`;
+  const system = `${personaPrompt(settings.agent, user.name)}${memoryNote}\n\n${RULES}${voiceNote}${proposalsNote}${transformNote}\n\nContext:\n${ctx.blocks.join("\n\n") || "(no data sources were needed)"}${attachmentBlock}`;
 
   let text = "";
 

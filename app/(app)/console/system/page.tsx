@@ -22,7 +22,7 @@ export default async function ConsoleSystem() {
           head={["Job", "Account", "Attempts", "Error", "When", ""]}
           rows={h.deadJobs.map((j) => [
             <code key="t" className="text-[12px]">{j.type}</code>,
-            <span key="a" className="text-muted">{j.email ?? "—"}</span>,
+            <span key="a" className="text-muted">{j.email ?? "No account"}</span>,
             <span key="n" className="tabular">{j.attempts}</span>,
             <span key="e" className="line-clamp-2 max-w-[360px] text-[12px] text-muted">{j.lastError ?? ""}</span>,
             <span key="w" className="text-muted">{timeAgo(j.updatedAt)}</span>,
