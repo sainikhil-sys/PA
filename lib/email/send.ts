@@ -21,11 +21,14 @@ export function topicUnsubscribeUrl(userId: string, topic: EmailTopic): string {
   return unsubscribeUrl(appUrl(), userId, topic, requireEnv("AUTH_SECRET"));
 }
 
+/** A file sent with the email; `contentId` makes it an inline image the HTML shows as cid:<id>. */
+export type MailAttachment = { filename: string; content: Buffer; contentType: string; contentId?: string };
+
 /**
  * Sends one email to ONE recipient: the account's own address. Throws on
  * delivery failure so callers decide whether that matters (OTP) or not (updates).
  */
-export async function sendMail(to: string, email: Email, opts: { unsubscribe?: { userId: string; topic: EmailTopic }; tag?: string } = {}) {
+export async function sendMail(to: string, email: Email, opts: { unsubscribe?: { userId: string; topic: EmailTopic }; tag?: string; attachments?: MailAttachment[] } = {}) {
   const e = env();
   if (isTestMode()) return;
   if (!e.RESEND_API_KEY) throw new Error("RESEND_API_KEY is not configured");
@@ -44,6 +47,10 @@ export async function sendMail(to: string, email: Email, opts: { unsubscribe?: {
     text: email.text,
     headers,
     ...(opts.tag ? { tags: [{ name: "type", value: opts.tag }] } : {}),
+    // Base64 strings: the SDK JSON-encodes the request, and a raw Buffer would become a byte array.
+    ...(opts.attachments?.length
+      ? { attachments: opts.attachments.map((a) => ({ filename: a.filename, content: a.content.toString("base64"), contentType: a.contentType, ...(a.contentId ? { contentId: a.contentId } : {}) })) }
+      : {}),
   });
   if (error) throw new Error(`${error.name}: ${error.message}`);
 }

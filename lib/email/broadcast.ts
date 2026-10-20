@@ -218,6 +218,52 @@ export function restrictLinks(blocks: MailBlock[], allowed: (url: string) => boo
   });
 }
 
+/** Template styles the AI drafter can write in. */
+export const BROADCAST_STYLES = {
+  announcement: { label: "Announcement", guide: "One piece of news. A short intro, one or two short sections, then one button." },
+  update: { label: "Product update", guide: "A product update: a one-sentence intro, then 2 to 5 sections, each one feature with a short heading and one or two sentences or a few bullets, then one button." },
+  newsletter: { label: "Newsletter", guide: "A friendly roundup: a short intro, 3 to 5 sections with headings (what's new, tips, what's next) and a warm one-line closing." },
+  event: { label: "Invitation", guide: "An invitation: what it is, when and where (only if the note says so; never invent dates, times or places), why to join, and a button only if the note gives a link." },
+  notice: { label: "Notice", guide: "A service notice (maintenance, policy or pricing change): what changes, when, and what the reader needs to do or that nothing is needed. Calm and plain, no marketing." },
+} as const;
+export type BroadcastStyle = keyof typeof BROADCAST_STYLES;
+export const BROADCAST_STYLE_IDS = Object.keys(BROADCAST_STYLES) as [BroadcastStyle, ...BroadcastStyle[]];
+
+/** Length limits, shared by the composer, the AI draft and server validation. */
+export const EMAIL_LIMITS = { subject: 150, preheader: 200, headline: 150, heading: 140, text: 4000, listItem: 400, listItems: 12, buttonLabel: 50, alt: 200, blocks: 40 } as const;
+
+/**
+ * Drop what can't be sent (empty blocks, empty list lines, empty image links) and clamp
+ * lengths. The composer runs this before previewing and sending; AI drafts go through it too.
+ */
+export function cleanEmail(c: BroadcastEmailContent): BroadcastEmailContent {
+  const L = EMAIL_LIMITS;
+  const blocks = c.blocks.flatMap((b): MailBlock[] => {
+    switch (b.type) {
+      case "heading":
+        return b.text.trim() ? [{ type: "heading", text: b.text.trim().slice(0, L.heading) }] : [];
+      case "text":
+        return b.text.trim() ? [{ type: "text", text: b.text.trim().slice(0, L.text) }] : [];
+      case "list": {
+        const items = b.items.map((i) => i.trim().slice(0, L.listItem)).filter(Boolean).slice(0, L.listItems);
+        return items.length ? [{ type: "list", items }] : [];
+      }
+      case "button":
+        return b.label.trim() && b.url.trim() ? [{ type: "button", label: b.label.trim().slice(0, L.buttonLabel), url: b.url.trim() }] : [];
+      case "image":
+        return [{ type: "image", fileId: b.fileId, alt: b.alt.trim().slice(0, L.alt), ...(b.href?.trim() ? { href: b.href.trim() } : {}) }];
+      case "divider":
+        return [{ type: "divider" }];
+    }
+  });
+  return {
+    subject: c.subject.trim().slice(0, L.subject),
+    preheader: c.preheader.trim().slice(0, L.preheader),
+    headline: c.headline.trim().slice(0, L.headline),
+    blocks: blocks.slice(0, L.blocks),
+  };
+}
+
 /** Plain text for the in-app and phone notification: no markdown, no links. */
 export function plainNotificationText(text: string): string {
   return text

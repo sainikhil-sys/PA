@@ -1,11 +1,13 @@
 import "server-only";
 import { and, asc, eq, gt, inArray, isNull, sql } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
+import { renderBroadcastEmail } from "@/lib/email/broadcast";
 import { mailConfigured, topicUnsubscribeUrl, trySendMail } from "@/lib/email/send";
 import { appLink, notificationEmail } from "@/lib/email/templates";
 import { appUrl } from "@/lib/env";
 import { errMessage, log } from "@/lib/log";
 import { sendPush } from "@/lib/push";
+import { filesForBroadcast, mailParts } from "./broadcast-files";
 
 export type BroadcastChannel = "in_app" | "push" | "email";
 const BATCH = 40;
@@ -23,6 +25,10 @@ export async function processBroadcast(id: string, budgetMs: number): Promise<bo
   if (b.status === "queued") await db().update(schema.broadcasts).set({ status: "sending" }).where(eq(schema.broadcasts.id, id));
   const channels = new Set(b.channels as BroadcastChannel[]);
   const base = appUrl();
+  const manageUrl = `${base}/settings/notifications`;
+  // A designed email carries its images (inline, cid:) and attachments; loaded once per run.
+  const designed = channels.has("email") && b.email ? b.email : null;
+  const parts = designed ? mailParts(await filesForBroadcast(b.id)) : null;
   let cursor = b.cursor;
 
   while (Date.now() < deadline - 5_000) {
@@ -52,11 +58,12 @@ export async function processBroadcast(id: string, budgetMs: number): Promise<bo
       try {
         if (channels.has("push") && u.notifyPush !== false) push += (await sendPush(u.id, { title: b.title, body: b.body, href: b.href, tag: `broadcast:${b.id}` })) > 0 ? 1 : 0;
         if (channels.has("email") && u.notifyEmail !== false && mailConfigured()) {
-          const sent = await trySendMail(
-            u.email,
-            notificationEmail({ kind: "announcement", title: b.title, body: b.body, url: appLink(base, b.href), manageUrl: `${base}/settings/notifications`, unsubscribeUrl: topicUnsubscribeUrl(u.id, "updates") }),
-            { unsubscribe: { userId: u.id, topic: "updates" }, tag: "announcement" },
-          );
+          const unsubscribeUrl = topicUnsubscribeUrl(u.id, "updates");
+          const mail =
+            designed && parts
+              ? renderBroadcastEmail(designed, { appBase: base, imageSrc: parts.imageSrc, images: parts.images, attachments: parts.attachedList, manageUrl, unsubscribeUrl })
+              : notificationEmail({ kind: "announcement", title: b.title, body: b.body, url: appLink(base, b.href), manageUrl, unsubscribeUrl });
+          const sent = await trySendMail(u.email, mail, { unsubscribe: { userId: u.id, topic: "updates" }, tag: "announcement", attachments: parts?.attachments });
           if (sent) email++;
           await new Promise((r) => setTimeout(r, 550)); // stay under the mail provider's per-second limit
         }
