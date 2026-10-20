@@ -1,0 +1,7 @@
+{
+  "name": "phone-link",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Forwards this phone's notifications to Cowork once Notification access is on (Android only).",
+  "main": "index.ts"
+}

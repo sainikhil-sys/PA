@@ -312,6 +312,129 @@ export const taskComments = pgTable(
   (t) => [index("task_comments_task_idx").on(t.taskId, t.createdAt)],
 );
 
+// ---------- Focus sessions (Today focus timer history) ----------
+export const focusSessions = pgTable(
+  "focus_sessions",
+  {
+    id: id(),
+    userId: userId(),
+    /** Optional task the session was for. History survives the task being deleted. */
+    taskId: uuid("task_id").references(() => tasks.id, { onDelete: "set null" }),
+    startedAt: ts("started_at").notNull(),
+    endedAt: ts("ended_at").notNull(),
+    plannedMinutes: integer("planned_minutes").notNull(),
+    /** Minutes the timer actually ran (pauses excluded), capped at planned. */
+    actualMinutes: integer("actual_minutes").notNull().default(0),
+    /** True when the timer ran to zero; false when stopped early. */
+    completed: boolean("completed").notNull().default(false),
+    createdAt: createdAt(),
+  },
+  (t) => [index("focus_sessions_user_started_idx").on(t.userId, t.startedAt), index("focus_sessions_task_idx").on(t.taskId)],
+);
+
+// ---------- Meeting notes (keyed by Google Calendar event id; the calendar itself stays read-only) ----------
+export type MeetingActionItem = { title: string; owner: string | null; due: string | null; proposalId: string | null };
+
+export const meetingNotes = pgTable(
+  "meeting_notes",
+  {
+    id: id(),
+    userId: userId(),
+    /** Google Calendar event id (the instance id for recurring meetings). */
+    eventId: text("event_id").notNull(),
+    /** Snapshot of the event when notes were first saved. Attendee names and emails are not stored. */
+    eventTitle: text("event_title").notNull().default(""),
+    eventStart: ts("event_start").notNull(),
+    eventEnd: ts("event_end"),
+    attendeeCount: integer("attendee_count").notNull().default(0),
+    /** The owner's notes (may include pasted transcripts, so they are treated as untrusted when sent to a model). */
+    notes: text("notes").notNull().default(""),
+    summary: text("summary"),
+    decisions: jsonb("decisions").$type<string[]>().notNull().default([]),
+    /** Extracted action items; each one became a create_task proposal (proposalId). */
+    actionItems: jsonb("action_items").$type<MeetingActionItem[]>().notNull().default([]),
+    model: text("model"),
+    summarizedAt: ts("summarized_at"),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [uniqueIndex("meeting_notes_user_event_idx").on(t.userId, t.eventId), index("meeting_notes_user_start_idx").on(t.userId, t.eventStart)],
+);
+
+// ---------- Personal trackers: money and learning ----------
+export const expenses = pgTable(
+  "expenses",
+  {
+    id: id(),
+    userId: userId(),
+    /** Minor units (paise, cents) so sums are exact. */
+    amountMinor: integer("amount_minor").notNull(),
+    /** ISO 4217 code, e.g. INR, USD. */
+    currency: text("currency").notNull().default("INR"),
+    category: text("category").notNull().default("other"),
+    merchant: text("merchant").notNull().default(""),
+    note: text("note").notNull().default(""),
+    spentOn: date("spent_on", { mode: "string" }).notNull(),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [index("expenses_user_date_idx").on(t.userId, t.spentOn), index("expenses_user_category_idx").on(t.userId, t.category)],
+);
+
+/** Optional monthly budget per category and currency. */
+export const expenseBudgets = pgTable(
+  "expense_budgets",
+  {
+    id: id(),
+    userId: userId(),
+    category: text("category").notNull(),
+    currency: text("currency").notNull().default("INR"),
+    monthlyMinor: integer("monthly_minor").notNull(),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [uniqueIndex("expense_budgets_user_category_idx").on(t.userId, t.category, t.currency)],
+);
+
+export const learningItems = pgTable(
+  "learning_items",
+  {
+    id: id(),
+    userId: userId(),
+    title: text("title").notNull(),
+    /** course | book | skill | video | other */
+    kind: text("kind").notNull().default("course"),
+    /** planned | active | paused | done */
+    status: text("status").notNull().default("active"),
+    /** 0 to 100 */
+    progress: integer("progress").notNull().default(0),
+    url: text("url"),
+    notes: text("notes").notNull().default(""),
+    targetDate: date("target_date", { mode: "string" }),
+    completedAt: ts("completed_at"),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [index("learning_items_user_idx").on(t.userId, t.status, t.updatedAt)],
+);
+
+/** Study sessions logged against a learning item (for weekly minutes and streaks). */
+export const learningLogs = pgTable(
+  "learning_logs",
+  {
+    id: id(),
+    userId: userId(),
+    itemId: uuid("item_id")
+      .notNull()
+      .references(() => learningItems.id, { onDelete: "cascade" }),
+    minutes: integer("minutes").notNull(),
+    loggedOn: date("logged_on", { mode: "string" }).notNull(),
+    note: text("note").notNull().default(""),
+    createdAt: createdAt(),
+  },
+  (t) => [index("learning_logs_user_date_idx").on(t.userId, t.loggedOn), index("learning_logs_item_idx").on(t.itemId)],
+);
+
 // ---------- Agents (ChatGPT / Gemini / Claude by API key) and sprints ----------
 export const agentConnectors = pgTable(
   "agent_connectors",
@@ -353,11 +476,24 @@ export const notes = pgTable(
     content: text("content").notNull(),
     source: actor("source").notNull().default("me"),
     embedding: vector("embedding", { dimensions: EMBEDDING_DIMENSIONS }),
+    /** Bookmark = a note with a URL. Title/description were fetched via safeFetch: untrusted, stored and shown as plain text only. */
+    url: text("url"),
+    linkDescription: text("link_description"),
+    /** Null when the page details could not be fetched. */
+    linkFetchedAt: ts("link_fetched_at"),
+    pinned: boolean("pinned").notNull().default(false),
+    tags: text("tags").array().notNull().default(sql`'{}'::text[]`),
+    /** Last mirrored into the knowledge base "Notes" source (what chat searches). Null = needs indexing. */
+    indexedAt: ts("indexed_at"),
     createdAt: createdAt(),
+    updatedAt: updatedAt(),
   },
   (t) => [
     index("notes_user_idx").on(t.userId, t.createdAt),
     index("notes_embedding_idx").using("hnsw", t.embedding.op("vector_cosine_ops")),
+    index("notes_user_pinned_idx").on(t.userId, t.pinned, t.updatedAt),
+    index("notes_user_url_idx").on(t.userId, t.url),
+    index("notes_tags_idx").using("gin", t.tags),
   ],
 );
 
@@ -369,6 +505,10 @@ export const memories = pgTable(
     userId: userId(),
     content: text("content").notNull(),
     kind: text("kind").notNull().default("preference"),
+    /** "settings" (typed by the owner), "chat" or "voice" (saved from the owner's own message). Never third-party content. */
+    source: text("source").notNull().default("settings"),
+    /** The chat it was saved from (no FK, like proposals.conversationId). */
+    conversationId: uuid("conversation_id"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -661,6 +801,10 @@ export const conversations = pgTable(
 );
 
 export type Citation = { n: number; title: string; url?: string | null; sourceType: string; itemId?: string };
+/** A memory saved (or found already saved) from the owner's own message in this turn. */
+export type MessageMemory = { id: string; content: string; kind: string; status: "saved" | "updated" | "exists"; /** Content before an "updated" save, for Undo. */ previous?: string };
+/** One visible step of a multi-step agent turn: labels and short previews only, never full documents. */
+export type AgentStepMeta = { tool: string; label: string; status: "ok" | "error" | "skipped"; summary?: string; preview?: string };
 export type MessageMeta = {
   toolsUsed?: string[];
   citations?: Citation[];
@@ -671,6 +815,11 @@ export type MessageMeta = {
   runId?: string;
   /** The model failed; the text is an error notice, not an answer (excluded from history). */
   error?: boolean;
+  memories?: MessageMemory[];
+  /** Fixed, Cowork-written notes such as "Web search isn't set up". */
+  notices?: string[];
+  /** Steps the agent took this turn (max 7), shown as the step timeline. */
+  steps?: AgentStepMeta[];
 };
 
 export const messages = pgTable(
@@ -687,6 +836,32 @@ export const messages = pgTable(
     createdAt: createdAt(),
   },
   (t) => [index("messages_conv_idx").on(t.conversationId, t.createdAt)],
+);
+
+/**
+ * Plain text extracted from a file or long paste attached to a chat message, kept so
+ * follow-up turns can use it. The file itself is never stored. UNTRUSTED: only sent to
+ * the model inside <source_content>; never rendered or returned to the client.
+ */
+export const chatAttachments = pgTable(
+  "chat_attachments",
+  {
+    id: id(),
+    userId: userId(),
+    conversationId: uuid("conversation_id")
+      .notNull()
+      .references(() => conversations.id, { onDelete: "cascade" }),
+    messageId: uuid("message_id")
+      .notNull()
+      .references(() => messages.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    /** pdf | docx | txt | md | code | paste */
+    kind: text("kind").$type<"pdf" | "docx" | "txt" | "md" | "code" | "paste">().notNull().default("txt"),
+    text: text("text").notNull(),
+    chars: integer("chars").notNull().default(0),
+    createdAt: createdAt(),
+  },
+  (t) => [index("chat_attachments_conv_idx").on(t.conversationId, t.createdAt), index("chat_attachments_message_idx").on(t.messageId)],
 );
 
 // ---------- Approval queue ----------
@@ -962,6 +1137,13 @@ export type Job = typeof jobs.$inferSelect;
 export type Briefing = typeof briefings.$inferSelect;
 export type Conversation = typeof conversations.$inferSelect;
 export type Message = typeof messages.$inferSelect;
+export type ChatAttachment = typeof chatAttachments.$inferSelect;
+export type FocusSession = typeof focusSessions.$inferSelect;
+export type MeetingNote = typeof meetingNotes.$inferSelect;
+export type Expense = typeof expenses.$inferSelect;
+export type ExpenseBudget = typeof expenseBudgets.$inferSelect;
+export type LearningItem = typeof learningItems.$inferSelect;
+export type LearningLog = typeof learningLogs.$inferSelect;
 export type Proposal = typeof proposals.$inferSelect;
 export type Broadcast = typeof broadcasts.$inferSelect;
 export type BroadcastFile = typeof broadcastFiles.$inferSelect;

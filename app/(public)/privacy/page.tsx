@@ -4,7 +4,7 @@ import { publicPage } from "@/lib/seo";
 
 export const metadata: Metadata = publicPage({ title: "Privacy policy", description: `How ${BRAND.name} collects, uses and protects your data, including Google user data under the Limited Use policy.`, path: "/privacy" });
 
-const UPDATED = "October 17, 2026";
+const UPDATED = "October 20, 2026";
 
 function H({ children }: { children: React.ReactNode }) {
   return <h2 className="mt-10 text-[18px] font-medium">{children}</h2>;
@@ -58,6 +58,26 @@ export default function PrivacyPolicy() {
         <li>do not use it to develop, improve or train generalized AI or machine-learning models.</li>
       </ul>
 
+      <H>Android app</H>
+      <p>The {n} app for Android uses the same account and the same rules as the website. On your phone it can use:</p>
+      <ul>
+        <li>
+          <strong>Microphone</strong>, only while you tap to talk: your phone&apos;s speech recognition service turns your voice into text, and {n} receives only that text. Spoken replies are read aloud by your
+          phone&apos;s text-to-speech engine.
+        </li>
+        <li>
+          <strong>Notification access</strong>, only if you turn on Phone link and allow it in Android settings: the app name, title and text of notifications (for example calls and messages) are sent to your {n}{" "}
+          account so you can see them there. They are kept for 3 days, then deleted. You can pause or unlink the phone at any time, in the app or on the website.
+        </li>
+        <li>
+          <strong>Your sign-in</strong>: the app keeps its session token encrypted with the Android Keystore. You can sign the app out from Settings &gt; Sessions on the website.
+        </li>
+      </ul>
+      <p>
+        The app contains no advertising or analytics SDKs. If you report an AI response as harmful, offensive or inaccurate, we keep a record of the report (the reason and the message reference) to review and improve
+        the service.
+      </p>
+
       <H>How we use data</H>
       <ul>
         <li>To provide the features you use: briefings, inbox sorting, drafts, tasks, reminders, knowledge search and automations.</li>
@@ -78,8 +98,9 @@ export default function PrivacyPolicy() {
       <H>Retention and deletion</H>
       <p>
         We keep your data while your account is active. You can disconnect any service, delete indexed knowledge, and export your data from Settings at any time. Disconnecting Google revokes our access and deletes the stored
-        tokens. To delete your account and all associated data, email <a className="underline" href={`mailto:${BRAND.supportEmail}`}>{BRAND.supportEmail}</a> and we&apos;ll complete it within 30 days. You can also remove
-        access at{" "}
+        tokens. You can delete your account and all associated data yourself, at once, in the app (Me &gt; Delete account) or on the website (Settings &gt; Privacy). See{" "}
+        <a className="underline" href="/delete-account">how to delete your account</a>. You can also email <a className="underline" href={`mailto:${BRAND.supportEmail}`}>{BRAND.supportEmail}</a> and we&apos;ll
+        complete it within 30 days. You can also remove Google&apos;s access at{" "}
         <a className="underline" href="https://myaccount.google.com/permissions" rel="noopener noreferrer" target="_blank">
           myaccount.google.com/permissions
         </a>

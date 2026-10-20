@@ -24,7 +24,11 @@ function ipPrefix(ip: string | null): string | null {
   return ip.split(":").slice(0, 3).join(":") + "::";
 }
 
-export async function createSession(userId: string) {
+/**
+ * Starts a session. Browsers get it as an httpOnly cookie; the Android app (`cookie: false`)
+ * gets the token back once and sends it as `Authorization: Bearer` (native HTTP has no cookie jar).
+ */
+export async function createSession(userId: string, opts: { cookie?: boolean } = {}): Promise<string> {
   const token = randomToken(32);
   const h = await headers();
   const ip = h.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null;
@@ -32,17 +36,24 @@ export async function createSession(userId: string) {
   await db()
     .insert(schema.sessions)
     .values({ userId, tokenHash: sha256(token), userAgent: h.get("user-agent")?.slice(0, 300) ?? null, ipPrefix: ipPrefix(ip), expiresAt });
-  (await cookies()).set(sessionCookieName(), token, {
-    httpOnly: true,
-    secure: isProd(),
-    sameSite: "lax",
-    path: "/",
-    expires: expiresAt,
-  });
+  if (opts.cookie !== false) {
+    (await cookies()).set(sessionCookieName(), token, {
+      httpOnly: true,
+      secure: isProd(),
+      sameSite: "lax",
+      path: "/",
+      expires: expiresAt,
+    });
+  }
+  return token;
 }
 
+/** The session cookie, or the Android app's bearer token. Browsers never attach bearer tokens on their own, so CSRF doesn't apply to them. */
 async function currentToken(): Promise<string | null> {
-  return (await cookies()).get(sessionCookieName())?.value ?? null;
+  const cookie = (await cookies()).get(sessionCookieName())?.value;
+  if (cookie) return cookie;
+  const auth = (await headers()).get("authorization") ?? "";
+  return /^Bearer ([A-Za-z0-9_-]{32,200})$/.exec(auth)?.[1] ?? null;
 }
 
 /** Validates the session cookie against the DB and re-checks the sign-in policy every time. */

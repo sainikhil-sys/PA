@@ -11,7 +11,7 @@ import { timeAgo } from "@/lib/utils";
 export const metadata: Metadata = { title: "Approvals" };
 export const dynamic = "force-dynamic";
 
-const SOURCE: Record<string, string> = { chat: "Chat", voice: "Voice", automation: "Automation", mcp: "Claude" };
+const SOURCE: Record<string, string> = { chat: "Chat", voice: "Voice", automation: "Automation", mcp: "Claude", meeting: "Meeting notes" };
 
 /**
  * Everything the agent prepared that waits for your decision: from chat, voice and automations.

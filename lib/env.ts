@@ -53,6 +53,8 @@ const schema = z.object({
   // News
   NEWS_FEEDS: z.string().optional(),
   NEWS_API_KEY: z.string().optional(),
+  // Web search (Tavily). Server-side only; without it the agent says web search isn't set up.
+  TAVILY_API_KEY: z.string().optional(),
   // Notifications
   TELEGRAM_BOT_TOKEN: z.string().optional(),
   TELEGRAM_CHAT_ID: z.string().optional(),

@@ -64,7 +64,16 @@ export async function requestOtp(rawEmail: string, ip: string): Promise<{ ok: bo
   return { ok: true, message: GENERIC_SENT };
 }
 
-export async function verifyOtp(rawEmail: string, code: string, ip: string): Promise<{ ok: boolean; message: string; isNew?: boolean }> {
+/**
+ * Checks a code and starts a session. `cookie: false` (Android app) returns the session token
+ * instead of setting a cookie; browser sign-ins never see the token.
+ */
+export async function verifyOtp(
+  rawEmail: string,
+  code: string,
+  ip: string,
+  opts: { cookie?: boolean } = {},
+): Promise<{ ok: boolean; message: string; isNew?: boolean; sessionToken?: string }> {
   const email = normalizeEmail(rawEmail);
   const secret = requireEnv("AUTH_SECRET");
   const emailHash = hashEmail(email, secret);
@@ -107,9 +116,9 @@ export async function verifyOtp(rawEmail: string, code: string, ip: string): Pro
     .returning({ id: schema.users.id, onboardedAt: schema.users.onboardedAt, disabledAt: schema.users.disabledAt, created: sql<boolean>`(xmax = 0)` });
   if (user!.disabledAt) return { ok: false, message: ACCOUNT_DISABLED };
   await db().insert(schema.userSettings).values({ userId: user!.id }).onConflictDoNothing();
-  await createSession(user!.id);
-  await logActivity({ userId: user!.id, actor: "me", tool: "auth.sign_in", inputSummary: "email code", outcome: "success" });
+  const token = await createSession(user!.id, { cookie: opts.cookie });
+  await logActivity({ userId: user!.id, actor: "me", tool: "auth.sign_in", inputSummary: opts.cookie === false ? "email code (Android app)" : "email code", outcome: "success" });
   // xmax = 0 means this row was inserted, not updated: a brand-new account. Send after the response.
   if (user!.created) after(() => sendWelcomeEmail(email));
-  return { ok: true, message: "Signed in", isNew: !user!.onboardedAt };
+  return { ok: true, message: "Signed in", isNew: !user!.onboardedAt, ...(opts.cookie === false ? { sessionToken: token } : {}) };
 }

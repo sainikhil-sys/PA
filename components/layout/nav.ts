@@ -1,5 +1,6 @@
 import {
   Books,
+  ChartLineUp,
   SealCheck,
   ChatCircle,
   CheckSquare,
@@ -32,6 +33,7 @@ export const PRIMARY_NAV: NavItem[] = [
 
 export const SECONDARY_NAV: NavItem[] = [
   { href: "/approvals", label: "Approvals", icon: SealCheck },
+  { href: "/trackers", label: "Trackers", icon: ChartLineUp },
   { href: "/phone", label: "Phone", icon: DeviceMobile },
   { href: "/agents", label: "Agents & sprints", icon: Robot },
   { href: "/integrations", label: "Integrations", icon: PuzzlePiece },
