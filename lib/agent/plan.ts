@@ -33,7 +33,7 @@ export const PLAN_PROMPT = (message: string, hasAttachment: boolean) => `Decide 
 {"sources": [subset of "gmail","calendar","tasks","knowledge","news","briefing"], "search_query": "keywords for the knowledge base", "actions": [{"kind": "create_task|create_draft|schedule_task|run_automation|create_linkedin_draft|add_note", "title": "...", "when": "natural language time", "details": "...", "email_hint": "sender or subject", "automation_name": "..."}]}
 
 Rules:
-- Pick only the sources needed. "what did I miss" -> gmail, calendar, tasks. Questions about documents/notes -> knowledge.
+- Pick only the sources needed. "what did I miss" -> gmail, calendar, tasks. Questions about documents/notes/bookmarks/saved links -> knowledge.
 - Add an action ONLY if the owner clearly asks you to do something (add, create, draft, schedule, remind, run, save). Otherwise "actions": [].
 - Never propose sending, posting, deleting or paying.
 ${hasAttachment ? "- The owner attached a document; it is included separately." : ""}
@@ -59,7 +59,7 @@ export function heuristicPlan(message: string): Plan {
     sources.add("calendar");
     sources.add("tasks");
   }
-  if (/\b(note|notes|doc|docs|document|knowledge|drive|notion|wiki|file|according)\b/.test(m) || sources.size === 0) sources.add("knowledge");
+  if (/\b(note|notes|bookmark|bookmarks|saved|doc|docs|document|knowledge|drive|notion|wiki|file|according)\b/.test(m) || sources.size === 0) sources.add("knowledge");
 
   const actions: PlannedAction[] = [];
   const task = /\b(?:add|create|make)\s+(?:a\s+)?(?:task|todo|reminder)\s+(?:to\s+)?(.+)$|\bremind me to\s+(.+)$/i.exec(message);

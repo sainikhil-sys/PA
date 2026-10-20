@@ -32,7 +32,7 @@ export const NODES: NodeDef[] = [
   { id: "output:draft", label: "Gmail drafts", lane: 5, logo: "gmail", settingsHref: "/inbox" },
   { id: "output:tasks", label: "New tasks", lane: 5, icon: "tasks", settingsHref: "/tasks" },
   { id: "output:content", label: "LinkedIn drafts", lane: 5, icon: "content", settingsHref: "/content" },
-  { id: "output:notes", label: "Notes", lane: 5, icon: "knowledge", settingsHref: "/knowledge" },
+  { id: "output:notes", label: "Notes", lane: 5, icon: "knowledge", settingsHref: "/knowledge/notes" },
   { id: "output:notify", label: "Notifications", lane: 5, icon: "notify", settingsHref: "/settings/notifications" },
 ];
 

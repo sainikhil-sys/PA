@@ -51,6 +51,7 @@ for (const [name, action] of cases) {
 await db().delete(schema.automations).where(inArray(schema.automations.id, made));
 await db().delete(schema.tasks).where(and(eq(schema.tasks.userId, user.id), like(schema.tasks.title, "VERIFY%")));
 await db().delete(schema.knowledgeItems).where(and(eq(schema.knowledgeItems.userId, user.id), like(schema.knowledgeItems.title, "VERIFY%")));
+await db().delete(schema.notes).where(and(eq(schema.notes.userId, user.id), like(schema.notes.title, "VERIFY%")));
 await db().delete(schema.notifications).where(and(eq(schema.notifications.userId, user.id), like(schema.notifications.title, "VERIFY%")));
 await db().delete(schema.contentDrafts).where(eq(schema.contentDrafts.userId, user.id));
 await db().delete(schema.briefings).where(eq(schema.briefings.userId, user.id));

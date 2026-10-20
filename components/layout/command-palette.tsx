@@ -1,12 +1,13 @@
 "use client";
 
-import { ChatCircle, Graph, Microphone, Plus, Sparkle, TreeStructure } from "@phosphor-icons/react";
+import { BookmarkSimple, ChatCircle, Graph, Microphone, NotePencil, Plus, Sparkle, TreeStructure } from "@phosphor-icons/react";
 import { useLinkPanel } from "@/components/flow/link-panel-context";
 import { Command } from "cmdk";
 import { AnimatePresence, motion } from "motion/react";
 import { useRouter } from "next/navigation";
 import * as React from "react";
 import { toast } from "sonner";
+import { createNoteAction, saveBookmarkAction } from "@/app/actions/notes";
 import { quickAddTask } from "@/app/actions/tasks";
 import { PRIMARY_NAV, SECONDARY_NAV } from "./nav";
 import { useShell } from "./shell-context";
@@ -25,6 +26,9 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
     onOpenChange(false);
     fn();
   };
+
+  const isLink = /^https?:\/\/\S+$/i.test(query.trim());
+  const openNote = (id: string) => ({ label: "Open", onClick: () => router.push(`/knowledge/notes?note=${id}`) });
 
   const itemClass =
     "flex h-11 cursor-pointer select-none items-center gap-3 rounded-[10px] px-3 text-sm text-foreground data-[selected=true]:bg-surface-hover [&_svg]:text-muted";
@@ -78,6 +82,37 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
                     >
                       <Plus size={18} /> Create task: “{query}”
                     </Command.Item>
+                    {isLink ? (
+                      <Command.Item
+                        value={`link ${query}`}
+                        className={itemClass}
+                        onSelect={() =>
+                          run(async () => {
+                            const r = await saveBookmarkAction({ url: query.trim() });
+                            if (!r.ok) return void toast.error(r.error);
+                            if (r.data.existed) toast("Already saved", { action: openNote(r.data.id) });
+                            else if (!r.data.fetched) toast.success("Link saved", { description: `Couldn't fetch the page details. ${r.data.reason ?? ""}`.trim(), action: openNote(r.data.id) });
+                            else toast.success("Link saved", { action: openNote(r.data.id) });
+                          })
+                        }
+                      >
+                        <BookmarkSimple size={18} /> <span className="truncate">Save link: “{query.trim()}”</span>
+                      </Command.Item>
+                    ) : (
+                      <Command.Item
+                        value={`note ${query}`}
+                        className={itemClass}
+                        onSelect={() =>
+                          run(async () => {
+                            const r = await createNoteAction({ title: query.trim().slice(0, 200) });
+                            if (r.ok) toast.success("Note saved", { action: openNote(r.data.id) });
+                            else toast.error(r.error);
+                          })
+                        }
+                      >
+                        <NotePencil size={18} /> <span className="truncate">Save as note: “{query.trim()}”</span>
+                      </Command.Item>
+                    )}
                   </Command.Group>
                 ) : null}
                 <Command.Group heading="Go to" className="[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:py-2 [&_[cmdk-group-heading]]:text-[12px] [&_[cmdk-group-heading]]:text-muted">
@@ -89,6 +124,9 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
                       </Command.Item>
                     );
                   })}
+                  <Command.Item value="go notes bookmarks" className={itemClass} onSelect={() => run(() => router.push("/knowledge/notes"))}>
+                    <NotePencil size={18} /> Notes & bookmarks
+                  </Command.Item>
                 </Command.Group>
                 <Command.Group heading="Agent" className="[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:py-2 [&_[cmdk-group-heading]]:text-[12px] [&_[cmdk-group-heading]]:text-muted">
                   <Command.Item value="open chat panel" className={itemClass} onSelect={() => run(() => openChat())}>

@@ -15,7 +15,7 @@ import { logActivity } from "@/lib/db/queries/activity";
 import { notify } from "@/lib/db/queries/notifications";
 import { getSettings } from "@/lib/db/queries/settings";
 import { createTask } from "@/lib/db/queries/tasks";
-import { addTextToKnowledge } from "@/lib/knowledge/ingest";
+import { createNote } from "@/lib/notes/service";
 import { errMessage } from "@/lib/log";
 import { truncate } from "@/lib/security/sanitize";
 import { Trace } from "@/lib/trace";
@@ -103,7 +103,11 @@ async function execute(user: User, a: Automation, run: AutomationRun, action: Au
       return `LinkedIn draft ${d.id.slice(0, 8)} saved for review (not posted)`;
     }
     case "add_note": {
-      await addTextToKnowledge(user.id, { title: fillTemplate(action.title, vars), content: fillTemplate(action.content ?? "", vars) || fillTemplate(action.title, vars), via: "agent" });
+      await createNote(user.id, {
+        title: fillTemplate(action.title, vars).slice(0, 200) || "Note",
+        content: (fillTemplate(action.content ?? "", vars) || fillTemplate(action.title, vars)).slice(0, 50_000),
+        source: "agent",
+      });
       return "Note saved";
     }
     case "notify": {

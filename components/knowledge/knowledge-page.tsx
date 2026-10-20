@@ -1,7 +1,7 @@
 "use client";
 
 import { ArrowClockwise, ArrowSquareOut, Books, FileArrowUp, Globe, MagnifyingGlass, NotePencil, Plus, Trash } from "@phosphor-icons/react";
-import { motion } from "motion/react";
+import { motion, useReducedMotionConfig } from "motion/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import * as React from "react";
@@ -24,7 +24,7 @@ export type SourceCard = { id: string; type: string; name: string; included: boo
 const LOGO: Record<string, string | null> = { drive: "googledrive", gmail: "gmail", notion: "notion", slack: "slack", github: "github", upload: null, text: null, url: null };
 const PICK: Record<string, { label: string; hint: string; needs: string }> = {
   drive: { label: "Folder IDs", hint: "Paste folder IDs from the Drive URL (…/folders/<ID>), comma separated. Docs, Sheets, PDFs and text files inside are indexed.", needs: "google" },
-  gmail: { label: "Label IDs (optional)", hint: "Leave empty for all classified mail. Only subjects and AI summaries are indexed — never full bodies.", needs: "google" },
+  gmail: { label: "Label IDs (optional)", hint: "Leave empty for all classified mail. Only subjects and AI summaries are indexed, never full bodies.", needs: "google" },
   notion: { label: "Page IDs (optional)", hint: "Leave empty to index every page shared with your integration.", needs: "notion" },
   slack: { label: "Channel IDs", hint: "e.g. C0123ABC. Invite the bot to each channel first.", needs: "slack" },
   github: { label: "Repositories", hint: "owner/repo, comma separated. READMEs and docs/*.md are indexed.", needs: "github" },
@@ -32,6 +32,7 @@ const PICK: Record<string, { label: string; hint: string; needs: string }> = {
 
 export function KnowledgePage({ sources, connected }: { sources: SourceCard[]; connected: Record<string, boolean> }) {
   const router = useRouter();
+  const reduce = useReducedMotionConfig();
   const [pending, start] = React.useTransition();
   const [adding, setAdding] = React.useState<string | null>(null);
   const [selection, setSelection] = React.useState("");
@@ -92,7 +93,7 @@ export function KnowledgePage({ sources, connected }: { sources: SourceCard[]; c
         ) : (
           <ul className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
             {sources.map((s, i) => (
-              <motion.li key={s.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, delay: i * 0.03 }}>
+              <motion.li key={s.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, delay: reduce ? 0 : Math.min(i, 6) * 0.03 }}>
                 <Card className="flex h-full flex-col gap-4 p-5">
                   <div className="flex items-start gap-3">
                     {LOGO[s.type] ? <BrandLogo id={LOGO[s.type]!} size={22} box /> : <span className="grid size-[42px] place-items-center rounded-[12px] border border-border text-muted">{s.type === "url" ? <Globe size={20} /> : s.type === "upload" ? <FileArrowUp size={20} /> : <NotePencil size={20} />}</span>}

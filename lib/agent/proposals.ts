@@ -9,7 +9,7 @@ import { logActivity } from "@/lib/db/queries/activity";
 import { notify } from "@/lib/db/queries/notifications";
 import { getSettings } from "@/lib/db/queries/settings";
 import { createTask } from "@/lib/db/queries/tasks";
-import { addTextToKnowledge } from "@/lib/knowledge/ingest";
+import { createNote, noteHref } from "@/lib/notes/service";
 import { parseQuickAdd } from "@/lib/tasks/quick-add";
 import type { PlannedAction } from "./plan";
 
@@ -24,7 +24,7 @@ export const PROPOSAL_LABEL: Record<ProposalKind, string> = {
   schedule_task: "Schedule task",
   run_automation: "Run automation",
   create_linkedin_draft: "Create LinkedIn draft",
-  add_note: "Add note to knowledge base",
+  add_note: "Save note",
   notify: "Notify me",
 };
 
@@ -123,8 +123,12 @@ export async function executeProposal(user: User, id: string, edits?: { title?: 
         break;
       }
       case "add_note": {
-        await addTextToKnowledge(user.id, { title: String(edits?.title ?? payload.title), content: String(payload.content ?? payload.title), via: "agent" });
-        result = { message: "Saved to your knowledge base" };
+        const note = await createNote(user.id, {
+          title: String(edits?.title ?? payload.title ?? "").slice(0, 200) || "Note",
+          content: String(payload.content ?? payload.title ?? "").slice(0, 50_000),
+          source: "agent",
+        });
+        result = { message: "Note saved", href: noteHref(note.id) };
         break;
       }
       case "notify": {
