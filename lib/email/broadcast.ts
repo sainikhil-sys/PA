@@ -139,7 +139,7 @@ function textPart(c: BroadcastEmailContent, o: RenderOptions): string {
       const url = safeMailUrl(b.url, o.appBase);
       if (url) out.push(`${b.label}: ${url}`, "");
     } else if (b.type === "image" && b.alt.trim()) out.push(`[Image: ${b.alt.trim()}]`, "");
-    else if (b.type === "divider") out.push("—", "");
+    else if (b.type === "divider") out.push("----", "");
   }
   if (o.attachments?.length) out.push(`Attached: ${o.attachments.map((f) => f.filename).join(", ")}`, "");
   out.push(`Notification settings: ${o.manageUrl}`, `Unsubscribe from updates: ${o.unsubscribeUrl}`);
@@ -262,6 +262,14 @@ export function cleanEmail(c: BroadcastEmailContent): BroadcastEmailContent {
     headline: c.headline.trim().slice(0, L.headline),
     blocks: blocks.slice(0, L.blocks),
   };
+}
+
+/**
+ * The product's copy never uses em dashes; models love them. Turn "a — b" (and spaced en dashes)
+ * into "a, b" in AI-written text.
+ */
+export function noDashes(text: string): string {
+  return text.replace(/\s*\u2014\s*/g, ", ").replace(/\s+\u2013\s+/g, ", ").replace(/,\s*([.,;:!?])/g, "$1");
 }
 
 /** Plain text for the in-app and phone notification: no markdown, no links. */

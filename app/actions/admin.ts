@@ -22,6 +22,7 @@ import {
   EMAIL_LIMITS as L,
   IN_APP_PATHS,
   linkAllowList,
+  noDashes,
   plainNotificationText,
   renderBroadcastEmail,
   restrictLinks,
@@ -73,7 +74,7 @@ function draftSystem(style: BroadcastStyle): string {
     `Format: ${BROADCAST_STYLES[style].guide}`,
     "Rules:",
     "- Use only facts from the note. Never invent features, dates, times, numbers, prices, names or links.",
-    "- Plain, warm, specific language. No hype, no emoji, no exclamation marks.",
+    "- Plain, warm, specific language. No hype, no emoji, no exclamation marks, no em dashes (use commas, colons or periods).",
     `- Links: write them as [label](url), and only with URLs that appear in the note or these app pages: ${IN_APP_PATHS.join(", ")}.`,
     "- The button url follows the same rule. Use null for cta when no link fits.",
     "- Use **bold** sparingly for a key phrase. No other markdown and no HTML.",
@@ -105,10 +106,23 @@ export const draftBroadcast = ownerAction(z.object({ prompt: z.string().trim().m
     if (err instanceof NoProviderError) throw new UserFacingError("No AI provider is set up on the server.");
     throw err;
   });
-  const email = draftToEmail(value);
+  // Our copy never uses em dashes, whatever the model writes.
+  const d = {
+    ...value,
+    title: noDashes(value.title),
+    body: noDashes(value.body),
+    subject: noDashes(value.subject),
+    preheader: noDashes(value.preheader),
+    headline: noDashes(value.headline),
+    intro: noDashes(value.intro),
+    closing: noDashes(value.closing),
+    sections: value.sections.map((s) => ({ heading: s.heading ? noDashes(s.heading) : s.heading, text: noDashes(s.text), bullets: s.bullets?.map(noDashes) ?? null })),
+    cta: value.cta ? { ...value.cta, label: noDashes(value.cta.label) } : value.cta,
+  };
+  const email = draftToEmail(d);
   return {
-    title: plainNotificationText(value.title).slice(0, 120),
-    body: plainNotificationText(value.body).slice(0, 600),
+    title: plainNotificationText(d.title).slice(0, 120),
+    body: plainNotificationText(d.body).slice(0, 600),
     // Links the model made up (not in the note, not an app page) are removed.
     email: cleanEmail({ ...email, blocks: restrictLinks(email.blocks, linkAllowList(prompt)) }),
   };

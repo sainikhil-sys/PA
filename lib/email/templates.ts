@@ -79,7 +79,7 @@ export function otpEmail(code: string): Email {
   return {
     subject: `${code} is your ${BRAND.name} sign-in code`,
     html: layout({ preheader: `${code} expires in 10 minutes`, body, footer: `Sent by ${esc(BRAND.name)} because a sign-in was requested for this address.` }),
-    text: `Your ${BRAND.name} sign-in code is ${code}.\n\nIt expires in 10 minutes and works once. If you didn't try to sign in, ignore this email.\n\n— ${BRAND.name}`,
+    text: `Your ${BRAND.name} sign-in code is ${code}.\n\nIt expires in 10 minutes and works once. If you didn't try to sign in, ignore this email.\n\n${BRAND.name}`,
   };
 }
 

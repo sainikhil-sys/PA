@@ -7,6 +7,7 @@ import {
   inlineHtml,
   inlineText,
   linkAllowList,
+  noDashes,
   plainNotificationText,
   renderBroadcastEmail,
   restrictLinks,
@@ -118,6 +119,13 @@ describe("AI drafts", () => {
       { type: "list", items: ["a"] },
       { type: "image", fileId: "f", alt: "" },
     ]);
+  });
+  it("removes em dashes from AI copy but keeps number ranges", () => {
+    expect(noDashes("Fast — and private")).toBe("Fast, and private");
+    expect(noDashes("Ready—set")).toBe("Ready, set");
+    expect(noDashes("Calm – plain notes")).toBe("Calm, plain notes");
+    expect(noDashes("Pages 1–5 load")).toBe("Pages 1–5 load");
+    expect(noDashes("Done — .")).toBe("Done.");
   });
   it("keeps notifications free of links and markdown", () => {
     expect(plainNotificationText("Try **it** at [the app](https://example.com) https://x.example now")).toBe("Try it at the app now");

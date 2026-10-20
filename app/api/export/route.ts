@@ -107,22 +107,22 @@ export async function GET(req: Request) {
     return `${(minor / 10 ** digits).toFixed(digits)} ${currency}`;
   };
   const md = [
-    `# Cowork export — ${stamp}`,
-    `\n## Profile\n\n- ${g.user.name ?? ""} <${g.user.email}>${g.user.role ? ` — ${g.user.role}` : ""}`,
+    `# Cowork export, ${stamp}`,
+    `\n## Profile\n\n- ${g.user.name ?? ""} <${g.user.email}>${g.user.role ? `, ${g.user.role}` : ""}`,
     `\n## Tasks (${tasks.length})\n`,
     ...tasks.map((t) => `- [${t.status === "done" ? "x" : " "}] ${t.title}${t.dueDate ? ` (due ${t.dueDate})` : ""}`),
     `\n## Notes (${notes.length})\n`,
     ...notes.map((n) => `### ${n.title}\n\n${n.url ? `${n.url}\n\n` : ""}${n.content}\n`),
     `\n## Meeting notes (${meetingNotes.length})\n`,
-    ...meetingNotes.map((m) => `### ${m.eventTitle || "Meeting"} — ${m.eventStart.toISOString().slice(0, 10)}\n\n${m.summary ? `${m.summary}\n\n` : ""}${m.notes}\n`),
+    ...meetingNotes.map((m) => `### ${m.eventTitle || "Meeting"} (${m.eventStart.toISOString().slice(0, 10)})\n\n${m.summary ? `${m.summary}\n\n` : ""}${m.notes}\n`),
     `\n## Expenses (${expenses.length})\n`,
-    ...expenses.map((e) => `- ${e.spentOn} · ${money(e.amountMinor, e.currency)} · ${e.category}${e.merchant ? ` · ${e.merchant}` : ""}${e.note ? ` — ${e.note}` : ""}`),
+    ...expenses.map((e) => `- ${e.spentOn} · ${money(e.amountMinor, e.currency)} · ${e.category}${e.merchant ? ` · ${e.merchant}` : ""}${e.note ? `: ${e.note}` : ""}`),
     `\n## Learning (${learningItems.length})\n`,
     ...learningItems.map((l) => `- ${l.title} (${l.kind}, ${l.status}, ${l.progress}%)`),
     `\n## Memories\n`,
     ...memories.map((m) => `- ${m.content}`),
     `\n## Content drafts (${drafts.length})\n`,
-    ...drafts.map((d) => `### ${d.title} — ${d.status}\n\n${d.body}\n`),
+    ...drafts.map((d) => `### ${d.title} (${d.status})\n\n${d.body}\n`),
     `\n## Conversations (${conversations.length})\n`,
     ...conversations.map((c) => [`### ${c.title}`, ...messages.filter((m) => m.conversationId === c.id).map((m) => `**${m.role === "user" ? "You" : "Agent"}:** ${m.content}\n`)].join("\n\n")),
   ].join("\n");
