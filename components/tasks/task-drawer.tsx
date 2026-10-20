@@ -1,6 +1,7 @@
 "use client";
 
-import { ArrowUUpLeft, Check, Plus, Sparkle, Trash } from "@phosphor-icons/react";
+import { ArrowUUpLeft, Check, Plus, Sparkle, Timer, Trash } from "@phosphor-icons/react";
+import Link from "next/link";
 import * as React from "react";
 import useSWR from "swr";
 import { toast } from "sonner";
@@ -19,16 +20,19 @@ import { Dialog, Sheet } from "@/components/ui/dialog";
 import { Input, Label, Textarea, inputClass } from "@/components/ui/input";
 import { Checkbox, Skeleton } from "@/components/ui/misc";
 import { fetcher } from "@/lib/fetcher";
+import { formatMinutes } from "@/lib/tasks/timing";
 import { cn, timeAgo } from "@/lib/utils";
 import { AssigneeBadge, PRIORITY_LABEL, type TaskRow } from "./task-bits";
+import { TaskTimingFields } from "./task-timing";
 
 type Detail = TaskRow & {
   comments: { id: string; author: string; kind: string; body: string; createdAt: string }[];
   subtasks: TaskRow[];
   artifacts: { title: string; url?: string; content?: string }[] | null;
+  focusMinutes?: number;
 };
 
-export function TaskDrawer({ id, onClose, onChanged }: { id: string | null; onClose: () => void; onChanged: () => void }) {
+export function TaskDrawer({ id, timezone, onClose, onChanged }: { id: string | null; timezone: string; onClose: () => void; onChanged: () => void }) {
   const { data, mutate } = useSWR<Detail>(id ? `/api/tasks?id=${id}` : null, fetcher, { refreshInterval: 10_000 });
   const [pending, start] = React.useTransition();
   const [confirmDelete, setConfirmDelete] = React.useState(false);
@@ -48,7 +52,19 @@ export function TaskDrawer({ id, onClose, onChanged }: { id: string | null; onCl
       refresh();
     });
 
-  const save = (patch: Partial<{ title: string; description: string; dueDate: string | null; priority: number; tags: string[]; assignee: "me" | "agent" | "claude" }>) => run(() => updateTaskAction({ id: id!, ...patch }));
+  const save = (
+    patch: Partial<{
+      title: string;
+      description: string;
+      dueDate: string | null;
+      priority: number;
+      tags: string[];
+      assignee: "me" | "agent" | "claude";
+      scheduledAt: string | null;
+      durationMinutes: number | null;
+      remindAt: string | null;
+    }>,
+  ) => run(() => updateTaskAction({ id: id!, ...patch }));
 
   return (
     <>
@@ -100,6 +116,16 @@ export function TaskDrawer({ id, onClose, onChanged }: { id: string | null; onCl
                 <Label htmlFor="t-tags">Tags</Label>
                 <Input id="t-tags" defaultValue={data.tags.join(", ")} placeholder="finance, q4" onBlur={(e) => save({ tags: e.target.value.split(",").map((t) => t.trim().toLowerCase()).filter(Boolean).slice(0, 10) })} />
               </div>
+            </div>
+
+            <TaskTimingFields task={data} timezone={timezone} disabled={pending} onSave={save} />
+            <div className="-mt-2 flex flex-wrap items-center gap-3">
+              <Button asChild size="sm" variant="secondary">
+                <Link href={`/?focus=${data.id}`}>
+                  <Timer /> Focus on this
+                </Link>
+              </Button>
+              {data.focusMinutes ? <span className="tabular text-[12px] text-muted">Focused {formatMinutes(data.focusMinutes)}</span> : null}
             </div>
 
             {data.resultMarkdown ? (

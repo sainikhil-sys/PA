@@ -8,6 +8,7 @@ import { Switch } from "@/components/ui/misc";
 import { ErrorState } from "@/components/ui/states";
 import { Segmented } from "@/components/ui/tabs";
 import { fetcher } from "@/lib/fetcher";
+import { MeetingSheet } from "@/components/meetings/meeting-sheet";
 import { QuickAdd } from "./quick-add";
 import { ScheduleView } from "./schedule-view";
 import type { TaskRow } from "./task-bits";
@@ -23,6 +24,8 @@ export function TasksPage({ initial, timezone }: { initial: TaskRow[]; timezone:
   const params = useSearchParams();
   const view = (params.get("view") as View) || "list";
   const openId = params.get("task");
+  const meetingId = params.get("meeting");
+  const meetingAt = params.get("at");
   const [showDone, setShowDone] = React.useState(false);
   const [assignee, setAssignee] = React.useState<"all" | "me" | "agent" | "claude">("all");
   const { data, error, mutate } = useSWR<{ items: TaskRow[] }>("/api/tasks", fetcher, { fallbackData: { items: initial }, refreshInterval: 8_000 });
@@ -31,6 +34,14 @@ export function TasksPage({ initial, timezone }: { initial: TaskRow[]; timezone:
     const sp = new URLSearchParams(params.toString());
     if (v === null) sp.delete(k);
     else sp.set(k, v);
+    router.replace(`${pathname}?${sp.toString()}`, { scroll: false });
+  };
+  const setParams = (patch: Record<string, string | null>) => {
+    const sp = new URLSearchParams(params.toString());
+    for (const [k, v] of Object.entries(patch)) {
+      if (v === null) sp.delete(k);
+      else sp.set(k, v);
+    }
     router.replace(`${pathname}?${sp.toString()}`, { scroll: false });
   };
 
@@ -76,9 +87,10 @@ export function TasksPage({ initial, timezone }: { initial: TaskRow[]; timezone:
       ) : view === "board" ? (
         <TaskBoard tasks={tasks} onOpen={(id) => setParam("task", id)} onChanged={() => void mutate()} />
       ) : (
-        <ScheduleView timezone={timezone} onOpenTask={(id) => setParam("task", id)} />
+        <ScheduleView timezone={timezone} onOpenTask={(id) => setParam("task", id)} onOpenMeeting={(id, start) => setParams({ meeting: id, at: start })} />
       )}
-      <TaskDrawer id={openId} onClose={() => setParam("task", null)} onChanged={() => void mutate()} />
+      <TaskDrawer id={openId} timezone={timezone} onClose={() => setParam("task", null)} onChanged={() => void mutate()} />
+      <MeetingSheet eventId={meetingId} at={meetingAt} timezone={timezone} onClose={() => setParams({ meeting: null, at: null })} />
     </div>
   );
 }

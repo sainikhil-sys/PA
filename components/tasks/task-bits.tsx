@@ -1,6 +1,7 @@
-import { ArrowsClockwise, Robot, Sparkle, User } from "@phosphor-icons/react";
+import { ArrowsClockwise, Bell, Hourglass, Robot, Sparkle, User } from "@phosphor-icons/react";
 import { Badge } from "@/components/ui/badge";
 import type { Actor } from "@/lib/db/schema";
+import { formatMinutes, reminderOffsetLabel } from "@/lib/tasks/timing";
 
 export type TaskRow = {
   id: string;
@@ -13,6 +14,9 @@ export type TaskRow = {
   createdBy: Actor;
   dueDate: string | null;
   scheduledAt: string | null;
+  durationMinutes: number | null;
+  remindAt: string | null;
+  reminderSentAt: string | null;
   recurrence: unknown;
   parentId: string | null;
   resultMarkdown: string | null;
@@ -58,6 +62,28 @@ export function RecurringMark() {
   return (
     <span className="inline-flex items-center text-subtle" aria-label="Recurring">
       <ArrowsClockwise size={14} />
+    </span>
+  );
+}
+
+export function DurationMark({ minutes }: { minutes: number | null }) {
+  if (!minutes) return null;
+  return (
+    <span className="tabular inline-flex items-center gap-1 text-[11px] text-muted" aria-label={`Takes ${formatMinutes(minutes)}`}>
+      <Hourglass size={12} aria-hidden />
+      {formatMinutes(minutes)}
+    </span>
+  );
+}
+
+/** Upcoming reminder only (icon + label, never color alone). */
+export function ReminderMark({ remindAt, scheduledAt, reminderSentAt }: { remindAt: string | null; scheduledAt: string | null; reminderSentAt: string | null }) {
+  if (!remindAt || reminderSentAt || new Date(remindAt).getTime() < Date.now()) return null;
+  const label = reminderOffsetLabel(remindAt, scheduledAt) ?? new Date(remindAt).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+  return (
+    <span className="tabular inline-flex items-center gap-1 text-[11px] text-muted" aria-label={`Reminder ${label}`}>
+      <Bell size={12} aria-hidden />
+      {label}
     </span>
   );
 }

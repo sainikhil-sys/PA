@@ -4,6 +4,7 @@ import { db, schema } from "@/lib/db";
 import type { Actor, Recurrence, TaskArtifact, TaskStatus } from "@/lib/db/schema";
 import { getSettings } from "./settings";
 import { nextOccurrence } from "@/lib/tasks/quick-add";
+import { shiftReminder } from "@/lib/tasks/timing";
 import { canClaim, canComplete, canMove } from "@/lib/tasks/transitions";
 
 export class TaskError extends Error {
@@ -78,7 +79,8 @@ export async function createTask(
       scheduledAt: input.scheduledAt ?? null,
       durationMinutes: input.durationMinutes ?? null,
       recurrence: input.recurrence ?? null,
-      remindAt: input.remindAt ?? input.scheduledAt ?? null,
+      // Undefined: remind at the start time. Null: no reminder.
+      remindAt: input.remindAt !== undefined ? input.remindAt : (input.scheduledAt ?? null),
       parentId: input.parentId ?? null,
       position: await nextPosition(userId, "todo"),
     })
@@ -99,10 +101,19 @@ export async function updateTask(
     scheduledAt?: Date | null;
     durationMinutes?: number | null;
     recurrence?: Recurrence | null;
+    remindAt?: Date | null;
   },
 ) {
-  // Moving a task's time moves its reminder too (and re-arms it if it already fired).
-  const reminder = input.scheduledAt !== undefined ? { remindAt: input.scheduledAt, reminderSentAt: null } : {};
+  // An explicit reminder wins. Otherwise moving a task's time moves its reminder by the
+  // same offset (a reminder that was off stays off). Any change re-arms a fired reminder.
+  let reminder: { remindAt?: Date | null; reminderSentAt?: null } = {};
+  if (input.remindAt !== undefined) {
+    reminder = { remindAt: input.remindAt, reminderSentAt: null };
+  } else if (input.scheduledAt !== undefined) {
+    const prev = await db().query.tasks.findFirst({ where: and(eq(schema.tasks.id, id), eq(schema.tasks.userId, userId)), columns: { scheduledAt: true, remindAt: true } });
+    const next = shiftReminder(prev ?? { scheduledAt: null, remindAt: null }, input.scheduledAt);
+    if (next !== undefined) reminder = { remindAt: next, reminderSentAt: null };
+  }
   const [task] = await db()
     .update(schema.tasks)
     .set({ ...input, ...reminder })
@@ -117,6 +128,8 @@ async function spawnNextOccurrence(userId: string, task: typeof schema.tasks.$in
   if (!task.recurrence || task.parentId) return;
   const { timezone } = await getSettings(userId);
   const next = nextOccurrence(task.recurrence, timezone, task.scheduledAt && task.scheduledAt > new Date() ? task.scheduledAt : new Date());
+  // The next occurrence keeps the reminder's offset from its start.
+  const remindAt = shiftReminder(task, next);
   await createTask(userId, {
     title: task.title,
     description: task.description,
@@ -127,6 +140,7 @@ async function spawnNextOccurrence(userId: string, task: typeof schema.tasks.$in
     recurrence: task.recurrence,
     scheduledAt: next,
     durationMinutes: task.durationMinutes,
+    remindAt,
   });
 }
 

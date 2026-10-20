@@ -1,11 +1,14 @@
 "use client";
 
-import { Image as ImageIcon, MusicNotes, Pause, Play, PaintBrush, ArrowCounterClockwise, SkipBack, SkipForward, YoutubeLogo, Timer } from "@phosphor-icons/react";
-import { useRouter } from "next/navigation";
+import { Image as ImageIcon, MusicNotes, Pause, Play, PaintBrush, SkipBack, SkipForward, Square, YoutubeLogo, Timer } from "@phosphor-icons/react";
+import { useRouter, useSearchParams } from "next/navigation";
 import * as React from "react";
 import { toast } from "sonner";
-import useSWR from "swr";
+import useSWR, { useSWRConfig } from "swr";
+import { logFocusSessionAction } from "@/app/actions/focus";
 import { saveRoom } from "@/app/actions/room";
+import { FocusStats } from "@/components/focus/focus-stats";
+import { FocusTaskSelect } from "@/components/focus/focus-task-select";
 import { Button } from "@/components/ui/button";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Sheet } from "@/components/ui/dialog";
@@ -13,7 +16,11 @@ import { Input, Label } from "@/components/ui/input";
 import type { RoomSettings } from "@/lib/db/schema";
 import { spotifyEmbed, WALLPAPERS, wallpaperById, youtubeEmbed } from "@/lib/room";
 import { fetcher } from "@/lib/fetcher";
+import { FOCUS_STORAGE_KEY, idleTimer, isFinished, pauseTimer, remainingSeconds, restoreTimer, startTimer, toSession, type TimerState } from "@/lib/focus/timer";
+import { formatMinutes } from "@/lib/tasks/timing";
 import { cn } from "@/lib/utils";
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** Wallpaper behind the Today page. Dark wallpapers flip the page to a dark glass theme. */
 export function RoomBackground({ room }: { room: RoomSettings }) {
@@ -39,40 +46,107 @@ export function RoomBackground({ room }: { room: RoomSettings }) {
   );
 }
 
-/** Clock + focus timer. Runs locally; a soft chime when a session ends. */
+/**
+ * Clock + focus timer. Time is measured from timestamps, so a throttled background
+ * tab still ends on time. Finished or stopped sessions are saved to the history.
+ */
 export function FocusCard({ minutes = 25, onSettings }: { minutes?: number; onSettings: () => void }) {
-  const total = minutes * 60;
-  const [left, setLeft] = React.useState(total);
-  const [running, setRunning] = React.useState(false);
+  const params = useSearchParams();
+  const focusParam = params.get("focus");
+  const preselect = focusParam && UUID.test(focusParam) ? focusParam : null;
+  const [timer, setTimer] = React.useState<TimerState>(() => idleTimer(minutes, preselect));
+  const [nowMs, setNowMs] = React.useState(() => Date.now());
   const [now, setNow] = React.useState<Date | null>(null);
+  const restored = React.useRef(false);
+  const savingRef = React.useRef(false);
+  const { mutate } = useSWRConfig();
+  const running = timer.runningSince !== null;
 
   React.useEffect(() => {
     setNow(new Date());
     const t = setInterval(() => setNow(new Date()), 15_000);
     return () => clearInterval(t);
   }, []);
-  React.useEffect(() => setLeft(total), [total]);
+
+  // Pick up a session left running in this browser (storage may be blocked).
+  React.useEffect(() => {
+    try {
+      const raw = localStorage.getItem(FOCUS_STORAGE_KEY);
+      const r = raw ? restoreTimer(JSON.parse(raw), minutes, Date.now()) : null;
+      if (r) setTimer(r);
+    } catch {}
+    restored.current = true;
+    // Only on mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  React.useEffect(() => {
+    if (!restored.current) return;
+    try {
+      if (timer.startedAt === null) localStorage.removeItem(FOCUS_STORAGE_KEY);
+      else localStorage.setItem(FOCUS_STORAGE_KEY, JSON.stringify(timer));
+    } catch {}
+  }, [timer]);
+
+  // A new session length or a task opened with ?focus= applies only while idle.
+  React.useEffect(() => setTimer((t) => (t.startedAt === null ? idleTimer(minutes, t.taskId) : t)), [minutes]);
+  React.useEffect(() => {
+    if (preselect) setTimer((t) => (t.startedAt === null ? { ...t, taskId: preselect } : t));
+  }, [preselect]);
+
   React.useEffect(() => {
     if (!running) return;
-    const t = setInterval(() => {
-      setLeft((s) => {
-        if (s <= 1) {
-          setRunning(false);
-          chime();
-          toast.success("Focus session done. Take a short break.");
-          return total;
-        }
-        return s - 1;
-      });
-    }, 1000);
-    return () => clearInterval(t);
-  }, [running, total]);
+    const tick = () => setNowMs(Date.now());
+    tick();
+    const t = setInterval(tick, 1000);
+    document.addEventListener("visibilitychange", tick);
+    return () => {
+      clearInterval(t);
+      document.removeEventListener("visibilitychange", tick);
+    };
+  }, [running]);
 
+  const finish = React.useCallback(
+    async (s: TimerState, completed: boolean) => {
+      if (savingRef.current) return;
+      savingRef.current = true;
+      const at = Date.now();
+      const session = toSession(s, at, completed);
+      setTimer(idleTimer(minutes, s.taskId));
+      setNowMs(at);
+      if (completed) chime();
+      try {
+        if (!session) {
+          toast(completed ? "Focus session done. Take a short break." : "Under a minute, so nothing was saved.");
+          return;
+        }
+        const res = await logFocusSessionAction(session);
+        if (!res.ok) return void toast.error(res.error);
+        toast.success(completed ? "Focus session done. Take a short break." : `Saved ${formatMinutes(res.data.actualMinutes)} of focus`);
+        void mutate("/api/focus");
+      } finally {
+        savingRef.current = false;
+      }
+    },
+    [minutes, mutate],
+  );
+
+  React.useEffect(() => {
+    if (running && isFinished(timer, nowMs)) void finish(timer, true);
+  }, [running, timer, nowMs, finish]);
+
+  const total = timer.plannedMinutes * 60;
+  const left = remainingSeconds(timer, nowMs);
   const mm = String(Math.floor(left / 60)).padStart(2, "0");
   const ss = String(left % 60).padStart(2, "0");
   const pct = 1 - left / total;
+  const toggle = () => {
+    const at = Date.now();
+    setNowMs(at);
+    setTimer((t) => (t.runningSince !== null ? pauseTimer(t, at) : startTimer(t, at)));
+  };
   return (
-    <Card className="h-full">
+    <Card className="flex h-full flex-col">
       <CardHeader
         icon={<Timer size={18} />}
         title="Focus"
@@ -82,27 +156,35 @@ export function FocusCard({ minutes = 25, onSettings }: { minutes?: number; onSe
           </button>
         }
       />
-      <CardBody className="flex items-center gap-4">
-        <div className="relative grid size-[88px] shrink-0 place-items-center">
-          <svg viewBox="0 0 36 36" className="absolute inset-0 -rotate-90" aria-hidden>
-            <circle cx="18" cy="18" r="16" fill="none" stroke="var(--border)" strokeWidth="2.5" />
-            <circle cx="18" cy="18" r="16" fill="none" stroke="var(--foreground)" strokeWidth="2.5" strokeLinecap="round" pathLength={1} strokeDasharray="1" strokeDashoffset={1 - pct} className="transition-[stroke-dashoffset] duration-1000 ease-linear" />
-          </svg>
-          <span className="tabular text-[20px] font-medium" aria-live="off">
-            {mm}:{ss}
-          </span>
-        </div>
-        <div className="flex min-w-0 flex-1 flex-col gap-2">
-          <p className="tabular font-serif text-[28px] leading-none">{now ? now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : " "}</p>
-          <p className="truncate text-[12px] text-muted">{now ? now.toLocaleDateString([], { weekday: "long", month: "short", day: "numeric" }) : " "}</p>
-          <div className="flex gap-2">
-            <Button size="sm" onClick={() => setRunning((r) => !r)}>
-              {running ? <Pause /> : <Play />} {running ? "Pause" : "Start"}
-            </Button>
-            <Button size="sm" variant="ghost" onClick={() => (setRunning(false), setLeft(total))} aria-label="Reset timer">
-              <ArrowCounterClockwise />
-            </Button>
+      <CardBody className="flex flex-1 flex-col gap-4">
+        <div className="flex items-center gap-4">
+          <div className="relative grid size-[88px] shrink-0 place-items-center">
+            <svg viewBox="0 0 36 36" className="absolute inset-0 -rotate-90" aria-hidden>
+              <circle cx="18" cy="18" r="16" fill="none" stroke="var(--border)" strokeWidth="2.5" />
+              <circle cx="18" cy="18" r="16" fill="none" stroke="var(--foreground)" strokeWidth="2.5" strokeLinecap="round" pathLength={1} strokeDasharray="1" strokeDashoffset={1 - pct} className="transition-[stroke-dashoffset] duration-1000 ease-linear" />
+            </svg>
+            <span className="tabular text-[20px] font-medium" aria-live="off">
+              {mm}:{ss}
+            </span>
           </div>
+          <div className="flex min-w-0 flex-1 flex-col gap-2">
+            <p className="tabular font-serif text-[28px] leading-none">{now ? now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : " "}</p>
+            <p className="truncate text-[12px] text-muted">{now ? now.toLocaleDateString([], { weekday: "long", month: "short", day: "numeric" }) : " "}</p>
+            <div className="flex gap-2">
+              <Button size="sm" onClick={toggle}>
+                {running ? <Pause /> : <Play />} {running ? "Pause" : timer.startedAt !== null ? "Resume" : "Start"}
+              </Button>
+              {timer.startedAt !== null ? (
+                <Button size="sm" variant="ghost" onClick={() => void finish(timer, false)} aria-label="Stop and save">
+                  <Square />
+                </Button>
+              ) : null}
+            </div>
+          </div>
+        </div>
+        <FocusTaskSelect value={timer.taskId} disabled={running} preselectId={preselect} onChange={(id) => setTimer((t) => ({ ...t, taskId: id }))} />
+        <div className="mt-auto border-t border-border pt-3">
+          <FocusStats />
         </div>
       </CardBody>
     </Card>

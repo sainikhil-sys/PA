@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { apiGuard } from "@/lib/auth/api";
 import { getSettings } from "@/lib/db/queries/settings";
+import { meetingNoteEventIds } from "@/lib/db/queries/meetings";
 import { listScheduled } from "@/lib/db/queries/tasks";
 import { listEvents } from "@/lib/integrations/calendar";
 import { GoogleNotConnectedError } from "@/lib/integrations/google";
@@ -27,11 +28,12 @@ export async function GET(req: Request) {
     return [];
   });
   const tasks = await listScheduled(g.user.id, from, to);
+  const noted = await meetingNoteEventIds(g.user.id, events.map((e) => e.id)).catch(() => new Set<string>());
   return Response.json(
     {
       timezone,
       calendar,
-      events: events.map((e) => ({ id: e.id, title: e.title, start: e.start, end: e.end, allDay: e.allDay, location: e.location, meetingUrl: e.meetingUrl, attendees: e.attendees.length })),
+      events: events.map((e) => ({ id: e.id, title: e.title, start: e.start, end: e.end, allDay: e.allDay, location: e.location, meetingUrl: e.meetingUrl, attendees: e.attendees.length, hasNotes: noted.has(e.id) })),
       tasks: tasks.map((t) => ({ id: t.id, title: t.title, start: t.scheduledAt!.toISOString(), durationMinutes: t.durationMinutes ?? 30, status: t.status, recurring: Boolean(t.recurrence) })),
     },
     { headers: { "cache-control": "no-store" } },

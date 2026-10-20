@@ -24,6 +24,16 @@ import { formatDateTime } from "@/lib/time";
 const uuid = z.string().uuid();
 const status = z.enum(["todo", "in_progress", "needs_review", "done"]);
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+const remindAt = z.string().datetime().nullable().optional();
+const duration = z.number().int().min(5).max(600).nullable().optional();
+
+/** A reminder set from the UI has to be in the future (a minute of slack for clock skew). */
+function reminderDate(value: string | null | undefined): Date | null | undefined {
+  if (value === undefined || value === null) return value;
+  const d = new Date(value);
+  if (d.getTime() < Date.now() - 60_000) throw new UserFacingError("Pick a reminder time in the future.");
+  return d;
+}
 
 function wrap(err: unknown): never {
   if (err instanceof TaskError) throw new UserFacingError(err.message);
@@ -60,9 +70,11 @@ export const createTaskAction = ownerAction(
     assignee: z.enum(["me", "agent", "claude"]).optional(),
     parentId: uuid.optional(),
     scheduledAt: z.string().datetime().nullable().optional(),
+    durationMinutes: duration,
+    remindAt,
   }),
-  async (input, user) => {
-    const task = await createTask(user.id, { ...input, scheduledAt: input.scheduledAt ? new Date(input.scheduledAt) : null, createdBy: "me" });
+  async ({ remindAt, ...input }, user) => {
+    const task = await createTask(user.id, { ...input, scheduledAt: input.scheduledAt ? new Date(input.scheduledAt) : null, remindAt: reminderDate(remindAt), createdBy: "me" });
     refresh();
     return { id: task.id };
   },
@@ -78,10 +90,16 @@ export const updateTaskAction = ownerAction(
     tags: z.array(z.string().max(30)).max(10).optional(),
     assignee: z.enum(["me", "agent", "claude"]).optional(),
     scheduledAt: z.string().datetime().nullable().optional(),
-    durationMinutes: z.number().int().min(5).max(600).nullable().optional(),
+    durationMinutes: duration,
+    remindAt,
   }),
-  async ({ id, scheduledAt, ...rest }, user) => {
-    await updateTask(user.id, id, { ...rest, ...(scheduledAt !== undefined ? { scheduledAt: scheduledAt ? new Date(scheduledAt) : null } : {}) }).catch(wrap);
+  async ({ id, scheduledAt, remindAt, ...rest }, user) => {
+    const reminder = reminderDate(remindAt);
+    await updateTask(user.id, id, {
+      ...rest,
+      ...(scheduledAt !== undefined ? { scheduledAt: scheduledAt ? new Date(scheduledAt) : null } : {}),
+      ...(reminder !== undefined ? { remindAt: reminder } : {}),
+    }).catch(wrap);
     refresh();
   },
 );

@@ -20,7 +20,7 @@ import { toast } from "sonner";
 import { moveTaskAction } from "@/app/actions/tasks";
 import { STATUS_LABEL, STATUSES } from "@/lib/tasks/transitions";
 import { cn } from "@/lib/utils";
-import { AssigneeBadge, PriorityMark, RecurringMark, type TaskRow } from "./task-bits";
+import { AssigneeBadge, DurationMark, PriorityMark, RecurringMark, ReminderMark, type TaskRow } from "./task-bits";
 
 type Status = TaskRow["status"];
 
@@ -144,6 +144,8 @@ function CardBody({ task, lifted }: { task: TaskRow; lifted?: boolean }) {
             <CalendarBlank size={12} /> {task.dueDate.slice(5)}
           </span>
         ) : null}
+        <DurationMark minutes={task.durationMinutes} />
+        <ReminderMark remindAt={task.remindAt} scheduledAt={task.scheduledAt} reminderSentAt={task.reminderSentAt} />
         {task.tags.slice(0, 2).map((t) => (
           <span key={t} className="text-[11px] text-subtle">
             #{t}

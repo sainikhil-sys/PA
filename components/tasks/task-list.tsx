@@ -9,7 +9,7 @@ import { Checkbox } from "@/components/ui/misc";
 import { EmptyState } from "@/components/ui/states";
 import { STATUS_LABEL } from "@/lib/tasks/transitions";
 import { cn } from "@/lib/utils";
-import { AssigneeBadge, PriorityMark, RecurringMark, type TaskRow } from "./task-bits";
+import { AssigneeBadge, DurationMark, PriorityMark, RecurringMark, ReminderMark, type TaskRow } from "./task-bits";
 
 export function TaskList({ tasks, onOpen, onChanged, showDone }: { tasks: TaskRow[]; onOpen: (id: string) => void; onChanged: () => void; showDone: boolean }) {
   const top = tasks.filter((t) => !t.parentId && (showDone || t.status !== "done"));
@@ -37,6 +37,8 @@ export function TaskList({ tasks, onOpen, onChanged, showDone }: { tasks: TaskRo
                   {t.status !== "todo" && t.status !== "done" ? <span>{STATUS_LABEL[t.status]}</span> : null}
                   {t.dueDate ? <span className="tabular">Due {t.dueDate}</span> : null}
                   {t.scheduledAt ? <span className="tabular">{new Date(t.scheduledAt).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span> : null}
+                  <DurationMark minutes={t.durationMinutes} />
+                  <ReminderMark remindAt={t.remindAt} scheduledAt={t.scheduledAt} reminderSentAt={t.reminderSentAt} />
                   {subs.length ? <span className="tabular">{subs.filter((s) => s.status === "done").length}/{subs.length} subtasks</span> : null}
                   {t.tags.map((tag) => (
                     <span key={tag}>#{tag}</span>

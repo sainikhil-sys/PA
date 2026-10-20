@@ -37,7 +37,7 @@ export function QuickAdd({ compact, onAdded }: { compact?: boolean; onAdded?: (i
         value={value}
         onChange={(e) => setValue(e.target.value)}
         disabled={pending}
-        placeholder={compact ? "Add a task…" : "Add a task — try “every Monday 9am review inbox” or “call Ravi tomorrow at 5”"}
+        placeholder={compact ? "Add a task…" : "Add a task, like “every Monday 9am review inbox” or “call Ravi tomorrow at 5”"}
         className={cn(inputClass, "pl-10", compact && "h-10 text-sm")}
         autoComplete="off"
       />

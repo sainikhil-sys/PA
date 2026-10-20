@@ -9,7 +9,7 @@ import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { EmptyState, ErrorState } from "@/components/ui/states";
 import type { User } from "@/lib/db/schema";
 import { listImportantEmails } from "@/lib/db/queries/emails";
-import { getSettings, listIntegrations } from "@/lib/db/queries/settings";
+import { getGoogleStatus, getSettings, listIntegrations } from "@/lib/db/queries/settings";
 import { listScheduled, needsReview, topPriorities } from "@/lib/db/queries/tasks";
 import { listEvents, type CalendarEvent } from "@/lib/integrations/calendar";
 import { GoogleNotConnectedError } from "@/lib/integrations/google";
@@ -97,8 +97,8 @@ export async function ScheduleCard({ user }: { user: User }) {
   }
   const tasks = await listScheduled(user.id, start, end).catch(() => []);
   const items = [
-    ...events.map((e) => ({ id: `e-${e.id}`, kind: "event" as const, title: e.title, start: e.start, allDay: e.allDay, meta: e.attendees.filter((a) => !a.self).length ? `${e.attendees.filter((a) => !a.self).length} people` : e.location })),
-    ...tasks.map((t) => ({ id: `t-${t.id}`, kind: "task" as const, title: t.title, start: t.scheduledAt!.toISOString(), allDay: false, meta: "Task" })),
+    ...events.map((e) => ({ id: `e-${e.id}`, eventId: e.id, kind: "event" as const, title: e.title, start: e.start, allDay: e.allDay, meta: e.attendees.filter((a) => !a.self).length ? `${e.attendees.filter((a) => !a.self).length} people` : e.location })),
+    ...tasks.map((t) => ({ id: `t-${t.id}`, eventId: null, kind: "task" as const, title: t.title, start: t.scheduledAt!.toISOString(), allDay: false, meta: "Task" })),
   ].sort((a, b) => a.start.localeCompare(b.start));
   const now = new Date().toISOString();
 
@@ -117,7 +117,7 @@ export async function ScheduleCard({ user }: { user: User }) {
       />
       <CardBody>
         {calendarIssue === "not_connected" && !items.length ? (
-          <EmptyState compact icon={CalendarBlank} title="Connect your calendar" description="See meetings and prep notes here." action={<Button asChild size="sm"><a href="/api/integrations/google/start?returnTo=/">Connect Google</a></Button>} />
+          <EmptyState compact icon={CalendarBlank} title="Connect your calendar" description="See meetings, prep and notes here." action={<Button asChild size="sm"><a href="/api/integrations/google/start?returnTo=/">Connect Google</a></Button>} />
         ) : calendarIssue === "error" && !items.length ? (
           <ErrorState compact message="Your calendar didn't load. It will retry shortly." />
         ) : !items.length ? (
@@ -136,7 +136,17 @@ export async function ScheduleCard({ user }: { user: User }) {
                     <span className={`block truncate text-sm ${past ? "text-muted" : ""}`}>{it.title}</span>
                     {it.meta ? <span className="block truncate text-[12px] text-subtle">{it.meta}</span> : null}
                   </span>
-                  {it.kind === "event" && !past ? <PrepButton title={it.title} /> : null}
+                  {it.kind === "event" && !past ? (
+                    <PrepButton title={it.title} />
+                  ) : it.kind === "event" && past && !it.allDay && it.eventId ? (
+                    <Link
+                      href={`/tasks?view=schedule&meeting=${encodeURIComponent(it.eventId)}&at=${encodeURIComponent(it.start)}`}
+                      className="h-8 shrink-0 self-center rounded-[10px] border border-border px-3 text-[12px] leading-8 text-muted transition-colors hover:border-border-strong hover:text-foreground"
+                      aria-label={`Notes for ${it.title}`}
+                    >
+                      Notes
+                    </Link>
+                  ) : null}
                 </li>
               );
             })}
@@ -167,10 +177,11 @@ export async function TasksCard({ user }: { user: User }) {
 // ---------- Agent ----------
 export async function AgentCard({ user }: { user: User }) {
   const s = await getSettings(user.id);
-  const [emails, review, priorities] = await Promise.all([
+  const [emails, review, priorities, google] = await Promise.all([
     listImportantEmails(user.id, 20).catch(() => []),
     needsReview(user.id, 10).catch(() => []),
     topPriorities(user.id, 20).catch(() => []),
+    getGoogleStatus(user.id).catch(() => ({ connected: false as const })),
   ]);
   const repliesDue = emails.filter((e) => !e.draftId).length;
   const today = localDate(s.timezone);
@@ -182,6 +193,7 @@ export async function AgentCard({ user }: { user: User }) {
     if (repliesDue > 0) suggestion = { text: `You have ${repliesDue} ${repliesDue === 1 ? "reply" : "replies"} due. Want me to draft ${repliesDue === 1 ? "it" : "them"}?`, prompt: "Draft replies to my emails that need a reply." };
     else if (review.length > 0) suggestion = { text: `${review.length} ${review.length === 1 ? "result is" : "results are"} waiting for your review.`, prompt: "Summarize the task results waiting for my review." };
     else if (overdue > 0) suggestion = { text: `${overdue} ${overdue === 1 ? "task is" : "tasks are"} overdue. Want help re-planning?`, prompt: "Help me re-plan my overdue tasks." };
+    else if (!google.connected) suggestion = { text: "Connect Gmail and I'll tell you which emails need you.", prompt: "What should I focus on today?" };
     else suggestion = { text: "Your inbox is calm. A good moment for focused work.", prompt: "What should I focus on today?" };
   }
   return <AgentCardClient agentName={s.agent.name} stats={{ repliesDue, review: review.length, overdue }} suggestion={suggestion} />;
@@ -249,7 +261,7 @@ export async function IntegrationsStrip({ user }: { user: User }) {
             const label = state === "ok" ? "connected" : state === "error" ? "needs attention" : "not connected";
             return (
               <li key={c.id} className="shrink-0">
-                <Link href={`/integrations/${c.id}`} className="flex h-9 items-center gap-2 whitespace-nowrap rounded-full border border-border pl-2 pr-2.5 text-[12.5px] hover:border-border-strong" aria-label={`${c.name}, ${label}`}>
+                <Link href={`/integrations/${c.id}`} className="flex h-9 items-center gap-2 whitespace-nowrap rounded-[10px] border border-border pl-2 pr-2.5 text-[12.5px] hover:border-border-strong" aria-label={`${c.name}, ${label}`}>
                   <BrandLogo id={c.logo} size={16} />
                   <span>{c.name}</span>
                   <StatusDot state={state as "ok" | "error" | "idle"} pulse={state === "ok"} />
