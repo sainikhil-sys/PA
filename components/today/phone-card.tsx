@@ -69,7 +69,7 @@ export function PhoneCard({ initial }: { initial: PhoneFeed }) {
       <CardBody className="flex flex-1 flex-col gap-1.5">
         {ringing ? (
           <div role="status" className="flex items-center gap-2.5 rounded-[12px] bg-foreground px-3 py-2 text-background">
-            <PhoneIncoming size={18} weight="fill" className="shrink-0 animate-pulse" />
+            <PhoneIncoming size={18} weight="fill" className="shrink-0 motion-safe:animate-pulse" />
             <span className="min-w-0 truncate text-[13px] font-medium">Call: {ringing.title || "Unknown caller"}</span>
           </div>
         ) : null}

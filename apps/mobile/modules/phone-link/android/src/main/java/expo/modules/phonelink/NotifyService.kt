@@ -61,7 +61,7 @@ class NotifyService : NotificationListenerService() {
     try {
       val e = JSONObject()
       e.put("key", clip(sbn.key, 300))
-      e.put("package", sbn.packageName)
+      e.put("package", clip(sbn.packageName, 200))
       e.put("appName", clip(appLabel(sbn.packageName), 80))
       n.category?.let { e.put("category", clip(it, 40)) }
       e.put("title", if (title == null) "" else clip(title.toString(), 400))
@@ -75,7 +75,7 @@ class NotifyService : NotificationListenerService() {
         flushScheduled = true
         main.postDelayed(flush, FLUSH_DELAY_MS)
       }
-    } catch (_: Exception) {
+    } catch (ignored: Exception) {
       // A malformed notification is skipped, never crashes the service.
     }
   }
@@ -94,7 +94,7 @@ class NotifyService : NotificationListenerService() {
         val status = send(link, batch)
         if (status == 401) Link.clearIfToken(this, link.token) // unlinked from Cowork: stop sending
         else if (status >= 500 || status == 429) requeue(batch)
-      } catch (_: Exception) {
+      } catch (ignored: Exception) {
         requeue(batch) // no network: try again with the next notification or heartbeat
       }
     }
@@ -137,7 +137,7 @@ class NotifyService : NotificationListenerService() {
       // Drain the body so the connection can be reused; its content is not needed.
       try {
         (if (status >= 400) conn.errorStream else conn.inputStream)?.use { it.readBytes() }
-      } catch (_: IOException) {
+      } catch (ignored: IOException) {
       }
       return status
     } finally {
@@ -149,7 +149,7 @@ class NotifyService : NotificationListenerService() {
     try {
       val pm = packageManager
       pm.getApplicationLabel(pm.getApplicationInfo(pkg, 0)).toString()
-    } catch (_: Exception) {
+    } catch (ignored: Exception) {
       pkg
     }
 

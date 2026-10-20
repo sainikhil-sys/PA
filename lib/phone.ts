@@ -24,13 +24,13 @@ export function isPairCode(code: string): boolean {
 }
 
 /**
- * Link that opens WhatsApp. A phone number in the title (unsaved contacts show as one) opens that
- * chat; otherwise it opens WhatsApp itself. Messages are never sent for you.
+ * Link that opens WhatsApp. A phone number in international format (+country code) in the title
+ * opens that chat; otherwise it opens WhatsApp itself. Messages are never sent for you.
  */
 export function whatsappLink(title: string): string {
   const digits = title.replace(/[^\d+]/g, "");
   const n = digits.replace(/^\+/, "");
-  return /^\d{8,15}$/.test(n) && digits.length >= title.replace(/\s/g, "").length - 2 ? `https://wa.me/${n}` : "https://wa.me/";
+  return title.trim().startsWith("+") && /^\d{8,15}$/.test(n) && digits.length >= title.replace(/\s/g, "").length - 2 ? `https://wa.me/${n}` : "https://wa.me/";
 }
 
 /** "Tel" link for a caller shown as a number; contact names can't be dialed from here. */

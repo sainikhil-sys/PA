@@ -101,10 +101,10 @@ export const TEMPLATES: AutomationTemplate[] = [
   {
     id: "weekly-business-pulse",
     name: "Weekly business pulse",
-    description: "Monday recap of HubSpot deals and Stripe payments, saved as a note.",
+    description: "Monday recap of last week's Stripe payments and your HubSpot contacts, saved as a note.",
     trigger: { type: "schedule", cron: "0 9 * * 1", text: "every monday at 9am" },
     conditions: [],
-    actions: [{ type: "call_agent", prompt: "From my HubSpot and Stripe knowledge, summarize last week: new deals, payments, anything that needs follow-up." }, { type: "add_note", title: "Business pulse", content: "{{agent_output}}" }],
+    actions: [{ type: "call_agent", prompt: "From my HubSpot and Stripe knowledge, summarize last week: new contacts, payments, anything that needs follow-up." }, { type: "add_note", title: "Business pulse", content: "{{agent_output}}" }],
     uses: ["hubspot", "stripe"],
   },
   {

@@ -1,7 +1,7 @@
 "use client";
 
 import { ArrowSquareOut, Lightbulb, Newspaper, Pause, Play, Sparkle } from "@phosphor-icons/react";
-import { useReducedMotion } from "motion/react";
+import { useReducedMotionConfig } from "motion/react";
 import * as React from "react";
 import useSWR from "swr";
 import { toast } from "sonner";
@@ -24,7 +24,7 @@ export function NewsRibbon({ items: initial }: { items: NewsCardData[] }) {
   // Live: poll quickly while empty (first fetch running), then every 5 minutes.
   const { data } = useSWR<{ items: NewsCardData[] }>("/api/news", fetcher, { fallbackData: { items: initial }, refreshInterval: (d) => (d?.items.length ? 5 * 60_000 : 15_000) });
   const items = data?.items ?? initial;
-  const prefersReduced = useReducedMotion();
+  const prefersReduced = useReducedMotionConfig();
   const [selected, setSelected] = React.useState<NewsCardData | null>(null);
   const [paused, setPaused] = React.useState(false);
 
@@ -45,7 +45,7 @@ export function NewsRibbon({ items: initial }: { items: NewsCardData[] }) {
           <button
             type="button"
             onClick={() => setPaused((p) => !p)}
-            className="inline-flex h-7 items-center gap-1.5 rounded-full px-2.5 text-[12px] text-muted hover:bg-surface-hover hover:text-foreground"
+            className="inline-flex h-7 items-center gap-1.5 rounded-[8px] px-2.5 text-[12px] text-muted hover:bg-surface-hover hover:text-foreground"
             aria-pressed={paused}
           >
             {paused ? <Play size={14} /> : <Pause size={14} />}

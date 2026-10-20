@@ -233,7 +233,7 @@ export function AutomationBuilder({ initial }: { initial: BuilderInitial }) {
         </Button>
       </Step>
 
-      <Step n={4} title="Permissions & limits" hint="This automation may only do what's checked. Sending, posting and deleting are never possible.">
+      <Step n={4} title="Permissions & limits" hint="This automation may only do what's checked. Sending email, posting publicly and deleting are never possible.">
         <ul className="grid gap-2 sm:grid-cols-2">
           {usedTypes.map((t) => (
             <li key={t}>

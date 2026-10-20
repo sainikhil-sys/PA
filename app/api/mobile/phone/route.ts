@@ -38,7 +38,7 @@ export async function POST(req: Request) {
   return Response.json({ ok: true, token, deviceId: device!.id }, { headers: noStore });
 }
 
-/** Unlink a phone: its token stops working immediately. */
+/** Unlink a phone: its token stops working immediately and its notifications are deleted. */
 export async function DELETE(req: Request) {
   const g = await apiGuard(req);
   if ("response" in g) return g.response;
@@ -48,6 +48,8 @@ export async function DELETE(req: Request) {
     .update(schema.phoneDevices)
     .set({ revokedAt: new Date() })
     .where(and(eq(schema.phoneDevices.id, parsed.data.deviceId), eq(schema.phoneDevices.userId, g.user.id), isNull(schema.phoneDevices.revokedAt)));
+  // Unlinking also removes what that phone sent.
+  await db().delete(schema.phoneEvents).where(and(eq(schema.phoneEvents.deviceId, parsed.data.deviceId), eq(schema.phoneEvents.userId, g.user.id)));
   await logActivity({ userId: g.user.id, actor: "me", tool: "phone.unlinked", inputSummary: "Android app", outcome: "success" });
   return Response.json({ ok: true }, { headers: noStore });
 }

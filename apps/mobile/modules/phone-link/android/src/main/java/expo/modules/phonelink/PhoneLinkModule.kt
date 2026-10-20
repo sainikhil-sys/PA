@@ -35,7 +35,7 @@ class PhoneLinkModule : Module() {
     Function("setLink") { serverUrl: String, token: String ->
       val server = serverUrl.trim().trimEnd('/')
       if (!server.startsWith("https://") && !server.startsWith("http://")) {
-        throw CodedException("ERR_PHONE_LINK_URL", "The server address must start with https://", null)
+        throw CodedException("ERR_PHONE_LINK_URL", "The server address must be an https:// or http:// URL", null)
       }
       if (!TOKEN.matches(token)) {
         throw CodedException("ERR_PHONE_LINK_TOKEN", "The device token is not valid", null)
@@ -58,7 +58,7 @@ class PhoneLinkModule : Module() {
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) return
     try {
       NotificationListenerService.requestRebind(ComponentName(c, NotifyService::class.java))
-    } catch (_: Exception) {
+    } catch (ignored: Exception) {
       // Access is off or the listener is already bound: it picks the link up on the next heartbeat.
     }
   }

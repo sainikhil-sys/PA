@@ -1,6 +1,6 @@
 import "server-only";
 import { randomInt } from "node:crypto";
-import { and, desc, eq, isNull, lt } from "drizzle-orm";
+import { and, desc, eq, gte, isNull, lt } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { sha256 } from "@/lib/security/crypto";
 import { PAIR_ALPHABET } from "./phone";
@@ -27,7 +27,7 @@ export async function deviceFromRequest(req: Request) {
 export async function listPhoneFeed(userId: string, limit = 80) {
   const [devices, events] = await Promise.all([
     db().select().from(schema.phoneDevices).where(and(eq(schema.phoneDevices.userId, userId), isNull(schema.phoneDevices.revokedAt))).orderBy(desc(schema.phoneDevices.createdAt)),
-    db().select().from(schema.phoneEvents).where(eq(schema.phoneEvents.userId, userId)).orderBy(desc(schema.phoneEvents.postedAt)).limit(limit),
+    db().select().from(schema.phoneEvents).where(and(eq(schema.phoneEvents.userId, userId), gte(schema.phoneEvents.postedAt, new Date(Date.now() - PHONE_RETENTION_MS)))).orderBy(desc(schema.phoneEvents.postedAt)).limit(limit),
   ]);
   return {
     devices: devices.map((d) => ({ id: d.id, name: d.name, model: d.model, battery: d.battery, charging: d.charging, paused: d.paused, lastSeenAt: d.lastSeenAt?.toISOString() ?? null, createdAt: d.createdAt.toISOString() })),
@@ -38,6 +38,11 @@ export async function listPhoneFeed(userId: string, limit = 80) {
 export type PhoneFeed = Awaited<ReturnType<typeof listPhoneFeed>>;
 
 /** Phone content is personal and from third parties: keep only a short window. */
+/** Every account's phone events older than the 3-day retention (run by the cron dispatcher). */
+export async function pruneAllPhoneEvents() {
+  await db().delete(schema.phoneEvents).where(lt(schema.phoneEvents.postedAt, new Date(Date.now() - PHONE_RETENTION_MS)));
+}
+
 export async function prunePhoneEvents(userId: string) {
   await db().delete(schema.phoneEvents).where(and(eq(schema.phoneEvents.userId, userId), lt(schema.phoneEvents.postedAt, new Date(Date.now() - PHONE_RETENTION_MS))));
 }

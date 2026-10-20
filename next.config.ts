@@ -29,7 +29,7 @@ const nextConfig: NextConfig = {
     return [
       { source: "/:path*", headers: securityHeaders },
       // Page CSP (with nonce) is set in middleware; API responses get a locked-down default.
-      { source: "/api/:path*", headers: [{ key: "Content-Security-Policy", value: "default-src 'none'; frame-ancestors 'none'" }] },
+      { source: "/api/:path((?!email/unsubscribe).*)", headers: [{ key: "Content-Security-Policy", value: "default-src 'none'; frame-ancestors 'none'" }] },
     ];
   },
   async rewrites() {

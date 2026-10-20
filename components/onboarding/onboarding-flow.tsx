@@ -105,7 +105,7 @@ export function OnboardingFlow({
               <div className="flex flex-col gap-5">
                 <div>
                   <h1 className="font-serif text-[28px] leading-tight tracking-[-0.02em]">Connect your day</h1>
-                  <p className="mt-2 text-sm text-muted">Gmail, Calendar and Drive power your briefing. Cowork reads and creates drafts. It never sends or deletes.</p>
+                  <p className="mt-2 text-sm text-muted">Gmail and Calendar power your briefing, and Drive lets you search the folders you choose. Cowork reads your mail and can save Gmail drafts for you to review. It never sends or deletes.</p>
                 </div>
                 <div className="flex items-center gap-4 rounded-[14px] border border-border p-4">
                   <div className="flex -space-x-1">

@@ -20,19 +20,21 @@ export default function DeleteAccount() {
       <h1 className="pt-8 font-serif text-[34px] leading-tight">Delete your {n} account</h1>
       <p>You can delete your account and all of its data yourself. It happens immediately and can&apos;t be undone.</p>
       <p>
-        If you want a copy first, sign in on the website, open Settings &gt; Privacy and choose <strong>Export JSON</strong> or <strong>Export Markdown</strong>.
+        If you want a copy first, sign in on the website, open Settings &gt; Data &amp; privacy and choose <strong>Export JSON</strong> or <strong>Export Markdown</strong>.
       </p>
 
       <H>In the Android app</H>
       <ol>
-        <li>Open {n} and tap <strong>Me</strong>.</li>
-        <li>Tap <strong>Delete account</strong>.</li>
-        <li>Type DELETE to confirm.</li>
+        <li>Open {n} and tap <strong>Settings</strong>.</li>
+        <li>Tap <strong>Delete account</strong> and confirm.</li>
       </ol>
+      <p>
+        Cowork Phone Link has no account of its own. Tap <strong>Unlink this phone</strong> in it, then delete your account in the app or on the website.
+      </p>
 
       <H>On the website</H>
       <ol>
-        <li>Sign in and open <strong>Settings</strong>, then <strong>Privacy</strong>.</li>
+        <li>Sign in and open <strong>Settings</strong>, then <strong>Data &amp; privacy</strong>.</li>
         <li>Choose <strong>Delete account</strong> and type DELETE to confirm.</li>
       </ol>
 

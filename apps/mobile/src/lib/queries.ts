@@ -1,4 +1,4 @@
-import { QueryClient, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, QueryClient, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError } from "./api";
 import type {
   ActivityEntry,
@@ -50,6 +50,7 @@ export const useApprovals = () => useQuery({ queryKey: keys.approvals, queryFn: 
 export const useConversations = (q: string) =>
   useQuery({
     queryKey: keys.conversations(q),
+    placeholderData: keepPreviousData,
     queryFn: () => api<{ items: Conversation[] }>(`/api/chat/conversations${q ? `?q=${encodeURIComponent(q)}` : ""}`).then((r) => r.items),
   });
 export const useConversation = (id: string | undefined) =>

@@ -51,7 +51,7 @@ export function TodayGrid({ items, initialOrder }: { items: TodayItem[]; initial
         </SortableContext>
       </DndContext>
       {custom ? (
-        <button type="button" onClick={() => persist(items.map((i) => i.id))} className="inline-flex w-fit items-center gap-1.5 self-end rounded-full px-2.5 py-1 text-[12px] text-muted hover:bg-surface-hover hover:text-foreground">
+        <button type="button" onClick={() => persist(items.map((i) => i.id))} className="inline-flex w-fit items-center gap-1.5 self-end rounded-[8px] px-2.5 py-1 text-[12px] text-muted hover:bg-surface-hover hover:text-foreground">
           <ArrowCounterClockwise size={13} /> Reset layout
         </button>
       ) : null}

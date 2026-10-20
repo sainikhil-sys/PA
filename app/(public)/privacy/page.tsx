@@ -24,12 +24,12 @@ export default function PrivacyPolicy() {
 
       <H>What we collect</H>
       <ul>
-        <li><strong>Account:</strong> your email address, used to send sign-in codes and the emails you opt into. We don&apos;t use passwords.</li>
+        <li><strong>Account:</strong> your email address, used to send sign-in codes, a welcome email, and update and briefing emails, which are on by default and can be switched off in Settings &gt; Notifications or from any of those emails. We don&apos;t use passwords.</li>
         <li><strong>Content you add:</strong> tasks, notes, knowledge sources, chat messages, automations and settings.</li>
         <li><strong>Connected services:</strong> data from services you choose to connect (see below). Access tokens are encrypted at rest with AES-256-GCM.</li>
-        <li><strong>Security records:</strong> session records (browser type and a shortened IP prefix), sign-in attempts and an activity log of actions taken in your account.</li>
+        <li><strong>Security records:</strong> session records (your browser&apos;s user-agent, which names the browser, operating system and device, and a shortened IP prefix), sign-in attempts and an activity log of actions taken in your account.</li>
       </ul>
-      <p>We don&apos;t use advertising trackers or analytics cookies. The only cookie is your sign-in session.</p>
+      <p>We don&apos;t use advertising trackers or analytics cookies. The only cookies are your sign-in session and short-lived security cookies set while you connect a service, which expire after 10 minutes.</p>
 
       <H>Google user data</H>
       <p>If you connect a Google account, {n} requests:</p>
@@ -37,10 +37,10 @@ export default function PrivacyPolicy() {
         <li><strong>Gmail read-only</strong> (gmail.readonly): to show and sort your inbox, flag urgent mail and include it in your daily briefing.</li>
         <li><strong>Gmail compose</strong> (gmail.compose): to create reply drafts in your Gmail when you ask. {n} never sends email for you; you review and send drafts yourself in Gmail.</li>
         <li><strong>Calendar read-only</strong>: to show today&apos;s meetings in your briefing.</li>
-        <li><strong>Drive read-only</strong>, if you add Drive as a knowledge source: to index the documents you select for search.</li>
+        <li><strong>Drive read-only</strong> (drive.readonly), requested whenever you connect Google: {n} only reads files in the Drive folders you add as a knowledge source, to index them for search.</li>
       </ul>
       <p>
-        We store email metadata (sender, subject, date, labels) and short AI-generated summaries. Full message bodies are fetched when needed and not stored. Email text is sent to our AI provider only to classify,
+        We store email metadata (sender, subject, date, labels), Gmail&apos;s short preview snippet of each message (up to 500 characters) and short AI-generated summaries. Full message bodies are fetched when needed and not stored. Email text is sent to our AI provider only to classify,
         summarize or draft for you, and is not used to train models.
       </p>
       <p>
@@ -53,6 +53,10 @@ export default function PrivacyPolicy() {
       <ul>
         <li>use Google data only to provide and improve the user-facing features described above;</li>
         <li>do not transfer it to others except as needed to provide those features (the processors listed below), to comply with law, or as part of a merger or acquisition with notice to you;</li>
+        <li>
+          share it only where you direct us: if you connect Claude, the Claude app you authorize can read your daily briefing and email subjects and summaries (never full bodies) within the permissions you
+          approve, and you can revoke it in Settings &gt; Connect Claude; if you add your own AI key, email text goes to that provider instead of ours;
+        </li>
         <li>do not use or transfer it for advertising, and do not sell it;</li>
         <li>do not let humans read it, unless you give explicit consent for specific messages, it&apos;s needed for security or legal reasons, or it has been aggregated and anonymized;</li>
         <li>do not use it to develop, improve or train generalized AI or machine-learning models.</li>
@@ -70,11 +74,11 @@ export default function PrivacyPolicy() {
           account so you can see them there. They are kept for 3 days, then deleted. You can pause or unlink the phone at any time, in the app or on the website.
         </li>
         <li>
-          <strong>Your sign-in</strong>: the app keeps its session token encrypted with the Android Keystore. You can sign the app out from Settings &gt; Sessions on the website.
+          <strong>Your sign-in</strong>: the app keeps its session token encrypted with the Android Keystore. You can sign the app out from Settings &gt; Account &gt; Active sessions on the website.
         </li>
       </ul>
       <p>
-        The app contains no advertising or analytics SDKs. If you report an AI response as harmful, offensive or inaccurate, we keep a record of the report (the reason and the message reference) to review and improve
+        The app contains no advertising or analytics SDKs. If you report an AI response as harmful, offensive or inaccurate, we keep a record of the report (the reason, any note you add and the message reference) to review and improve
         the service.
       </p>
 
@@ -91,14 +95,17 @@ export default function PrivacyPolicy() {
         <li>Vercel: application hosting.</li>
         <li>Supabase: database.</li>
         <li>Resend: email delivery.</li>
-        <li>Our configured AI model provider: classifying, summarizing and drafting text.</li>
+        <li>Our configured AI model provider: classifying, summarizing and drafting text, answering chat questions, writing briefings and building the search index.</li>
+        <li>Our speech service, if enabled, when you use voice on the website: turns your recording into text and reads answers aloud. Audio is not stored.</li>
+        <li>Google Firebase Cloud Messaging and your browser&apos;s push service: delivering push notifications (title and short text) to devices you pair.</li>
+        <li>Appilix, if you use {n} inside the Appilix-built app: delivering app notifications. It receives your account email.</li>
         <li>Upstash, if enabled: rate-limit counters (hashed keys, no content).</li>
       </ul>
 
       <H>Retention and deletion</H>
       <p>
         We keep your data while your account is active. You can disconnect any service, delete indexed knowledge, and export your data from Settings at any time. Disconnecting Google revokes our access and deletes the stored
-        tokens. You can delete your account and all associated data yourself, at once, in the app (Me &gt; Delete account) or on the website (Settings &gt; Privacy). See{" "}
+        tokens. You can delete your account and all associated data yourself, at once, in the app (Settings &gt; Delete account) or on the website (Settings &gt; Data &amp; privacy). See{" "}
         <a className="underline" href="/delete-account">how to delete your account</a>. You can also email <a className="underline" href={`mailto:${BRAND.supportEmail}`}>{BRAND.supportEmail}</a> and we&apos;ll
         complete it within 30 days. You can also remove Google&apos;s access at{" "}
         <a className="underline" href="https://myaccount.google.com/permissions" rel="noopener noreferrer" target="_blank">
@@ -109,8 +116,8 @@ export default function PrivacyPolicy() {
 
       <H>Security</H>
       <p>
-        Data is encrypted in transit (TLS) and tokens are encrypted at rest. Sign-in codes, sessions and API tokens are stored only as hashes. {n} is built so nothing is sent, posted or deleted on your behalf without your
-        explicit click.
+        Data is encrypted in transit (TLS) and tokens are encrypted at rest. Sign-in codes, sessions and API tokens are stored only as hashes. {n} never sends email from your Gmail or deletes data in your connected services, and posts to
+        LinkedIn only when you click Publish.
       </p>
 
       <H>Children</H>

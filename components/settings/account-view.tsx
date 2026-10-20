@@ -7,6 +7,7 @@ import * as React from "react";
 import { toast } from "sonner";
 import { revokeSessionAction, signOutEverywhereAction } from "@/app/actions/auth";
 import { Button } from "@/components/ui/button";
+import { BRAND } from "@/lib/brand";
 import { timeAgo } from "@/lib/utils";
 import { Row, Section } from "./section";
 
@@ -39,7 +40,7 @@ export function AccountView({ email, sessions, log }: { email: string; sessions:
   return (
     <div>
       <Section title="Email" description="You sign in with a one-time code sent here.">
-        <Row label={email} hint="To change it, add the new address to ALLOWED_EMAILS, sign in with it (verified by a code), then remove the old one. The single-user guard stays on.">
+        <Row label={email} hint={`Your sign-in address can't be changed here. Email ${BRAND.supportEmail} if you need to move your account to a different address.`}>
           <span className="text-[13px] text-muted">Verified</span>
         </Row>
       </Section>

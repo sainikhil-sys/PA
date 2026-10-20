@@ -53,7 +53,7 @@ export async function runAgentTask(userId: string, taskId: string): Promise<void
       .catch(() => {});
     await completeTask(userId, taskId, "agent", { markdown: `**${info.name}** (${conn.model})\n\n${text.slice(0, 20_000)}` });
     await logActivity({ userId, actor: "agent", tool: `agents.${provider}.completed`, inputSummary: task.title.slice(0, 80), outcome: "success" });
-    await notify(userId, { kind: "automation", title: `${info.name} finished: ${task.title}`.slice(0, 200), body: "Review the result and approve or request changes.", href: `/agents?task=${taskId}`, dedupeKey: `agent:${taskId}:${Date.now()}` });
+    await notify(userId, { kind: "automation", title: `${info.name} finished: ${task.title}`.slice(0, 200), body: "Review the result and approve or request changes.", href: `/tasks?task=${taskId}`, dedupeKey: `agent:${taskId}:${Date.now()}` });
   } catch (err) {
     const message = err instanceof Error ? err.message.slice(0, 300) : "unknown error";
     await db()

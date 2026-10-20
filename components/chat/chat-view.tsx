@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowClockwise, ArrowUp, CaretDown, ClipboardText, Copy, FileCode, Files, Graph, Paperclip, PencilSimple, Sparkle, Stop, X } from "@phosphor-icons/react";
+import { ArrowClockwise, ArrowUp, CaretDown, ClipboardText, Copy, FileCode, Files, Globe, Graph, Info, Paperclip, PencilSimple, Sparkle, Stop, X } from "@phosphor-icons/react";
 import { useLinkPanel } from "@/components/flow/link-panel-context";
 import { AnimatePresence, motion, useReducedMotionConfig } from "motion/react";
 import * as React from "react";
@@ -31,6 +31,7 @@ import {
 } from "@/lib/chat/attachments";
 import { cn } from "@/lib/utils";
 import { Markdown } from "./markdown";
+import { MemoryLine } from "./memory-line";
 import { ProposalCard } from "./proposal-card";
 import { QuickActions } from "./quick-actions";
 import { useChat, type UiMessage } from "./use-chat";
@@ -345,6 +346,15 @@ function UserBubble({ m, onEdit }: { m: UiMessage; onEdit?: () => void }) {
   );
 }
 
+/** Hostname without "www." for web source chips; null for relative or bad URLs. */
+function hostOf(url: string): string | null {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return null;
+  }
+}
+
 function AssistantMessage({
   m,
   isLast,
@@ -382,6 +392,17 @@ function AssistantMessage({
         </div>
       ) : null}
 
+      {m.notices?.length ? (
+        <ul className="flex flex-col gap-1">
+          {m.notices.map((n, i) => (
+            <li key={i} className="flex items-start gap-1.5 text-[12px] text-muted">
+              <Info size={14} className="mt-px shrink-0" aria-hidden />
+              <span>{n}</span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+
       {m.pending && !m.content ? (
         <div className="flex items-center gap-2 text-sm text-muted">
           <AgentOrb state="thinking" size={22} /> Thinking…
@@ -394,6 +415,8 @@ function AssistantMessage({
 
       {m.generalKnowledge && !m.pending ? <p className="text-[12px] text-muted">Parts of this answer come from general knowledge, not your data.</p> : null}
 
+      {!m.pending ? m.memories?.map((mem) => <MemoryLine key={mem.id} memory={mem} />) : null}
+
       {m.citations?.length && !m.pending ? (
         <div>
           <p className="mb-1.5 text-[12px] font-medium text-muted">Sources used</p>
@@ -403,7 +426,8 @@ function AssistantMessage({
                 {c.url ? (
                   <a href={c.url} target={c.url.startsWith("http") ? "_blank" : undefined} rel="noopener noreferrer nofollow" className="inline-flex h-8 max-w-[260px] items-center gap-1.5 rounded-[10px] border border-border px-2.5 text-[12px] hover:border-border-strong">
                     <span className="tabular text-muted">{c.n}</span>
-                    <span className="truncate">{c.title}</span>
+                    {c.sourceType === "web" ? <Globe size={12} className="shrink-0 text-muted" aria-hidden /> : null}
+                    <span className="truncate">{c.sourceType === "web" && hostOf(c.url) ? `${hostOf(c.url)} · ${c.title}` : c.title}</span>
                   </a>
                 ) : (
                   <span className="inline-flex h-8 max-w-[260px] items-center gap-1.5 rounded-[10px] border border-border px-2.5 text-[12px]">

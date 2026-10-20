@@ -1,8 +1,10 @@
+import { router } from "expo-router";
 import { ArrowLeftIcon, type Icon } from "phosphor-react-native";
 import * as React from "react";
-import { KeyboardAvoidingView, ScrollView, View } from "react-native";
+import { KeyboardAvoidingView, ScrollView, type StyleProp, View, type ViewStyle } from "react-native";
 import { IconButton, Screen, Txt } from "@/components/ui";
-import { color, space } from "@/theme/tokens";
+import { type OnboardingStep, useSession } from "@/lib/session";
+import { color, radius, space } from "@/theme/tokens";
 
 /**
  * Shared layout for the sign-in and setup screens: keyboard-safe scrolling content with a footer
@@ -40,6 +42,27 @@ export function Heading({ title, body }: { title: string; body?: string }) {
 
 const STEPS = ["profile", "privacy", "permissions", "first-chat"] as const;
 
+/**
+ * Keeps setup on the saved step. Wherever the root guard lands a resumed setup, this replaces it with
+ * the step that was saved, so an interrupted setup continues where it stopped. Returns true while
+ * redirecting (render nothing then).
+ */
+export function useStepGuard(step: (typeof STEPS)[number]): boolean {
+  const [saved] = React.useState<OnboardingStep>(() => useSession.getState().onboarding);
+  const wrong = saved !== step && saved !== "done";
+  React.useEffect(() => {
+    if (wrong) router.replace(`/onboarding/${saved}`);
+  }, [wrong, saved]);
+  return wrong;
+}
+
+/** A static, non-interactive panel (Card from ui is a button, so it would be announced as one). */
+export function Note({ children, style }: { children: React.ReactNode; style?: StyleProp<ViewStyle> }) {
+  return (
+    <View style={[{ backgroundColor: color.surface, borderRadius: radius.card, borderWidth: 1, borderColor: color.border, padding: space.lg }, style]}>{children}</View>
+  );
+}
+
 /** "Step 2 of 4" with a row of short bars. */
 export function StepIndicator({ step }: { step: (typeof STEPS)[number] }) {
   const n = STEPS.indexOf(step) + 1;
@@ -61,7 +84,7 @@ export function StepIndicator({ step }: { step: (typeof STEPS)[number] }) {
 export function InfoItem({ icon: IconCmp, title, body, children }: { icon: Icon; title: string; body: string; children?: React.ReactNode }) {
   return (
     <View style={{ flexDirection: "row", gap: space.md }}>
-      <View style={{ width: 40, height: 40, borderRadius: 10, backgroundColor: color.surface2, borderWidth: 1, borderColor: color.border, alignItems: "center", justifyContent: "center" }}>
+      <View importantForAccessibility="no-hide-descendants" accessibilityElementsHidden style={{ width: 40, height: 40, borderRadius: radius.control, backgroundColor: color.surface2, borderWidth: 1, borderColor: color.border, alignItems: "center", justifyContent: "center" }}>
         <IconCmp size={20} color={color.warm} />
       </View>
       <View style={{ flex: 1, gap: space.xs }}>

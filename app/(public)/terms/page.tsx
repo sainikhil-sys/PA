@@ -20,8 +20,8 @@ export default function Terms() {
 
       <H>The service</H>
       <p>
-        {n} helps you organize your email, calendar, tasks and notes. AI-generated summaries, classifications and drafts can be wrong; review them before relying on them. {n} never sends, posts or deletes anything for
-        you without your explicit action, and you are responsible for what you choose to send or publish.
+        {n} helps you organize your email, calendar, tasks and notes. AI-generated summaries, classifications and drafts can be wrong; review them before relying on them. {n} never sends email from your Gmail or deletes data in your connected
+        services, and posts only when you click Publish. Automations you set up run only the actions you allow, and you are responsible for what you choose to send or publish.
       </p>
 
       <H>Your account</H>
@@ -47,7 +47,8 @@ export default function Terms() {
 
       <H>Ending your use</H>
       <p>
-        You can stop using {n} and ask us to delete your account at any time by emailing <a className="underline" href={`mailto:${BRAND.supportEmail}`}>{BRAND.supportEmail}</a>.
+        You can stop using {n} at any time and delete your account and all its data yourself; see <Link className="underline" href="/delete-account">how to delete your account</Link>. You can also
+        email <a className="underline" href={`mailto:${BRAND.supportEmail}`}>{BRAND.supportEmail}</a>.
       </p>
 
       <H>Contact</H>

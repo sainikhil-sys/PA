@@ -19,6 +19,7 @@ export default async function ConversationPage({ params }: { params: Promise<{ i
   const [c, s, suggestions] = await Promise.all([getConversation(user.id, id), getSettings(user.id), suggestedPrompts(user.id)]);
   if (!c) notFound();
   const props = new Map(c.proposals.map((p) => [p.id, p]));
+  const live = new Set(c.memoryIds);
   const initial: UiMessage[] = c.messages.map((m) => ({
     id: m.id,
     role: m.role,
@@ -28,6 +29,8 @@ export default async function ConversationPage({ params }: { params: Promise<{ i
     generalKnowledge: m.meta.generalKnowledge,
     attachment: m.meta.attachment ? { name: m.meta.attachment.name } : null,
     runId: m.meta.runId,
+    memories: m.meta.memories?.map((x) => ({ ...x, undone: x.status === "saved" && !live.has(x.id) })),
+    notices: m.meta.notices,
     proposals: (m.meta.proposalIds ?? [])
       .map((pid) => props.get(pid))
       .filter((p): p is NonNullable<typeof p> => Boolean(p))

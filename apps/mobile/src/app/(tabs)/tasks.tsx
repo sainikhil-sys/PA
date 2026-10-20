@@ -1,7 +1,7 @@
 import { router } from "expo-router";
 import { CheckCircleIcon, CheckSquareIcon } from "phosphor-react-native";
 import * as React from "react";
-import { KeyboardAvoidingView, RefreshControl, SectionList, type TextInput, View } from "react-native";
+import { KeyboardAvoidingView, RefreshControl, SectionList, TextInput, View } from "react-native";
 import { Button, Divider, EmptyState, ErrorState, SectionHeader, Screen, Skeleton, Txt } from "@/components/ui";
 import { QuickAddBar, TaskRow } from "@/features/tasks/components";
 import { groupTasks } from "@/features/tasks/dates";
@@ -15,7 +15,7 @@ export default function TasksScreen() {
   const tasks = useTasks();
   const setDone = useSetDone();
   const quickAdd = useQuickAdd();
-  const inputRef = React.useRef<TextInput>(null);
+  const inputRef = React.useRef<React.ComponentRef<typeof TextInput>>(null);
   const [text, setText] = React.useState("");
   const [notice, setNotice] = React.useState<{ kind: "ok" | "error"; text: string } | null>(null);
   const [refreshing, setRefreshing] = React.useState(false);
@@ -74,14 +74,14 @@ export default function TasksScreen() {
 
   let empty: React.ReactElement;
   if (tasks.isPending) empty = <Skeleton rows={5} />;
-  else if (tasks.isError) empty = <ErrorState message={errorText(tasks.error)} onRetry={() => void tasks.refetch()} />;
+  else if (tasks.isError && !tasks.data) empty = <ErrorState message={errorText(tasks.error)} onRetry={() => void tasks.refetch()} />;
   else
     empty = (
       <EmptyState
         icon={CheckSquareIcon}
         title="No open tasks"
         body="Add one above, with a day, time or #tag if you like."
-        action={<Button label="Add a task" variant="primary" onPress={() => inputRef.current?.focus()} />}
+        action={<Button label="Add a task" onPress={() => inputRef.current?.focus()} />}
       />
     );
 

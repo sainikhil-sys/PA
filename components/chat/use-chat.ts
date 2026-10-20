@@ -2,8 +2,10 @@
 
 import * as React from "react";
 import type { ChatAttachmentInput, TransformKind, TranslateLanguage } from "@/lib/chat/attachments";
-import type { Citation } from "@/lib/db/schema";
+import type { Citation, MessageMemory } from "@/lib/db/schema";
 
+/** A memory saved from the owner's own message; `undone` once they press Undo (or it was deleted since). */
+export type UiMemory = MessageMemory & { undone?: boolean };
 export type UiProposal = { id: string; kind: string; label: string; summary: string; status?: string };
 export type UiMessage = {
   id: string;
@@ -12,6 +14,9 @@ export type UiMessage = {
   tools?: { tool: string; label: string }[];
   citations?: Citation[];
   proposals?: UiProposal[];
+  memories?: UiMemory[];
+  /** Fixed, Cowork-written notes such as "Web search isn't set up". */
+  notices?: string[];
   generalKnowledge?: boolean;
   attachment?: { name: string } | null;
   runId?: string;
@@ -25,6 +30,8 @@ type Event =
   | { type: "citations"; citations: Citation[] }
   | { type: "text"; delta: string }
   | { type: "proposal"; proposal: UiProposal }
+  | { type: "memory"; memory: MessageMemory }
+  | { type: "notice"; text: string }
   | { type: "done"; messageId: string; generalKnowledge: boolean }
   | { type: "error"; message: string };
 
@@ -105,6 +112,8 @@ export function useChat(opts: { conversationId?: string; initial?: UiMessage[]; 
             else if (ev.type === "citations") patch((m) => ({ ...m, citations: ev.citations }));
             else if (ev.type === "text") patch((m) => ({ ...m, content: m.content + ev.delta }));
             else if (ev.type === "proposal") patch((m) => ({ ...m, proposals: [...(m.proposals ?? []), { ...ev.proposal, status: "pending" }] }));
+            else if (ev.type === "memory") patch((m) => ({ ...m, memories: [...(m.memories ?? []), ev.memory] }));
+            else if (ev.type === "notice") patch((m) => ({ ...m, notices: [...(m.notices ?? []), ev.text] }));
             else if (ev.type === "done") patch((m) => ({ ...m, id: ev.messageId, pending: false, generalKnowledge: ev.generalKnowledge }));
             else if (ev.type === "error") patch((m) => ({ ...m, content: m.content || ev.message, pending: false, error: true }));
           }

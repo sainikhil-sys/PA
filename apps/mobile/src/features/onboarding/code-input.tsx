@@ -10,8 +10,15 @@ export const CODE_LENGTH = 6;
  * suggestion strip all work. Only digits are kept.
  */
 export function CodeInput({ value, onChange, disabled, error }: { value: string; onChange: (code: string) => void; disabled?: boolean; error?: boolean }) {
-  const ref = React.useRef<TextInput>(null);
+  const ref = React.useRef<React.ComponentRef<typeof TextInput>>(null);
   const [focused, setFocused] = React.useState(false);
+
+  // Android drops focus while the input is not editable; put the keyboard back once it is again.
+  const wasDisabled = React.useRef(disabled);
+  React.useEffect(() => {
+    if (wasDisabled.current && !disabled) ref.current?.focus();
+    wasDisabled.current = disabled;
+  }, [disabled]);
 
   return (
     <Pressable onPress={() => ref.current?.focus()} accessible={false} style={{ position: "relative" }}>
@@ -51,7 +58,7 @@ export function CodeInput({ value, onChange, disabled, error }: { value: string;
         autoComplete="sms-otp"
         maxLength={CODE_LENGTH}
         caretHidden
-        accessibilityLabel="6-digit code"
+        accessibilityLabel={`6-digit code, ${value.length} of ${CODE_LENGTH} entered`}
         accessibilityHint="Enter the code from your email"
         style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, opacity: 0.01, color: "transparent" }}
       />

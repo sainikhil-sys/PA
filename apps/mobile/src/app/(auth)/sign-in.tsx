@@ -17,7 +17,11 @@ export default function SignIn() {
   const [serverError, setServerError] = React.useState<string | null>(null);
   const { control, handleSubmit, formState } = useForm<Form>({ resolver: zodResolver(schema), defaultValues: { email: "" } });
 
+  const inflight = React.useRef(false);
+
   const submit = handleSubmit(async ({ email }) => {
+    if (inflight.current) return;
+    inflight.current = true;
     setServerError(null);
     try {
       await api<{ ok: boolean; message: string }>("/api/mobile/auth/request", { body: { email } });
@@ -25,6 +29,8 @@ export default function SignIn() {
       router.push("/verify");
     } catch (err) {
       setServerError(errorText(err));
+    } finally {
+      inflight.current = false;
     }
   });
 

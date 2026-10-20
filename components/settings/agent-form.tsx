@@ -143,8 +143,8 @@ export function AgentForm({ initial, aiPresets, ownKey, memories, quiet, serverT
         </div>
       </Section>
 
-      <Section title="Quiet hours" description="No Telegram notifications during this window.">
-        <Row label="From – to">
+      <Section title="Quiet hours" description="Push and email alerts pause in this window. In-app notifications still collect.">
+        <Row label="Start and end">
           <div className="flex items-center gap-2 sm:justify-end">
             <input type="time" aria-label="Quiet hours start" value={q.start ?? ""} onChange={(e) => setQ({ ...q, start: e.target.value || null })} className={cn(inputClass, "w-auto")} />
             <span className="text-muted">–</span>

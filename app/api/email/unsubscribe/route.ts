@@ -15,7 +15,13 @@ function page(title: string, body: string, status = 200) {
 main{max-width:420px;width:100%;background:#fff;border:1px solid #e7e7ea;border-radius:16px;padding:32px 28px}h1{font-size:22px;line-height:30px;margin:0 0 8px;font-weight:600}p{margin:0 0 20px;color:#6b6b70}
 button,a.b{display:inline-block;background:#0a0a0a;color:#fff;border:0;border-radius:10px;padding:12px 20px;font:600 14px/20px inherit;cursor:pointer;text-decoration:none}a{color:#0a0a0a}</style></head>
 <body><main><p style="margin:0 0 20px;font-weight:600;color:#0a0a0a">${esc(BRAND.name)}</p>${body}</main></body></html>`;
-  return new Response(html, { status, headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "x-robots-tag": "noindex" } });
+  return new Response(html, { status, headers: {
+      "content-type": "text/html; charset=utf-8",
+      "cache-control": "no-store",
+      "x-robots-tag": "noindex",
+      // Allows only this page's inline styles and posting the confirm form back to itself.
+      "content-security-policy": "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'",
+    }, });
 }
 
 function parse(url: URL) {

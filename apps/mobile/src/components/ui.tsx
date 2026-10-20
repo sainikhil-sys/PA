@@ -69,7 +69,7 @@ export function Button({
       }}
       style={({ pressed }) => [
         styles.button,
-        compact && { minHeight: 40, paddingHorizontal: space.md },
+        compact && { minHeight: TOUCH, paddingHorizontal: space.md },
         variant === "primary" && { backgroundColor: color.orange, borderColor: color.orange },
         variant === "secondary" && { backgroundColor: color.surface2, borderColor: color.borderStrong },
         variant === "ghost" && { backgroundColor: "transparent", borderColor: "transparent" },

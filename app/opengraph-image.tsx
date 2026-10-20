@@ -18,8 +18,8 @@ export default function OpenGraphImage() {
           </svg>
           <div style={{ fontSize: 104, fontWeight: 600, letterSpacing: -4 }}>{BRAND.name}</div>
         </div>
-        <div style={{ marginTop: 40, fontSize: 44, lineHeight: 1.25, color: "#3f3f46", maxWidth: 900 }}>Your inbox, calendar, tasks and notes in one calm place.</div>
-        <div style={{ marginTop: 28, fontSize: 28, color: "#71717a" }}>AI work assistant · nothing is sent without your click</div>
+        <div style={{ marginTop: 40, fontSize: 44, lineHeight: 1.25, color: "#3f3f46", maxWidth: 900 }}>Morning briefing, inbox triage and Gmail reply drafts, plus your tasks and notes.</div>
+        <div style={{ marginTop: 28, fontSize: 28, color: "#71717a" }}>AI work assistant · replies wait as Gmail drafts you send</div>
       </div>
     ),
     size,

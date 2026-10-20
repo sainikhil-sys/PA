@@ -73,7 +73,7 @@ async function recentRows(userId: string, id: string, tz: string): Promise<{ hea
     .where(inArray(schema.knowledgeItems.sourceId, sources.map((s) => s.id)))
     .orderBy(desc(schema.knowledgeItems.updatedAt))
     .limit(8);
-  return { heading: "Recently synced", rows: items.map((i) => ({ key: i.id, title: i.title, meta: `updated ${timeAgo(i.updatedAt.toISOString())}`, href: `/knowledge?item=${i.id}` })) };
+  return { heading: "Recently synced", rows: items.map((i) => ({ key: i.id, title: i.title, meta: `updated ${timeAgo(i.updatedAt.toISOString())}`, href: i.url && /^https?:\/\//.test(i.url) ? i.url : "/knowledge" })) };
 }
 
 export default async function IntegrationPage({ params }: { params: Promise<{ id: string }> }) {
@@ -174,7 +174,7 @@ export default async function IntegrationPage({ params }: { params: Promise<{ id
               <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[12px] text-muted">
                 Works with
                 {partnerEntries.map((p) => (
-                  <Link key={p.id} href={`/integrations/${p.id}`} className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-0.5 hover:border-foreground/60">
+                  <Link key={p.id} href={`/integrations/${p.id}`} className="inline-flex items-center gap-1 rounded-[8px] border border-border px-2 py-0.5 hover:border-foreground/60">
                     <BrandLogo id={p.logo} size={12} /> {p.name}
                   </Link>
                 ))}

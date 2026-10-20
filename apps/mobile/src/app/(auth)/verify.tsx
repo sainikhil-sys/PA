@@ -23,6 +23,15 @@ export default function Verify() {
   const [notice, setNotice] = React.useState<string | null>(null);
   const [cooldown, setCooldown] = React.useState(RESEND_SECONDS);
   const [resending, setResending] = React.useState(false);
+  // State updates land a render late; a ref stops a double tap or autofill-plus-tap sending twice.
+  const inflight = React.useRef(false);
+  const alive = React.useRef(true);
+  React.useEffect(
+    () => () => {
+      alive.current = false;
+    },
+    [],
+  );
 
   React.useEffect(() => {
     let alive = true;
@@ -47,7 +56,8 @@ export default function Verify() {
 
   const verify = React.useCallback(
     async (value: string) => {
-      if (!email || busy) return;
+      if (!email || inflight.current || value.length !== CODE_LENGTH) return;
+      inflight.current = true;
       setBusy(true);
       setError(null);
       setNotice(null);
@@ -56,12 +66,14 @@ export default function Verify() {
         await signIn(res.token, res.isNew);
         // The root layout's guards take over from here.
       } catch (err) {
+        inflight.current = false;
+        if (!alive.current) return;
         setError(errorText(err));
         setCode("");
         setBusy(false);
       }
     },
-    [email, busy, signIn],
+    [email, signIn],
   );
 
   const onChange = (next: string) => {
@@ -71,23 +83,28 @@ export default function Verify() {
   };
 
   const resend = async () => {
-    if (!email || cooldown > 0 || resending) return;
+    if (!email || cooldown > 0 || resending || inflight.current) return;
     setResending(true);
     setError(null);
     setNotice(null);
     try {
       const res = await api<{ ok: boolean; message: string }>("/api/mobile/auth/request", { body: { email } });
+      if (!alive.current) return;
       setNotice(res.message);
       setCooldown(RESEND_SECONDS);
       setCode("");
     } catch (err) {
-      setError(errorText(err));
+      if (alive.current) setError(errorText(err));
     } finally {
-      setResending(false);
+      if (alive.current) setResending(false);
     }
   };
 
-  const changeEmail = () => (router.canGoBack() ? router.back() : router.replace("/sign-in"));
+  const changeEmail = () => {
+    if (inflight.current) return;
+    if (router.canGoBack()) router.back();
+    else router.replace("/sign-in");
+  };
 
   return (
     <AuthFrame
@@ -130,7 +147,7 @@ export default function Verify() {
               </Txt>
             ) : null}
           </View>
-          <Button label="Use a different email" variant="ghost" compact onPress={changeEmail} style={{ alignSelf: "flex-start", minHeight: 48, paddingHorizontal: 0 }} />
+          <Button label="Use a different email" variant="ghost" compact disabled={busy} onPress={changeEmail} style={{ alignSelf: "flex-start", minHeight: 48, paddingHorizontal: 0 }} />
         </>
       )}
     </AuthFrame>

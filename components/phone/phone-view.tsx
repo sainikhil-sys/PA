@@ -82,7 +82,7 @@ function LinkedView({ feed, apkUrl, refresh }: { feed: Feed; apkUrl: string | nu
       <div className="flex min-w-0 flex-col gap-3">
         {ringing ? (
           <div role="status" className="card flex items-center gap-3 rounded-[16px] border border-foreground bg-background px-4 py-3">
-            <span className="grid size-10 shrink-0 animate-pulse place-items-center rounded-full bg-foreground text-background">
+            <span className="grid size-10 shrink-0 motion-safe:animate-pulse place-items-center rounded-full bg-foreground text-background">
               <PhoneIncoming size={20} weight="fill" />
             </span>
             <div className="min-w-0 flex-1">
@@ -106,7 +106,7 @@ function LinkedView({ feed, apkUrl, refresh }: { feed: Feed; apkUrl: string | nu
                 role="tab"
                 aria-selected={filter === f.id}
                 onClick={() => setFilter(f.id)}
-                className={cn("flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-3 text-[13px]", filter === f.id ? "border-foreground bg-foreground text-background" : "border-border hover:border-border-strong")}
+                className={cn("flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-[10px] border px-3 text-[13px]", filter === f.id ? "border-foreground bg-foreground text-background" : "border-border hover:border-border-strong")}
               >
                 {f.label}
                 <span className={cn("tabular text-[11px]", filter === f.id ? "text-background/70" : "text-muted")}>{counts[f.id] ?? 0}</span>
@@ -198,17 +198,17 @@ function EventRow({ e }: { e: Event }) {
         {kind === "whatsapp" || (kind === "call" && tel) || (kind === "sms" && tel) ? (
           <div className="mt-1.5 flex flex-wrap gap-1.5">
             {kind === "whatsapp" ? (
-              <a href={whatsappLink(e.title)} target="_blank" rel="noopener noreferrer" className="inline-flex h-8 items-center gap-1.5 rounded-full border border-border px-3 text-[12.5px] hover:border-foreground/60">
+              <a href={whatsappLink(e.title)} target="_blank" rel="noopener noreferrer" className="inline-flex h-8 items-center gap-1.5 rounded-[10px] border border-border px-3 text-[12.5px] hover:border-foreground/60">
                 <WhatsappLogo size={14} /> Open in WhatsApp <ArrowSquareOut size={12} />
               </a>
             ) : null}
             {tel && kind === "call" ? (
-              <a href={tel} className="inline-flex h-8 items-center gap-1.5 rounded-full border border-border px-3 text-[12.5px] hover:border-foreground/60">
+              <a href={tel} className="inline-flex h-8 items-center gap-1.5 rounded-[10px] border border-border px-3 text-[12.5px] hover:border-foreground/60">
                 <Phone size={14} /> Call back
               </a>
             ) : null}
             {tel && kind === "sms" ? (
-              <a href={`sms:${tel.slice(4)}`} className="inline-flex h-8 items-center gap-1.5 rounded-full border border-border px-3 text-[12.5px] hover:border-foreground/60">
+              <a href={`sms:${tel.slice(4)}`} className="inline-flex h-8 items-center gap-1.5 rounded-[10px] border border-border px-3 text-[12.5px] hover:border-foreground/60">
                 <ChatCircleText size={14} /> Reply by SMS
               </a>
             ) : null}
@@ -335,7 +335,7 @@ function PairWizard({ apkUrl, onLinked, compact }: { apkUrl: string | null; onLi
             )}
             <p className="text-[12px] text-muted">Android may ask you to allow installing apps from your browser. iPhone isn&apos;t supported: Apple doesn&apos;t let apps read other apps&apos; notifications.</p>
             <Button variant="secondary" className="w-fit" disabled={pending} onClick={getCode}>
-              I&apos;ve installed it — show my code
+              I&apos;ve installed it. Show my code
             </Button>
           </div>
         ) : null}

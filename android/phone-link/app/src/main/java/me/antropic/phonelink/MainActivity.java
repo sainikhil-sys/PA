@@ -108,6 +108,7 @@ public class MainActivity extends Activity {
                 });
             });
         });
+        privacyLink();
     }
 
     private void renderAccess() {
@@ -115,6 +116,7 @@ public class MainActivity extends Activity {
         Button allow = primary("Allow notification access");
         allow.setOnClickListener(v -> startActivity(new Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)));
         small("Android may warn that this app can read notifications. That's what lets Cowork show them. Nothing is sent anywhere except your Cowork account.");
+        privacyLink();
     }
 
     private void renderLinked() {
@@ -159,6 +161,7 @@ public class MainActivity extends Activity {
             render();
         });
         small("Tip: if updates stop, set battery usage for Cowork Phone Link to “Unrestricted” in Android settings.");
+        privacyLink();
     }
 
     private boolean hasNotificationAccess() {
@@ -194,6 +197,14 @@ public class MainActivity extends Activity {
         t.setTextColor(MUTED);
         root.addView(t, block(dp(12)));
         return t;
+    }
+
+    /** Opens the Cowork privacy policy in the browser. */
+    private void privacyLink() {
+        TextView p = small("Privacy policy");
+        p.setTextColor(INK);
+        p.setPaintFlags(p.getPaintFlags() | android.graphics.Paint.UNDERLINE_TEXT_FLAG);
+        p.setOnClickListener(v -> startActivity(new Intent(Intent.ACTION_VIEW, android.net.Uri.parse(BuildConfig.SERVER + "/privacy"))));
     }
 
     private Button primary(String s) {

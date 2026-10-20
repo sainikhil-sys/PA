@@ -49,7 +49,7 @@ export function RunView({ runId, initial, base }: { runId: string; initial: Flow
       <dl className="flex flex-wrap gap-6 text-[13px]">
         <div>
           <dt className="text-muted">Started by</dt>
-          <dd className="capitalize">{first ? `${first.runKind === "mcp" ? "Claude" : first.runKind} · ${first.trigger}` : "—"}</dd>
+          <dd className="capitalize">{first ? `${first.runKind === "mcp" ? "Claude" : first.runKind} · ${first.trigger}` : "Unknown"}</dd>
         </div>
         <div>
           <dt className="text-muted">Steps</dt>

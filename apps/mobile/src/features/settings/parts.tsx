@@ -49,7 +49,10 @@ export function timeAgo(iso: string | null | undefined): string {
   return new Date(iso).toLocaleDateString(undefined, { day: "numeric", month: "short", year: new Date(iso).getFullYear() === new Date().getFullYear() ? undefined : "numeric" });
 }
 
-/** Pull-to-refresh in the house colors. */
-export function Refresh({ refreshing, onRefresh }: { refreshing: boolean; onRefresh: () => void }) {
+/**
+ * Pull-to-refresh in the house colors. A plain function (not a component): Android's ScrollView clones
+ * this element and wraps itself in it, which a wrapper component would swallow.
+ */
+export function refresh(refreshing: boolean, onRefresh: () => void) {
   return <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={color.orange} colors={[color.orange]} progressBackgroundColor={color.surface2} />;
 }

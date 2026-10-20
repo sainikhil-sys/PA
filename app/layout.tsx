@@ -1,8 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Hanken_Grotesk, Newsreader } from "next/font/google";
-import { headers } from "next/headers";
+import { cookies } from "next/headers";
 import { Toaster } from "sonner";
-import { INTRO_BOOT_SCRIPT, LaunchIntro } from "@/components/layout/launch-intro";
 import { BRAND } from "@/lib/brand";
 import { appUrl } from "@/lib/env";
 import { SEO } from "@/lib/seo";
@@ -32,16 +31,11 @@ export const viewport: Viewport = {
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const nonce = (await headers()).get("x-nonce") ?? undefined;
+  // The app's Reduce motion setting, mirrored in a cookie so it applies from first paint.
+  const reduceMotion = (await cookies()).get("pa_rm")?.value === "1";
   return (
-    <html lang="en" data-theme="light" className={`${hanken.variable} ${newsreader.variable}`} suppressHydrationWarning>
-      <head>
-        {/* Decides before first paint whether the launch intro plays (no flash). */}
-        {/* Browsers hide nonce attributes from script, so hydration would always see a mismatch. */}
-        <script nonce={nonce} suppressHydrationWarning dangerouslySetInnerHTML={{ __html: INTRO_BOOT_SCRIPT }} />
-      </head>
+    <html lang="en" data-theme="light" data-reduce-motion={reduceMotion ? "true" : undefined} className={`${hanken.variable} ${newsreader.variable}`} suppressHydrationWarning>
       <body className="min-h-dvh">
-        <LaunchIntro />
         <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-md focus:bg-primary focus:px-3 focus:py-2 focus:text-primary-foreground">
           Skip to content
         </a>

@@ -18,13 +18,13 @@ export default async function PrivacyPage() {
   // Infrastructure details (hosts, vendors) are not shown to accounts; only what touches their data, in plain words.
   const ai = s.aiProvider ? `Your own key: ${AI_PRESETS[s.aiProvider.preset as keyof typeof AI_PRESETS]?.label ?? "custom provider"}` : "Cowork's AI provider";
   const flows: DataFlow[] = [
-    { what: "Email text (for sorting & drafts)", where: ai, why: "Classify, summarize and draft replies. Bodies are fetched on demand and never stored by Cowork." },
+    { what: "Email text (for sorting & drafts)", where: ai, why: "Classify, summarize and draft replies. Full bodies are fetched on demand and not stored; Cowork keeps Gmail's short preview snippet and an AI summary." },
     { what: "Chat messages & retrieved excerpts", where: ai, why: "Answer your questions with citations." },
-    { what: "Knowledge text chunks", where: e.EMBEDDING_MODEL ? "Cowork's AI provider (search index)" : "Stays in your database (keyword search)", why: "Semantic search." },
+    { what: "Knowledge text chunks", where: e.EMBEDDING_MODEL ? "Cowork's AI provider (search index)" : "Stays in Cowork's database (keyword search)", why: e.EMBEDDING_MODEL ? "Semantic search." : "Keyword search." },
     { what: "Voice recordings", where: e.STT_BASE_URL ? "Cowork's speech service" : "Your browser's speech service", why: "Speech-to-text. Audio isn't stored." },
     { what: "Spoken answers", where: e.TTS_BASE_URL ? "Cowork's speech service" : "Your browser (on device)", why: "Text-to-speech." },
     { what: "Sign-in codes", where: e.RESEND_API_KEY ? "Resend (email delivery)" : "Not configured", why: "Deliver your one-time code." },
-    { what: "Notifications", where: isAdmin(user.email) && e.TELEGRAM_BOT_TOKEN ? "In-app, email and Telegram" : "In-app and email", why: "Alerts and reminders you choose in Notifications." },
+    { what: "Notifications", where: isAdmin(user.email) && e.TELEGRAM_BOT_TOKEN ? "In-app, email, push and Telegram" : "In-app, email and push to your paired devices", why: "Alerts and reminders you choose in Notifications." },
     { what: "Everything else", where: "Cowork's encrypted database", why: "Tokens encrypted with AES-256-GCM; codes, sessions and API tokens stored only as hashes." },
     { what: "Rate-limit counters", where: "Cowork's servers", why: "Abuse protection. Keys are hashed, no content." },
   ];

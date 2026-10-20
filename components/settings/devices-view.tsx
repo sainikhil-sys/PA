@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, DeviceMobile, Desktop, QrCode, Trash, ShareNetwork } from "@phosphor-icons/react";
+import { Bell, Check, DeviceMobile, Desktop, Minus, QrCode, Trash, ShareNetwork, X } from "@phosphor-icons/react";
 import { useRouter } from "next/navigation";
 import * as React from "react";
 import { toast } from "sonner";
@@ -244,14 +244,14 @@ function AppCheck() {
       note: inApp
         ? undefined
         : webView
-          ? "This is inside an Android app, but the Appilix bridge isn't available. Turn on the JavaScript Bridge / Firebase notifications for this app in Appilix, rebuild, and reinstall."
+          ? "This version of the Cowork app can't receive notifications. Update the app to the latest version, then check again."
           : "This page is open in a normal browser, not the Cowork app. Open the Cowork app itself and check again.",
     });
     if (inApp) {
       const allowed = await appNotificationsAllowed();
       out.push({ label: "Notifications allowed for the app", ok: allowed, note: allowed ? undefined : "Tap “Turn on notifications here” and allow Cowork in the phone settings." });
       const token = allowed ? await appFcmToken() : null;
-      out.push({ label: "Firebase token received", ok: allowed ? Boolean(token) : null, note: allowed && !token ? "Firebase isn't connected in this build. Upload google-services.json in Appilix and rebuild the app." : undefined });
+      out.push({ label: "Notification token received", ok: allowed ? Boolean(token) : null, note: allowed && !token ? "The app couldn't register for notifications. Close and reopen Cowork, then check again." : undefined });
     }
     setRows(out);
     setRunning(false);
@@ -266,7 +266,7 @@ function AppCheck() {
           {rows.map((r) => (
             <li key={r.label} className="flex flex-col">
               <span className="flex items-center gap-2">
-                <span aria-hidden className={r.ok === true ? "text-success" : r.ok === false ? "text-danger" : "text-muted"}>{r.ok === true ? "✓" : r.ok === false ? "✕" : "–"}</span>
+                <span aria-hidden className={r.ok === true ? "text-success" : r.ok === false ? "text-danger" : "text-muted"}>{r.ok === true ? <Check size={14} weight="bold" /> : r.ok === false ? <X size={14} weight="bold" /> : <Minus size={14} />}</span>
                 {r.label}
               </span>
               {r.note ? <span className="pl-5 text-muted">{r.note}</span> : null}

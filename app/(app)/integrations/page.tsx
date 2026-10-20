@@ -21,7 +21,7 @@ export default async function IntegrationsPage() {
   const admin = isAdmin(user.email);
   return (
     <>
-      <PageHeader title="Integrations" description="Connect the tools you use. Read-only by default; drafts at most. Nothing is ever sent or deleted for you." />
+      <PageHeader title="Integrations" description="Connect the tools you use. Most connections are read-only: Gmail can save drafts, Spotify can play, pause and skip, and LinkedIn posts only when you click Publish. Nothing is sent or deleted for you." />
       <Suspense fallback={<CardSkeleton rows={4} />}>
         <IntegrationGrid catalog={admin ? CATALOG : CATALOG.filter((c) => c.provider !== "telegram")} states={states} telegramConfigured={admin && Boolean(e.TELEGRAM_BOT_TOKEN && e.TELEGRAM_CHAT_ID)} oauthReady={oauthReadyMap()} />
       </Suspense>

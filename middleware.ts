@@ -59,6 +59,6 @@ export function middleware(req: NextRequest) {
 export const config = {
   matcher: [
     // Pages only. API routes and well-known documents authenticate themselves.
-    "/((?!api/|_next/static|_next/image|brands/|downloads/|favicon.ico|icon.svg|sw.js|robots.txt|sitemap.xml|manifest.webmanifest|opengraph-image|\\.well-known).*)",
+    "/((?!api/|_next/static|_next/image|brands/|downloads/|icons/|favicon.ico|icon.svg|apple-icon|sw.js|robots.txt|sitemap.xml|manifest.webmanifest|opengraph-image|\\.well-known).*)",
   ],
 };

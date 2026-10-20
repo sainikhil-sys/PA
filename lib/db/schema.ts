@@ -112,6 +112,8 @@ export type AgentSettings = {
     manageTasks: boolean;
     runAutomations: boolean;
     searchKnowledge: boolean;
+    searchWeb: boolean;
+    autoMemory: boolean;
   };
 };
 
@@ -125,7 +127,7 @@ export const DEFAULT_AGENT: AgentSettings = {
   voice: "",
   speechRate: 1,
   proactivity: "nudge",
-  capabilities: { readEmail: true, createDrafts: true, manageTasks: true, runAutomations: true, searchKnowledge: true },
+  capabilities: { readEmail: true, createDrafts: true, manageTasks: true, runAutomations: true, searchKnowledge: true, searchWeb: true, autoMemory: true },
 };
 
 export type RoomSettings = { wallpaper?: string; customWallpaper?: string; spotifyUrl?: string; youtubeUrl?: string; focusMinutes?: number; dim?: number };

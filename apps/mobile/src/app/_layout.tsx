@@ -57,7 +57,7 @@ export default function RootLayout() {
               <Stack.Protected guard={!signedIn}>
                 <Stack.Screen name="(auth)" />
               </Stack.Protected>
-              <Stack.Protected guard={signedIn && !onboarded} redirectTo="/onboarding/profile">
+              <Stack.Protected guard={signedIn && !onboarded}>
                 <Stack.Screen name="onboarding" />
               </Stack.Protected>
               <Stack.Protected guard={signedIn && onboarded}>

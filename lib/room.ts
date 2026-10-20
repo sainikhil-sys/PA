@@ -9,7 +9,7 @@ export const WALLPAPERS: Wallpaper[] = [
   { id: "sage", name: "Sage", css: "radial-gradient(80% 70% at 85% 15%, #d6e8d2 0%, transparent 60%), radial-gradient(70% 60% at 0% 100%, #e8e2cf 0%, transparent 60%), linear-gradient(160deg, #f4f6ef 0%, #e7eee3 100%)", dark: false },
   { id: "paper", name: "Paper", css: "radial-gradient(#0000000d 1px, transparent 1px) 0 0 / 18px 18px, linear-gradient(180deg, #faf8f3 0%, #f2efe7 100%)", dark: false },
   { id: "ocean", name: "Ocean", css: "radial-gradient(100% 80% at 0% 0%, #1e3a5f 0%, transparent 60%), radial-gradient(80% 70% at 100% 100%, #0f5257 0%, transparent 60%), linear-gradient(160deg, #0b1626 0%, #0e2433 100%)", dark: true },
-  { id: "dusk", name: "Dusk", css: "radial-gradient(90% 70% at 80% 10%, #6b3a73 0%, transparent 60%), radial-gradient(90% 80% at 0% 100%, #b4553f 0%, transparent 55%), linear-gradient(170deg, #1b1430 0%, #2a1a2e 100%)", dark: true },
+  { id: "dusk", name: "Dusk", css: "radial-gradient(90% 70% at 80% 10%, #7a4a3a 0%, transparent 60%), radial-gradient(90% 80% at 0% 100%, #b4553f 0%, transparent 55%), linear-gradient(170deg, #141820 0%, #221a16 100%)", dark: true },
   { id: "midnight", name: "Midnight desk", css: "radial-gradient(60% 50% at 75% 20%, #2b3a67 0%, transparent 70%), radial-gradient(1.5px 1.5px at 20% 30%, #ffffff99 50%, transparent 51%), radial-gradient(1px 1px at 60% 12%, #ffffff80 50%, transparent 51%), radial-gradient(1px 1px at 85% 40%, #ffffff66 50%, transparent 51%), linear-gradient(180deg, #0a0d1a 0%, #141a2e 100%)", dark: true },
 ];
 

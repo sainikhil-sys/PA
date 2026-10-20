@@ -10,7 +10,6 @@ import { useShell } from "@/components/layout/shell-context";
 import { AgentOrb } from "@/components/voice/agent-orb";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { CountUp } from "@/components/ui/count-up";
 
 export function AgentCardClient({
   agentName,
@@ -40,7 +39,7 @@ export function AgentCardClient({
           <div key={s.label} className="rounded-[12px] bg-surface px-3 py-2.5">
             <dt className="text-[11px] text-muted">{s.label}</dt>
             <dd className="text-[20px] font-medium">
-              <CountUp value={s.value} />
+              <span className="tabular">{s.value}</span>
             </dd>
           </div>
         ))}
@@ -63,7 +62,7 @@ export function PrepButton({ title }: { title: string }) {
     <button
       type="button"
       onClick={() => openChat(`Prep me for my meeting "${title}": attendees, recent emails with them, open tasks and talking points.`)}
-      className="h-8 shrink-0 self-center rounded-full border border-border px-3 text-[12px] text-muted opacity-100 transition-colors hover:border-border-strong hover:text-foreground sm:opacity-0 sm:group-hover:opacity-100 sm:focus:opacity-100"
+      className="h-8 shrink-0 self-center rounded-[10px] border border-border px-3 text-[12px] text-muted opacity-100 transition-colors hover:border-border-strong hover:text-foreground sm:opacity-0 sm:group-hover:opacity-100 sm:focus:opacity-100"
     >
       Prep
     </button>

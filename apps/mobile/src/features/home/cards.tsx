@@ -87,7 +87,7 @@ export function ScheduleCard({ today, loading }: { today: Today | undefined; loa
             label="Connect on the website"
             icon={ArrowSquareOutIcon}
             compact
-            style={{ alignSelf: "flex-start" }}
+            style={{ alignSelf: "flex-start", minHeight: TOUCH }}
             onPress={() => void WebBrowser.openBrowserAsync(`${API_URL}/integrations`).catch(() => {})}
           />
         </View>
@@ -118,6 +118,17 @@ export function ScheduleCard({ today, loading }: { today: Today | undefined; loa
 /** Top priorities. Ticking one marks it done right away and rolls back if the server refuses. */
 export function TasksCard({ today, loading }: { today: Today | undefined; loading: boolean }) {
   const complete = useCompleteTask();
+  // Ids already sent, so a quick second tap never sends the same completion twice.
+  const sent = React.useRef(new Set<string>());
+  const tick = (id: string) => {
+    if (sent.current.has(id)) return;
+    sent.current.add(id);
+    // mutateAsync settles per call, unlike mutate's callbacks which fire only for the latest call.
+    complete
+      .mutateAsync(id)
+      .catch(() => {})
+      .finally(() => sent.current.delete(id));
+  };
   return (
     <HomeCard title="Top tasks">
       {loading || !today ? (
@@ -137,7 +148,7 @@ export function TasksCard({ today, loading }: { today: Today | undefined; loadin
                   accessibilityLabel={`Mark ${t.title} done`}
                   accessibilityState={{ checked: busy, disabled: busy }}
                   disabled={busy}
-                  onPress={() => complete.mutate(t.id)}
+                  onPress={() => tick(t.id)}
                   style={({ pressed }) => [{ width: TOUCH, height: TOUCH, alignItems: "center", justifyContent: "center", marginLeft: -space.md }, pressed && { opacity: 0.6 }]}
                 >
                   <BoxIcon size={22} color={busy ? color.success : color.muted} />

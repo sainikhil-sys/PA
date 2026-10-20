@@ -2,6 +2,7 @@
 
 import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
 import { z } from "zod";
 import { ownerAction } from "@/lib/auth/action";
 import { db, schema } from "@/lib/db";
@@ -76,6 +77,8 @@ export const savePreferences = ownerAction(
   }),
   async (input, user) => {
     await updateSettings(user.id, input);
+    // Mirrored in a cookie so the root layout can apply it before first paint.
+    if (input.reduceMotion !== undefined) (await cookies()).set("pa_rm", input.reduceMotion ? "1" : "0", { path: "/", maxAge: 31_536_000, sameSite: "lax" });
     if (input.automationsPaused !== undefined) {
       await logActivity({ userId: user.id, actor: "me", tool: input.automationsPaused ? "automations.paused" : "automations.resumed", outcome: "success" });
     }

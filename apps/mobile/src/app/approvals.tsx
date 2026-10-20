@@ -10,7 +10,7 @@ import { BackHeader } from "@/features/home/header";
 import { errorText } from "@/lib/api";
 import { useApprovals, useDecide, useMe } from "@/lib/queries";
 import type { Approval } from "@/lib/types";
-import { color, space } from "@/theme/tokens";
+import { color, space, TOUCH } from "@/theme/tokens";
 
 /** Proposals the agent prepared. Each one runs only after you approve it here. */
 export default function ApprovalsScreen() {
@@ -27,14 +27,21 @@ export default function ApprovalsScreen() {
     setRefreshing(false);
   }, [approvals]);
 
+  // Guards a second tap that lands before the pending state re-renders the buttons as disabled.
+  const inFlight = React.useRef(false);
   const run = (item: Approval, action: "approve" | "dismiss") => {
+    if (inFlight.current) return;
+    inFlight.current = true;
     setNotice(null);
     decide.mutate(
       { id: item.id, action },
       {
         onSuccess: (res) => setNotice({ text: res.message || (action === "approve" ? "Done." : "Dismissed.") }),
         onError: (err) => setNotice({ text: errorText(err), error: true }),
-        onSettled: () => setConfirming(null),
+        onSettled: () => {
+          inFlight.current = false;
+          setConfirming(null);
+        },
       },
     );
   };
@@ -63,14 +70,14 @@ export default function ApprovalsScreen() {
           contentContainerStyle={{ paddingHorizontal: space.lg, paddingBottom: space.xxxl, gap: space.md, flexGrow: 1 }}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={color.orange} colors={[color.orange]} progressBackgroundColor={color.surface2} />}
           ListHeaderComponent={
-            approvals.data?.length ? <Txt variant="small">Cowork prepared these. Nothing runs, sends or posts until you approve it.</Txt> : null
+            approvals.data?.length ? <Txt variant="small">Cowork prepared these. Nothing runs, sends or posts until you approve it.</Txt> : undefined
           }
           ListEmptyComponent={
             <EmptyState
               icon={SealCheckIcon}
               title="Nothing waiting"
               body="When Cowork prepares something that needs your approval, it shows up here."
-              action={<Button label="Back to Home" compact onPress={() => router.replace("/")} />}
+              action={<Button label="Back to Home" compact style={{ minHeight: TOUCH }} onPress={() => router.replace("/")} />}
             />
           }
           renderItem={({ item }) => {
@@ -87,18 +94,28 @@ export default function ApprovalsScreen() {
                 </View>
                 <Txt variant="body">{item.summary}</Txt>
                 <View style={{ flexDirection: "row", flexWrap: "wrap", gap: space.sm, marginTop: space.xs }}>
-                  <Button label="Approve" icon={CheckIcon} compact disabled={decide.isPending} loading={busy && decide.variables?.action === "approve"} onPress={() => setConfirming(item)} />
+                  <Button
+                    label="Approve"
+                    icon={CheckIcon}
+                    compact
+                    style={{ minHeight: TOUCH }}
+                    disabled={decide.isPending}
+                    loading={busy && decide.variables?.action === "approve"}
+                    accessibilityLabel={`Approve ${item.label}`}
+                    onPress={() => setConfirming(item)}
+                  />
                   <Button
                     label="Dismiss"
                     variant="ghost"
                     compact
+                    style={{ minHeight: TOUCH }}
                     disabled={decide.isPending}
                     loading={busy && decide.variables?.action === "dismiss"}
                     accessibilityLabel={`Dismiss ${item.label}`}
                     onPress={() => run(item, "dismiss")}
                   />
                   {item.conversationId ? (
-                    <Button label="Open chat" icon={ChatCircleIcon} variant="ghost" compact onPress={() => router.push(`/chat/${item.conversationId}`)} />
+                    <Button label="Open chat" icon={ChatCircleIcon} variant="ghost" compact style={{ minHeight: TOUCH }} accessibilityLabel={`Open the chat for ${item.label}`} onPress={() => router.push(`/chat/${item.conversationId}`)} />
                   ) : null}
                 </View>
               </Card>

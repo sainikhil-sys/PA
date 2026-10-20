@@ -4,7 +4,7 @@ import { BRAND } from "@/lib/brand";
 /** Search-facing copy, written for people looking for an AI work assistant. */
 export const SEO = {
   title: `${BRAND.name}: AI work assistant for your inbox, calendar and tasks`,
-  description: `${BRAND.name} is an AI work assistant that sorts your Gmail, drafts replies for you to review, plans your day from your calendar, and keeps tasks and notes in one calm place. Nothing is sent without your click.`,
+  description: `${BRAND.name} is an AI work assistant that sorts your Gmail, drafts replies for you to review, plans your day from your calendar, and keeps your tasks, notes and documents searchable with citations. Replies are saved as Gmail drafts you send yourself.`,
   keywords: ["Cowork", "Cowork app", "AI work assistant", "AI email assistant", "Gmail AI assistant", "daily briefing", "inbox triage", "AI task manager", "personal assistant app", "MCP server for Claude"],
 };
 

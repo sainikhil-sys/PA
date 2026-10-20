@@ -254,7 +254,8 @@ function TaskCard({ t, agents, sprints, compact, currentSprintId }: { t: Task; a
         <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11.5px] text-muted">
           {t.points != null ? <span className="tabular rounded-full border border-border px-1.5">{t.points} pt</span> : null}
           {agentName ? (
-            <span className={cn("inline-flex items-center gap-1 rounded-full border border-border px-1.5", working && "animate-pulse")}>
+            <span className="inline-flex items-center gap-1 rounded-full border border-border px-1.5">
+              {working ? <span className="size-1.5 rounded-full bg-success motion-safe:animate-pulse" aria-hidden /> : null}
               <Robot size={11} /> {working ? `${agentName} working…` : agentName}
             </span>
           ) : null}

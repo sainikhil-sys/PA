@@ -88,7 +88,7 @@ export function TaskRow({ task, onToggle, onOpen }: { task: TaskSummary; onToggl
 }
 
 /** Natural-language add bar: "call mom tomorrow 6pm #family". */
-export function QuickAddBar({ value, onChangeText, onSubmit, busy, inputRef }: { value: string; onChangeText: (v: string) => void; onSubmit: () => void; busy: boolean; inputRef?: React.Ref<TextInput> }) {
+export function QuickAddBar({ value, onChangeText, onSubmit, busy, inputRef }: { value: string; onChangeText: (v: string) => void; onSubmit: () => void; busy: boolean; inputRef?: React.Ref<React.ComponentRef<typeof TextInput>> }) {
   const canSend = value.trim().length > 0 && !busy;
   return (
     <View style={{ flexDirection: "row", alignItems: "center", gap: space.sm }}>

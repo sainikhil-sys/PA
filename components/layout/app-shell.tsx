@@ -11,7 +11,6 @@ import { MobileNav } from "./mobile-nav";
 import type { NavBadges } from "./nav";
 import { ShellContext } from "./shell-context";
 import { Sidebar } from "./sidebar";
-import { SmoothScroll } from "./smooth-scroll";
 import { Topbar } from "./topbar";
 
 // Heavy, on-demand widgets are lazy-loaded.
@@ -94,7 +93,6 @@ function ShellInner({
     <ShellContext.Provider value={ctx}>
       <MotionConfig reducedMotion={prefs.reduceMotion ? "always" : "user"}>
         <TooltipProvider>
-          <SmoothScroll disabled={prefs.reduceMotion} />
           {/* Docked Live Link panel pushes content via --lp-right / --lp-bottom. */}
           <div className="flex min-h-dvh pb-[var(--lp-bottom,0px)] pr-[var(--lp-right,0px)] transition-[padding] duration-200">
             <Sidebar badges={badges} />

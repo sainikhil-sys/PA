@@ -2,6 +2,7 @@ import { and, desc, eq, inArray, ne } from "drizzle-orm";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ApprovalList } from "@/components/approvals/approval-list";
+import { StatusDot } from "@/components/ui/badge";
 import { PageHeader } from "@/components/ui/states";
 import { pendingProposals, PROPOSAL_LABEL } from "@/lib/agent/proposals";
 import { requireOwner } from "@/lib/auth/session";
@@ -54,7 +55,7 @@ export default async function ApprovalsPage() {
           <ul className="card divide-y divide-border rounded-[14px] border border-border bg-background">
             {recent.map((p) => (
               <li key={p.id} className="flex items-center gap-3 px-3.5 py-2.5 text-[13px]">
-                <span className={p.status === "executed" || p.status === "approved" ? "text-success" : p.status === "failed" ? "text-danger" : "text-muted"}>●</span>
+                <StatusDot state={p.status === "executed" || p.status === "approved" ? "ok" : p.status === "failed" ? "error" : "idle"} />
                 <span className="min-w-0 flex-1 truncate">
                   {PROPOSAL_LABEL[p.kind] ?? p.kind}: {p.summary}
                 </span>

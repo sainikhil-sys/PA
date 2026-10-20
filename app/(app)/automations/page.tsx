@@ -42,7 +42,7 @@ export default async function AutomationsPage() {
 
   return (
     <>
-      <PageHeader title="Automations" description="Trigger → conditions → actions. Anything that would send, post or delete goes to your approval queue instead." />
+      <PageHeader title="Automations" description="Trigger → conditions → actions. Automations only take the actions you allow, never send email from your Gmail, and never delete. Anything the agent suggests beyond that goes to your approval queue." />
       <AutomationList
         items={items}
         paused={s.automationsPaused}

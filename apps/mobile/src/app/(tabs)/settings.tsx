@@ -39,6 +39,7 @@ export default function SettingsTab() {
   const [pushNote, setPushNote] = React.useState<string | null>(null);
   const [confirmOut, setConfirmOut] = React.useState(false);
   const [signingOut, setSigningOut] = React.useState(false);
+  const [helpNote, setHelpNote] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     void pushEnabled().then(setPush).catch(() => setPush(false));
@@ -65,8 +66,14 @@ export default function SettingsTab() {
   }
 
   async function doSignOut() {
+    if (signingOut) return;
     setSigningOut(true);
-    await signOut({ remote: true });
+    try {
+      await signOut({ remote: true });
+    } catch {
+      // Clearing local storage failed; leave the sheet usable so the person can try again.
+      setSigningOut(false);
+    }
   }
 
   const version = Application.nativeApplicationVersion;
@@ -146,7 +153,12 @@ export default function SettingsTab() {
           <Group>
             <Row icon={ShieldCheckIcon} title="Privacy policy" onPress={() => void WebBrowser.openBrowserAsync(PRIVACY_URL)} right={chevron} />
             <Row icon={ScrollIcon} title="Terms" onPress={() => void WebBrowser.openBrowserAsync(TERMS_URL)} right={chevron} />
-            <Row icon={LifebuoyIcon} title="Help" detail={SUPPORT_EMAIL} onPress={() => void Linking.openURL(`mailto:${SUPPORT_EMAIL}`).catch(() => {})} right={chevron} />
+            <Row icon={LifebuoyIcon} title="Help" detail={SUPPORT_EMAIL} onPress={() => void Linking.openURL(`mailto:${SUPPORT_EMAIL}`).catch(() => setHelpNote(`No email app found. Write to ${SUPPORT_EMAIL}.`))} right={chevron} />
+            {helpNote ? (
+              <Txt variant="small" accessibilityLiveRegion="polite" style={{ paddingHorizontal: space.lg, paddingVertical: space.md }}>
+                {helpNote}
+              </Txt>
+            ) : null}
             <Row icon={InfoIcon} title="Version" detail={version ?? "Unknown"} />
           </Group>
         </View>

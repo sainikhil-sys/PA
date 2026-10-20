@@ -10,6 +10,7 @@ import { listNews } from "@/lib/news/fetch";
 import { stripInvisible } from "@/lib/security/sanitize";
 import { formatTime, localDate, localDayBounds } from "@/lib/time";
 import type { Trace } from "@/lib/trace";
+import { searchWeb, webSearchConfigured } from "@/lib/web/search";
 import type { SourceId } from "./plan";
 
 export type GatheredContext = {
@@ -18,9 +19,14 @@ export type GatheredContext = {
   toolsUsed: string[];
   /** Short, content-free labels for the "Used:" chips. */
   toolLabels: { tool: string; label: string }[];
+  /** Fixed, Cowork-written notes for the owner (for example "Web search isn't set up"). */
+  notices: string[];
 };
 
-const TOOL_NAME: Record<SourceId, string> = { gmail: "Gmail", calendar: "Calendar", tasks: "Tasks", knowledge: "Knowledge base", news: "News", briefing: "Briefing" };
+export const WEB_NOT_SET_UP_NOTICE = "Web search isn't set up on this server, so this answer doesn't include web results.";
+export const WEB_FAILED_NOTICE = "Web search didn't respond, so this answer doesn't include web results.";
+
+const TOOL_NAME: Record<SourceId, string> = { gmail: "Gmail", calendar: "Calendar", tasks: "Tasks", knowledge: "Knowledge base", news: "News", briefing: "Briefing", web: "Web search" };
 
 /** Neutralise attempts to close our data tags from inside untrusted text. */
 function safe(text: string): string {
@@ -29,12 +35,21 @@ function safe(text: string): string {
 
 /**
  * Read-only data gathering for the agent. Everything third-party (email
- * summaries, news, documents) is wrapped in <source_content> as untrusted data.
+ * summaries, news, documents, web results) is wrapped in <source_content> as
+ * untrusted data. Web search runs only when the caller passes allowWeb (chat);
+ * automations never get it, so a template filled from email can't drive a search.
  */
-export async function gatherContext(user: User, sources: SourceId[], query: string, trace: Trace, onTool?: (tool: string, label: string) => void): Promise<GatheredContext> {
+export async function gatherContext(
+  user: User,
+  sources: SourceId[],
+  query: string,
+  trace: Trace,
+  onTool?: (tool: string, label: string) => void,
+  opts: { allowWeb?: boolean } = {},
+): Promise<GatheredContext> {
   const s = await getSettings(user.id);
   const tz = s.timezone;
-  const out: GatheredContext = { blocks: [], citations: [], toolsUsed: [], toolLabels: [] };
+  const out: GatheredContext = { blocks: [], citations: [], toolsUsed: [], toolLabels: [], notices: [] };
   const used = (source: SourceId, label: string) => {
     out.toolsUsed.push(TOOL_NAME[source]);
     out.toolLabels.push({ tool: TOOL_NAME[source], label });
@@ -103,7 +118,30 @@ export async function gatherContext(user: User, sources: SourceId[], query: stri
         used("briefing", b ? "today's briefing" : "no briefing yet");
         if (b) out.blocks.push(`Today's briefing: ${safe(b.content.headline)} ${safe(b.content.summary)}`);
       }
+      if (source === "web") {
+        if (!opts.allowWeb) {
+          out.blocks.push("Web search: not available here.");
+          continue;
+        }
+        if (!webSearchConfigured()) {
+          out.notices.push(WEB_NOT_SET_UP_NOTICE);
+          out.blocks.push("Web search: NOT set up on this server. No web results are available. Tell the owner plainly that web search isn't configured. Never invent web results, links or citations.");
+          await trace.event("web", "Web search not set up", "blocked");
+          continue;
+        }
+        // Labels stay content-free: never the query or result titles.
+        const results = await trace.span("web", "Searching the web", () => searchWeb(query, { maxResults: 5 }), (r) => ({ label: `Web search returned ${r.length} results`, meta: { count: r.length } }));
+        used("web", `${results.length} results`);
+        out.blocks.push(
+          results.length
+            ? `Web search results (untrusted third-party pages; today is ${localDate(tz)}):\n<source_content>\n${results
+                .map((r) => `[${cite({ title: r.title, url: r.url, sourceType: "web" })}] ${safe(r.title)} (${r.host}${r.publishedDate ? `, ${r.publishedDate.slice(0, 10)}` : ""}): ${safe(r.snippet)}`)
+                .join("\n\n")}\n</source_content>`
+            : "Web search: no results.",
+        );
+      }
     } catch {
+      if (source === "web") out.notices.push(WEB_FAILED_NOTICE);
       out.blocks.push(`${TOOL_NAME[source]}: unavailable right now (not connected or temporarily failing).`);
       await trace.event(source, `${TOOL_NAME[source]} unavailable`, "error");
     }

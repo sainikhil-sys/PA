@@ -19,7 +19,7 @@ import {
   Browsers,
   X,
 } from "@phosphor-icons/react";
-import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { AnimatePresence, motion, useReducedMotionConfig } from "motion/react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import * as React from "react";
@@ -60,7 +60,7 @@ function useMediaQuery(q: string) {
  */
 export function LinkPanel() {
   const { open, prefs, setPrefs, closePanel, pinnedRunId, pinRun, draft, setDraft } = useLinkPanel();
-  const reduceOS = useReducedMotion();
+  const reduce = useReducedMotionConfig();
   const mobile = useMediaQuery("(max-width: 767px)");
   const [demo, setDemo] = React.useState<FlowSpan[] | null>(null);
   const [fast, setFast] = React.useState(false);
@@ -73,7 +73,7 @@ export function LinkPanel() {
   const [feedFilter, setFeedFilter] = React.useState<{ node: string; trigger: string }>({ node: "", trigger: "" });
   const [replayStep, setReplayStep] = React.useState<number | null>(null);
   const rootRef = React.useRef<HTMLDivElement>(null);
-  const animate = !prefs.paused && !reduceOS;
+  const animate = !prefs.paused && !reduce;
   const [supportsBlur, setSupportsBlur] = React.useState(true);
 
   React.useEffect(() => setSupportsBlur(typeof CSS !== "undefined" && (CSS.supports("backdrop-filter", "blur(1px)") || CSS.supports("-webkit-backdrop-filter", "blur(1px)"))), []);
@@ -160,7 +160,7 @@ export function LinkPanel() {
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         onClick={() => setPrefs({ mode: "floating" })}
-        className="lp-surface fixed bottom-24 right-4 z-[55] inline-flex h-11 items-center gap-2 rounded-full px-4 text-[13px] lg:bottom-6"
+        className="lp-surface fixed bottom-24 right-4 z-[55] inline-flex h-11 items-center gap-2 rounded-[12px] px-4 text-[13px] lg:bottom-6"
         style={styleVars}
         aria-label={`Live links: ${state.counters.active} active. Expand panel`}
       >
@@ -363,7 +363,7 @@ function PanelHeader({ state, filter, setFilter, floating }: { state: PanelState
             type="button"
             aria-pressed={filter === c.key}
             onClick={() => setFilter(filter === c.key ? null : c.key)}
-            className="lp-text inline-flex h-7 items-center gap-1.5 rounded-full border border-border px-2.5 text-[12px] aria-pressed:border-foreground"
+            className="lp-text inline-flex h-7 items-center gap-1.5 rounded-[8px] border border-border px-2.5 text-[12px] aria-pressed:border-foreground"
           >
             <span className="tabular font-medium">{c.n}</span> {c.label}
           </button>
@@ -482,7 +482,7 @@ function PanelBody(p: {
             <span className="font-medium">Now:</span> {quiet ? "All quiet. Nothing ran in the last 10 minutes." : `${state.feed[0]!.actor} · ${state.feed[0]!.text}`}
           </p>
           {quiet && !p.demo ? (
-            <button type="button" onClick={p.startDemo} className="lp-text h-7 shrink-0 rounded-full border border-dashed border-border-strong px-2.5 text-[11px]">
+            <button type="button" onClick={p.startDemo} className="lp-text h-7 shrink-0 rounded-[8px] border border-dashed border-border-strong px-2.5 text-[11px]">
               Example run (demo)
             </button>
           ) : null}
@@ -673,7 +673,7 @@ function SelectionDrawer({ state, selected, onClose }: { state: PanelState; sele
               <p className="text-muted">Nothing has moved across this link recently.</p>
             )}
           </div>
-          <p className="text-[11px] text-subtle">Counts and summaries only — never message or document content.</p>
+          <p className="text-[11px] text-subtle">Counts and summaries only, never message or document content.</p>
         </>
       ) : null}
     </motion.div>

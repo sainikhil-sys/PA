@@ -1,6 +1,6 @@
 "use client";
 
-import { motion, useReducedMotion } from "motion/react";
+import { motion, useReducedMotionConfig } from "motion/react";
 
 export type OrbState = "idle" | "listening" | "thinking" | "speaking";
 
@@ -11,7 +11,7 @@ const LABEL: Record<OrbState, string> = { idle: "Idle", listening: "Listening", 
  * idle: slow breathing · listening: expanding rings · thinking: orbiting arc · speaking: waveform
  */
 export function AgentOrb({ state, size = 160, level = 0 }: { state: OrbState; size?: number; level?: number }) {
-  const reduce = useReducedMotion();
+  const reduce = useReducedMotionConfig();
   const loop = (duration: number) => (reduce ? { duration: 0 } : { duration, repeat: Infinity, ease: "easeInOut" as const });
 
   return (

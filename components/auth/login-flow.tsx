@@ -107,8 +107,8 @@ export function LoginFlow({ next }: { next?: string }) {
             noValidate
           >
             <div className="text-center">
-              <h1 className="font-serif text-[28px] leading-tight tracking-[-0.02em]">Welcome back</h1>
-              <p className="mt-2 text-sm text-muted">Enter your email and we'll send you a sign-in code.</p>
+              <h1 className="font-serif text-[28px] leading-tight tracking-[-0.02em]">Sign in to Cowork</h1>
+              <p className="mt-2 text-sm text-muted">Enter your email and we'll send you a code. New here? The same code creates your account.</p>
             </div>
             <div className="flex flex-col gap-2">
               <Label htmlFor="email">Email</Label>

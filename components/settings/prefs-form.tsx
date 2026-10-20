@@ -48,14 +48,11 @@ export function NotificationsForm({ initial, telegramConfigured, telegramAllowed
   };
   return (
     <div>
-      <Section title="Channels">
-        <Row label="In-app" hint="The bell in the top bar.">
-          <Switch checked={p.notifyInApp} onCheckedChange={(v) => set({ notifyInApp: v })} aria-label="In-app notifications" />
-        </Row>
+      <Section title="Channels" description="In-app notifications always collect in the bell.">
         <Row label="Phone & browser" hint="Push notifications to devices you paired in Settings → Devices.">
           <Switch checked={p.notifyPush} onCheckedChange={(v) => set({ notifyPush: v })} aria-label="Push notifications" />
         </Row>
-        <Row label="Email updates" hint={digestAvailable ? "Reminders, scheduled posts and automation alerts, sent to your sign-in address." : "Email isn't available right now."}>
+        <Row label="Email updates" hint={digestAvailable ? "Reminders, scheduled posts, automation alerts and occasional announcements from Cowork, sent to your sign-in address." : "Email isn't available right now."}>
           <Switch checked={p.notifyEmail} disabled={!digestAvailable} onCheckedChange={(v) => set({ notifyEmail: v })} aria-label="Email updates" />
         </Row>
         <Row label="Email digest" hint={digestAvailable ? "Your daily briefing, emailed to you each morning." : "Email isn't available right now."}>
@@ -82,8 +79,8 @@ export function NotificationsForm({ initial, telegramConfigured, telegramAllowed
         </Row>
         ) : null}
       </Section>
-      <Section title="Quiet hours" description="Email and Telegram stay silent in this window. In-app notifications still collect.">
-        <Row label="From – to">
+      <Section title="Quiet hours" description="Push and email alerts pause in this window (your daily briefing email and announcements still arrive). In-app notifications still collect.">
+        <Row label="Start and end">
           <div className="flex items-center gap-2 sm:justify-end">
             <input type="time" aria-label="Quiet hours start" defaultValue={p.quietHoursStart ?? ""} onBlur={(e) => set({ quietHoursStart: e.target.value || null })} className={cn(inputClass, "w-auto")} />
             <span className="text-muted">–</span>
@@ -92,7 +89,7 @@ export function NotificationsForm({ initial, telegramConfigured, telegramAllowed
         </Row>
       </Section>
       <Section title="Briefing & news">
-        <Row label="Daily briefing time" hint="In your timezone.">
+        <Row label="Daily briefing time" hint="In your timezone. Automatic briefings are prepared once a day at 01:45 UTC, for a time that has passed in your day by then.">
           <input type="time" aria-label="Briefing time" defaultValue={p.briefingTime} onBlur={(e) => e.target.value && set({ briefingTime: e.target.value })} className={cn(inputClass, "w-auto")} />
         </Row>
         <div>
@@ -125,14 +122,14 @@ export function AppearanceForm({ initial }: { initial: Prefs }) {
     save(patch);
   };
   return (
-    <Section title="Appearance" description="Light mode for now. Every color is a token, so a dark theme can come later.">
+    <Section title="Appearance" description="Light mode only for now.">
       <Row label="Text size">
         <Segmented id="font" label="Text size" value={p.fontScale as "sm" | "md" | "lg"} onChange={(v) => set({ fontScale: v })} options={[{ value: "sm", label: "Small" }, { value: "md", label: "Default" }, { value: "lg", label: "Large" }]} />
       </Row>
       <Row label="Density">
         <Segmented id="density" label="Density" value={p.density as "comfortable" | "compact"} onChange={(v) => set({ density: v })} options={[{ value: "comfortable", label: "Comfortable" }, { value: "compact", label: "Compact" }]} />
       </Row>
-      <Row label="Reduce motion" hint="Turns off smooth scrolling, the news marquee and decorative animation. Your system setting is respected too.">
+      <Row label="Reduce motion" hint="Turns off the news marquee and decorative animation. Your system setting is respected too.">
         <Switch checked={p.reduceMotion} onCheckedChange={(v) => set({ reduceMotion: v })} aria-label="Reduce motion" />
       </Row>
     </Section>

@@ -17,7 +17,7 @@ self.addEventListener("push", (event) => {
     self.registration.showNotification(title, {
       body: data.body || "",
       icon: "/api/brand/logo?size=192",
-      badge: "/api/brand/logo?size=96",
+      badge: "/icons/badge-96.png",
       tag: data.tag || undefined,
       data: { href: typeof data.href === "string" && data.href.startsWith("/") ? data.href : "/" },
     }),

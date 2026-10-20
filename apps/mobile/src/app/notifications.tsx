@@ -14,12 +14,16 @@ import { color, space, TOUCH } from "@/theme/tokens";
 /** Where a notification's web link goes in the app, or null when the app has no matching screen. */
 function appRoute(href: string | null): string | null {
   if (!href) return null;
+  if (href === "/") return "/";
   if (href.startsWith("/chat/")) return href;
   if (href === "/approvals" || href.startsWith("/approvals?")) return "/approvals";
   if (href === "/tasks" || href.startsWith("/tasks?")) {
     const task = /[?&]task=([\w-]+)/.exec(href)?.[1];
     return task ? `/task/${task}` : "/(tabs)/tasks";
   }
+  // An agent run's result lives on the task itself.
+  const agentTask = href.startsWith("/agents?") ? /[?&]task=([\w-]+)/.exec(href)?.[1] : undefined;
+  if (agentTask) return `/task/${agentTask}`;
   return null;
 }
 
@@ -51,7 +55,7 @@ export default function NotificationsScreen() {
     <Screen>
       <BackHeader
         title="Notifications"
-        action={unread > 0 ? <Button label="Mark all read" variant="ghost" compact loading={markRead.isPending} onPress={() => markRead.mutate()} /> : null}
+        action={unread > 0 ? <Button label="Mark all read" variant="ghost" compact style={{ minHeight: TOUCH }} loading={markRead.isPending} onPress={() => markRead.mutate()} /> : null}
       />
       {markRead.isError ? (
         <Txt variant="small" accessibilityLiveRegion="polite" style={{ paddingHorizontal: space.lg, color: color.danger }}>
@@ -76,7 +80,7 @@ export default function NotificationsScreen() {
               icon={BellSimpleIcon}
               title="No notifications"
               body="Reminders, finished tasks and items that need your approval show up here."
-              action={<Button label="Back to Home" compact onPress={() => router.replace("/")} />}
+              action={<Button label="Back to Home" compact style={{ minHeight: TOUCH }} onPress={() => router.replace("/")} />}
             />
           }
           renderItem={({ item }) => <NotificationRow item={item} tz={tz} />}
@@ -89,6 +93,7 @@ export default function NotificationsScreen() {
 function NotificationRow({ item, tz }: { item: AppNotification; tz?: string }) {
   const route = appRoute(item.href);
   const unread = !item.readAt;
+  const when = relativeTime(item.createdAt, tz);
   const content = (
     <View style={{ flexDirection: "row", gap: space.md, paddingHorizontal: space.lg, paddingVertical: space.md, minHeight: TOUCH }}>
       <View style={{ width: 8, paddingTop: 8 }}>
@@ -99,7 +104,7 @@ function NotificationRow({ item, tz }: { item: AppNotification; tz?: string }) {
           <Txt variant="label" style={{ flex: 1, color: unread ? color.text : color.muted }}>
             {item.title}
           </Txt>
-          <Txt variant="small">{relativeTime(item.createdAt, tz)}</Txt>
+          <Txt variant="small">{when}</Txt>
         </View>
         {item.body ? (
           <Txt variant="small" numberOfLines={3}>
@@ -109,7 +114,7 @@ function NotificationRow({ item, tz }: { item: AppNotification; tz?: string }) {
       </View>
     </View>
   );
-  const label = `${unread ? "Unread. " : ""}${item.title}${item.body ? `. ${item.body}` : ""}`;
+  const label = `${unread ? "Unread. " : ""}${item.title}${item.body ? `. ${item.body}` : ""}${when ? `. ${when}` : ""}`;
   if (!route) {
     return (
       <View accessible accessibilityLabel={label}>

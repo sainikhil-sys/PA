@@ -83,6 +83,14 @@ export function PrivacyView({ sources, flows }: { sources: { id: string; name: s
         </Button>
       </Section>
 
+      <Section title="Policies">
+        <div className="flex flex-wrap gap-4 text-[13px]">
+          <Link href="/privacy" className="underline underline-offset-4">Privacy policy</Link>
+          <Link href="/terms" className="underline underline-offset-4">Terms of service</Link>
+          <Link href="/delete-account" className="underline underline-offset-4">How account deletion works</Link>
+        </div>
+      </Section>
+
       <Dialog
         open={confirmSource !== null}
         onOpenChange={(o) => !o && setConfirmSource(null)}

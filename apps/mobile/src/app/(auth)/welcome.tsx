@@ -3,10 +3,10 @@ import * as WebBrowser from "expo-web-browser";
 import { EnvelopeSimpleIcon, InfoIcon } from "phosphor-react-native";
 import { Pressable, View } from "react-native";
 import { Orb } from "@/components/orb";
-import { Button, Card, Txt } from "@/components/ui";
+import { Button, Txt } from "@/components/ui";
 import { PRIVACY_URL, TERMS_URL } from "@/lib/config";
 import { useSession } from "@/lib/session";
-import { AuthFrame } from "@/features/onboarding/frame";
+import { AuthFrame, Note } from "@/features/onboarding/frame";
 import { color, space, TOUCH } from "@/theme/tokens";
 
 function LegalLink({ label, url }: { label: string; url: string }) {
@@ -14,6 +14,7 @@ function LegalLink({ label, url }: { label: string; url: string }) {
     <Pressable
       accessibilityRole="link"
       accessibilityLabel={label}
+      accessibilityHint="Opens in the browser"
       onPress={() => void WebBrowser.openBrowserAsync(url).catch(() => {})}
       style={{ minHeight: TOUCH, justifyContent: "center", paddingHorizontal: space.sm }}
     >
@@ -32,7 +33,7 @@ export default function Welcome() {
     <AuthFrame
       footer={
         <>
-          <Button label="Continue with email" variant="primary" icon={EnvelopeSimpleIcon} onPress={() => router.push("/sign-in")} />
+          <Button label="Continue with email" variant="primary" icon={EnvelopeSimpleIcon} onPress={() => router.navigate("/sign-in")} />
           <View style={{ flexDirection: "row", justifyContent: "center", alignItems: "center" }}>
             <LegalLink label="Privacy policy" url={PRIVACY_URL} />
             <Txt variant="small" importantForAccessibility="no">
@@ -44,12 +45,12 @@ export default function Welcome() {
       }
     >
       {expired ? (
-        <Card style={{ flexDirection: "row", gap: space.md, alignItems: "flex-start" }}>
+        <Note style={{ flexDirection: "row", gap: space.md, alignItems: "flex-start" }}>
           <InfoIcon size={20} color={color.warm} />
           <Txt variant="small" style={{ flex: 1, color: color.text }} accessibilityLiveRegion="polite">
             Your session ended. Sign in again to pick up where you left off.
           </Txt>
-        </Card>
+        </Note>
       ) : null}
       <View style={{ flex: 1, justifyContent: "center", alignItems: "center", gap: space.xl }}>
         <View pointerEvents="none" importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>

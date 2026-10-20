@@ -73,10 +73,13 @@ async function withFallback<T>(
   throw lastErr instanceof Error ? lastErr : new Error("All AI providers failed");
 }
 
+/** House style applied to every prompt: user-facing text never contains em or en dashes. */
+const STYLE = "Never use em dashes or en dashes in your output. Use a comma, colon, period or parentheses instead.";
+
 async function chat(model: ReturnType<typeof modelFor>["model"], system: string, messages: ChatMessage[], temperature: number, usage?: { in: number; out: number }) {
   const { text, usage: u } = await generateText({
     model,
-    system,
+    system: `${system}\n\n${STYLE}`,
     messages,
     temperature,
     maxRetries: 1,
@@ -128,7 +131,7 @@ export async function* streamGenerate(
     try {
       const result = streamText({
         model,
-        system: opts.system,
+        system: `${opts.system}\n\n${STYLE}`,
         messages: opts.messages,
         temperature: opts.temperature ?? 0.4,
         maxRetries: 1,

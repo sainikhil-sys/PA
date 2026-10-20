@@ -30,6 +30,7 @@ function PublicFooter() {
       <Link href="/home" className="hover:text-foreground">Home</Link>
       <Link href="/privacy" className="hover:text-foreground">Privacy</Link>
       <Link href="/terms" className="hover:text-foreground">Terms</Link>
+      <Link href="/delete-account" className="hover:text-foreground">Delete account</Link>
       <a href={`mailto:${BRAND.supportEmail}`} className="hover:text-foreground">{BRAND.supportEmail}</a>
     </footer>
   );
