@@ -71,6 +71,13 @@
       "when": 1792256139856,
       "tag": "0009_today_layout",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1792434132317,
+      "tag": "0010_broadcast_email",
+      "breakpoints": true
     }
   ]
 }

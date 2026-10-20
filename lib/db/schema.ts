@@ -24,6 +24,7 @@ import {
 export const EMBEDDING_DIMENSIONS = 1024;
 
 const tsvector = customType<{ data: string }>({ dataType: () => "tsvector" });
+const bytea = customType<{ data: Buffer; driverData: Buffer }>({ dataType: () => "bytea" });
 
 const id = () => uuid("id").primaryKey().defaultRandom();
 const createdAt = () => timestamp("created_at", { withTimezone: true }).notNull().defaultNow();
@@ -526,6 +527,17 @@ export const phoneEvents = pgTable(
 );
 
 // ---------- Admin broadcasts ----------
+/** One piece of a broadcast email. Text supports **bold** and [label](url) links. */
+export type MailBlock =
+  | { type: "heading"; text: string }
+  | { type: "text"; text: string }
+  | { type: "list"; items: string[] }
+  | { type: "button"; label: string; url: string }
+  | { type: "image"; fileId: string; alt: string; href?: string }
+  | { type: "divider" };
+/** The designed email for a broadcast (in-app and phone use the short title/body). */
+export type BroadcastEmailContent = { subject: string; preheader: string; headline: string; blocks: MailBlock[] };
+
 export const broadcasts = pgTable("broadcasts", {
   id: id(),
   createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
@@ -540,9 +552,34 @@ export const broadcasts = pgTable("broadcasts", {
   sentPush: integer("sent_push").notNull().default(0),
   /** Last processed user id, so a long send resumes across job runs. */
   cursor: text("cursor"),
+  /** Designed email; null = the plain announcement email built from title/body. */
+  email: jsonb("email").$type<BroadcastEmailContent>(),
   createdAt: createdAt(),
   finishedAt: ts("finished_at"),
 });
+
+/**
+ * Images (shown inline in the email body via cid:) and documents (attached) for a broadcast.
+ * Uploaded while composing (broadcast_id null), linked to the broadcast when it's sent.
+ */
+export const broadcastFiles = pgTable(
+  "broadcast_files",
+  {
+    id: id(),
+    broadcastId: uuid("broadcast_id").references(() => broadcasts.id, { onDelete: "cascade" }),
+    uploadedBy: uuid("uploaded_by").references(() => users.id, { onDelete: "set null" }),
+    role: text("role").$type<"inline" | "attachment">().notNull(),
+    filename: text("filename").notNull(),
+    contentType: text("content_type").notNull(),
+    size: integer("size").notNull(),
+    /** Pixel size for images, so the email can set exact widths. */
+    width: integer("width"),
+    height: integer("height"),
+    data: bytea("data").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [index("broadcast_files_broadcast_idx").on(t.broadcastId), index("broadcast_files_uploader_idx").on(t.uploadedBy, t.createdAt)],
+);
 
 export const notifications = pgTable(
   "notifications",
@@ -926,6 +963,8 @@ export type Briefing = typeof briefings.$inferSelect;
 export type Conversation = typeof conversations.$inferSelect;
 export type Message = typeof messages.$inferSelect;
 export type Proposal = typeof proposals.$inferSelect;
+export type Broadcast = typeof broadcasts.$inferSelect;
+export type BroadcastFile = typeof broadcastFiles.$inferSelect;
 export type Automation = typeof automations.$inferSelect;
 export type AutomationRun = typeof automationRuns.$inferSelect;
 export type KnowledgeSource = typeof knowledgeSources.$inferSelect;

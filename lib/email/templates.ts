@@ -2,8 +2,9 @@ import { BRAND } from "@/lib/brand";
 
 /**
  * Transactional email templates. Table layout + inline styles so they render in
- * Gmail, Outlook and Apple Mail. Monochrome, no images, no tracking pixels.
+ * Gmail, Outlook and Apple Mail. Monochrome, no remote images, no tracking pixels.
  * Everything dynamic is HTML-escaped: titles can come from untrusted email subjects.
+ * The building blocks are exported for the designed broadcast email (`./broadcast.ts`).
  */
 export type Email = { subject: string; html: string; text: string };
 
@@ -11,23 +12,23 @@ export function esc(s: string): string {
   return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 }
 
-const FONT = "-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif";
-const INK = "#0a0a0a";
-const MUTED = "#6b6b70";
-const LINE = "#e7e7ea";
+export const FONT = "-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif";
+export const INK = "#0a0a0a";
+export const MUTED = "#6b6b70";
+export const LINE = "#e7e7ea";
 
 /** Only same-site links ever go into an email button. */
 export function appLink(base: string, href?: string | null): string {
   return href && href.startsWith("/") && !href.startsWith("//") ? `${base}${href}` : base;
 }
 
-function button(label: string, url: string): string {
+export function button(label: string, url: string): string {
   return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:8px 0 0"><tr><td style="background:${INK};border-radius:10px">
 <a href="${esc(url)}" style="display:inline-block;padding:12px 20px;font:600 14px/20px ${FONT};color:#ffffff;text-decoration:none">${esc(label)}</a>
 </td></tr></table>`;
 }
 
-function layout(o: { preheader: string; body: string; footer: string }): string {
+export function layout(o: { preheader: string; body: string; footer: string }): string {
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light only"><title>${esc(BRAND.name)}</title></head>
 <body style="margin:0;padding:0;background:#f5f5f6;-webkit-text-size-adjust:100%">
 <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent">${esc(o.preheader)}&#8199;&#65279;&#847;&#8199;&#65279;&#847;</div>
@@ -48,17 +49,24 @@ ${o.body}
 </body></html>`;
 }
 
-function h1(s: string) {
+/** `s` must already be escaped HTML. */
+export function h1(s: string) {
   return `<h1 style="margin:0 0 12px;font:600 22px/30px ${FONT};color:${INK};letter-spacing:-0.3px">${s}</h1>`;
 }
-function p(s: string, muted = false) {
+/** `s` must already be escaped HTML. */
+export function p(s: string, muted = false) {
   return `<p style="margin:0 0 16px;font:400 15px/24px ${FONT};color:${muted ? MUTED : INK}">${s}</p>`;
 }
-function eyebrow(s: string) {
+export function eyebrow(s: string) {
   return `<p style="margin:0 0 8px;font:600 11px/16px ${FONT};color:${MUTED};letter-spacing:0.8px;text-transform:uppercase">${esc(s)}</p>`;
 }
-function link(label: string, url: string) {
+export function link(label: string, url: string) {
   return `<a href="${esc(url)}" style="color:${MUTED};text-decoration:underline">${esc(label)}</a>`;
+}
+
+/** Footer for emails sent under the "updates" topic (announcements, broadcasts). */
+export function updatesFooter(manageUrl: string, unsubscribeUrl: string): string {
+  return `You're getting this because email updates are on in ${esc(BRAND.name)}.<br>${link("Notification settings", manageUrl)} · ${link("Unsubscribe from updates", unsubscribeUrl)}`;
 }
 
 export function otpEmail(code: string): Email {
@@ -121,7 +129,7 @@ export function notificationEmail(o: { kind: string; title: string; body?: strin
     html: layout({
       preheader: o.body?.slice(0, 120) || label,
       body,
-      footer: `You're getting this because email updates are on in ${esc(BRAND.name)}.<br>${link("Notification settings", o.manageUrl)} · ${link("Unsubscribe from updates", o.unsubscribeUrl)}`,
+      footer: updatesFooter(o.manageUrl, o.unsubscribeUrl),
     }),
     text: [`${label}: ${o.title}`, "", o.body ?? "", "", `View: ${o.url}`, "", `Unsubscribe: ${o.unsubscribeUrl}`].join("\n"),
   };
