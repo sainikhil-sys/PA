@@ -44,6 +44,17 @@ export async function disablePush(): Promise<void> {
   await SecureStore.deleteItemAsync(TOKEN_KEY);
 }
 
+/**
+ * After a session ended without a chance to tell the server (expired or revoked): drop the token on
+ * this phone. Firebase then reports it as unregistered, and the server deletes that endpoint on its
+ * next send, so the old account's notifications stop arriving here.
+ */
+export async function forgetPushLocally(): Promise<void> {
+  if (!(await SecureStore.getItemAsync(TOKEN_KEY))) return;
+  await Notifications.unregisterForNotificationsAsync().catch(() => {});
+  await SecureStore.deleteItemAsync(TOKEN_KEY);
+}
+
 export async function pushEnabled(): Promise<boolean> {
   return Boolean(await SecureStore.getItemAsync(TOKEN_KEY));
 }

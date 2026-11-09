@@ -1,3 +1,4 @@
+import { setChatIntent } from "@/lib/intent";
 import { router } from "expo-router";
 import { BellIcon, ChatCircleIcon } from "phosphor-react-native";
 import * as React from "react";
@@ -52,7 +53,10 @@ export default function HomeScreen() {
         </View>
 
         <View style={{ alignItems: "center", marginTop: space.sm }}>
-          <Orb size={150} onPress={() => router.push("/chat/new?voice=1")} />
+          <Orb size={150} onPress={() => {
+            setChatIntent({ listen: true });
+            router.push("/chat/new");
+          }} />
           <Txt variant="small">Tap to talk</Txt>
         </View>
 

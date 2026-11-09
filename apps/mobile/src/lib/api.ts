@@ -22,6 +22,11 @@ export function configureAuth(source: TokenSource) {
   auth = source;
 }
 
+/** For transports outside api() (the chat stream): report a rejected session the same way. */
+export function reportUnauthorized() {
+  if (auth.token()) auth.onUnauthorized();
+}
+
 export function authHeaders(): Record<string, string> {
   const t = auth.token();
   return t ? { Authorization: `Bearer ${t}` } : {};
@@ -29,11 +34,25 @@ export function authHeaders(): Record<string, string> {
 
 const OFFLINE = "You're offline. Check your connection and try again.";
 
+/** Machine codes some routes return as `error`; never shown to people as-is. */
+const CODES: Record<string, string> = {
+  rate_limited: "Too many requests. Wait a moment and try again.",
+  forbidden: "That isn't allowed from the app.",
+  unauthorized: "Your session ended. Sign in again.",
+  invalid_request: "Something in that request wasn't valid. Please try again.",
+  "invalid id": "That item no longer exists.",
+  "not found": "That item no longer exists.",
+};
+
 function messageFrom(body: unknown, status: number): string {
   if (body && typeof body === "object") {
     const b = body as { message?: unknown; error?: unknown };
     if (typeof b.message === "string" && b.message) return b.message;
-    if (typeof b.error === "string" && b.error) return b.error;
+    if (typeof b.error === "string" && b.error) {
+      if (CODES[b.error]) return CODES[b.error]!;
+      // Sentences written for people pass through; anything that looks like a code does not.
+      if (/\s/.test(b.error) && /^[A-Z]/.test(b.error)) return b.error;
+    }
   }
   if (status === 429) return "Too many requests. Wait a moment and try again.";
   if (status >= 500) return "Cowork is having trouble right now. Try again in a minute.";

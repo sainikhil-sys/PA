@@ -67,6 +67,10 @@ export default function RootLayout() {
                 <Stack.Screen name="approvals" />
                 <Stack.Screen name="notifications" />
                 <Stack.Screen name="settings" />
+                <Stack.Screen name="search" />
+                <Stack.Screen name="agenda" />
+                <Stack.Screen name="meeting/[id]" />
+                <Stack.Screen name="notes" />
               </Stack.Protected>
             </Stack>
           </ThemeProvider>

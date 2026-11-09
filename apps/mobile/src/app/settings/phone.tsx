@@ -16,7 +16,7 @@ import { keys, usePhones } from "@/lib/queries";
 import type { PhoneDevice } from "@/lib/types";
 import { color, radius, space } from "@/theme/tokens";
 
-const DEVICE_KEY = "cowork.phoneDeviceId";
+import { PHONE_DEVICE_KEY as DEVICE_KEY } from "@/lib/session";
 
 type Status = { available: boolean; granted: boolean; linked: boolean; deviceId: string | null };
 

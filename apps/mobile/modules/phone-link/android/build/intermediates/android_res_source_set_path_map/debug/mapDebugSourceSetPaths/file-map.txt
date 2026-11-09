@@ -1,0 +1,9 @@
+expo.modules.phonelink.phone-link-pngs-0 C:\Users\saini\OneDrive\Documents\PA\apps\mobile\modules\phone-link\android\build\generated\res\pngs\debug
+expo.modules.phonelink.phone-link-updated_navigation_xml-1 C:\Users\saini\OneDrive\Documents\PA\apps\mobile\modules\phone-link\android\build\generated\updated_navigation_xml\debug
+expo.modules.phonelink.phone-link-mergeDebugResources-2 C:\Users\saini\OneDrive\Documents\PA\apps\mobile\modules\phone-link\android\build\intermediates\incremental\debug\mergeDebugResources\merged.dir
+expo.modules.phonelink.phone-link-mergeDebugResources-3 C:\Users\saini\OneDrive\Documents\PA\apps\mobile\modules\phone-link\android\build\intermediates\incremental\debug\mergeDebugResources\stripped.dir
+expo.modules.phonelink.phone-link-debug-4 C:\Users\saini\OneDrive\Documents\PA\apps\mobile\modules\phone-link\android\build\intermediates\merged_res\debug\mergeDebugResources
+expo.modules.phonelink.phone-link-debug-5 C:\Users\saini\OneDrive\Documents\PA\apps\mobile\modules\phone-link\android\build\intermediates\packaged_res\debug\packageDebugResources
+expo.modules.phonelink.phone-link-debug-6 C:\Users\saini\OneDrive\Documents\PA\apps\mobile\modules\phone-link\android\src\debug\res
+expo.modules.phonelink.phone-link-main-7 C:\Users\saini\OneDrive\Documents\PA\apps\mobile\modules\phone-link\android\src\main\res
+gradleHome-0 C:\Users\saini\.gradle

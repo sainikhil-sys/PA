@@ -1,5 +1,5 @@
 import { fetch } from "expo/fetch";
-import { ApiError, authHeaders } from "./api";
+import { ApiError, authHeaders, reportUnauthorized } from "./api";
 import { API_URL } from "./config";
 import { NdjsonParser } from "./ndjson";
 import type { ChatEvent } from "./types";
@@ -28,6 +28,10 @@ export async function streamChat(input: SendInput, onEvent: (e: ChatEvent) => vo
   } catch (err) {
     if ((err as Error)?.name === "AbortError") throw err;
     throw new ApiError(0, "You're offline. Check your connection and try again.");
+  }
+  if (res.status === 401) {
+    reportUnauthorized();
+    throw new ApiError(401, "Your session ended. Sign in again.");
   }
   if (!res.ok || !res.body) {
     const body = (await res.json().catch(() => null)) as { error?: string; message?: string } | null;

@@ -1,0 +1,7 @@
+{
+  "java.project.rootPaths": [
+    "android/phone-link"
+  ],
+  "java.import.gradle.enabled": true,
+  "java.configuration.updateBuildConfiguration": "automatic"
+}

@@ -58,14 +58,14 @@
         "expo-build-properties",
         {
           "android": {
-            "compileSdkVersion": 36,
-            "targetSdkVersion": 36,
-            "minSdkVersion": 26,
             "usesCleartextTraffic": false
           }
         }
       ],
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      "./plugins/with-release-signing",
+      "expo-sharing",
+      "./plugins/with-short-native-paths"
     ],
     "experiments": {
       "typedRoutes": false,

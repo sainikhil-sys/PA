@@ -10,6 +10,7 @@ import { useSpeaker } from "@/features/voice/speech";
 import { useVoice } from "@/features/voice/use-voice";
 import { VoiceOverlay } from "@/features/voice/voice-overlay";
 import { ApiError, errorText } from "@/lib/api";
+import { takeChatIntent } from "@/lib/intent";
 import { useConversation, useSuggestions } from "@/lib/queries";
 import { color, radius, space, TOUCH } from "@/theme/tokens";
 
@@ -18,11 +19,13 @@ import { color, radius, space, TOUCH } from "@/theme/tokens";
  * confirmation cards, and supports one-shot voice input that lands in the composer for review.
  */
 export default function ChatScreen() {
-  const params = useLocalSearchParams<{ id: string; prompt?: string; voice?: string }>();
+  const params = useLocalSearchParams<{ id: string; prompt?: string }>();
+  // In-app hand-off (orb, onboarding), read once on mount. Links from outside never send or listen.
+  const [intent] = React.useState(() => takeChatIntent());
   const isNew = !params.id || params.id === "new";
   const history = useConversation(isNew ? undefined : params.id);
 
-  const [speakReplies, setSpeakReplies] = React.useState(params.voice === "1");
+  const [speakReplies, setSpeakReplies] = React.useState(Boolean(intent?.listen));
   const speakRef = React.useRef(speakReplies);
   speakRef.current = speakReplies;
   const speaker = useSpeaker();
@@ -33,7 +36,8 @@ export default function ChatScreen() {
     },
   });
 
-  const [draft, setDraft] = React.useState("");
+  // A ?prompt= from a link only prefills the composer; the person still taps send.
+  const [draft, setDraft] = React.useState(() => (intent?.send ? "" : (params.prompt?.slice(0, 8000) ?? "")));
   const [draftVoice, setDraftVoice] = React.useState(false);
   const [reportId, setReportId] = React.useState<string | null>(null);
   const inputRef = React.useRef<React.ComponentRef<typeof TextInput>>(null);
@@ -57,20 +61,15 @@ export default function ChatScreen() {
 
   const ready = isNew || hydrated.current || Boolean(history.data);
 
-  // Optional prompt: sent once, as if typed. Optional voice=1: start listening once.
-  const autoSent = React.useRef(false);
-  const autoListened = React.useRef(false);
+  // An in-app intent runs once: send the chosen prompt, or start listening after the tap on the orb.
+  const intentDone = React.useRef(false);
   React.useEffect(() => {
-    if (!ready) return;
-    const prompt = params.prompt?.trim();
-    if (prompt && !autoSent.current) {
-      autoSent.current = true;
-      chat.send(prompt, "text");
-    } else if (params.voice === "1" && !autoListened.current) {
-      autoListened.current = true;
-      void voice.start();
-    }
-  }, [ready, params.prompt, params.voice, chat, voice]);
+    if (!ready || !intent || intentDone.current) return;
+    intentDone.current = true;
+    const prompt = intent.send?.trim();
+    if (prompt) chat.send(prompt, "text");
+    else if (intent.listen) void voice.start();
+  }, [ready, intent, chat, voice]);
 
   const send = (text = draft, trigger: "text" | "voice" = draftVoice ? "voice" : "text") => {
     if (!text.trim() || chat.streaming) return;

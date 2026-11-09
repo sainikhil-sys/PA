@@ -1,3 +1,4 @@
+import { setChatIntent } from "@/lib/intent";
 import { router } from "expo-router";
 import { CaretRightIcon, ChatCircleIcon, MagnifyingGlassIcon, MicrophoneIcon, PlusIcon, XIcon } from "phosphor-react-native";
 import * as React from "react";
@@ -43,7 +44,10 @@ export default function AssistantScreen() {
         icon={ChatCircleIcon}
         title="No chats yet"
         body="Ask about your email, calendar, tasks or documents, or anything else."
-        action={<Button label="Speak instead" compact icon={MicrophoneIcon} onPress={() => router.push("/chat/new?voice=1")} />}
+        action={<Button label="Speak instead" compact icon={MicrophoneIcon} onPress={() => {
+              setChatIntent({ listen: true });
+              router.push("/chat/new");
+            }} />}
       />
     );
 

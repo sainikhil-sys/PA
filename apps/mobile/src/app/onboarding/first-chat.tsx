@@ -1,3 +1,4 @@
+import { setChatIntent } from "@/lib/intent";
 import { router } from "expo-router";
 import { ArrowRightIcon, PaperPlaneRightIcon } from "phosphor-react-native";
 import * as React from "react";
@@ -42,7 +43,10 @@ export default function FirstChat() {
     const value = prompt?.trim();
     // Home goes underneath, so Back from the first chat lands on Home instead of leaving the app.
     router.replace("/");
-    if (value) router.push(`/chat/new?prompt=${encodeURIComponent(value)}`);
+    if (value) {
+      setChatIntent({ send: value });
+      router.push("/chat/new");
+    }
   };
 
   const typed = text.trim();
