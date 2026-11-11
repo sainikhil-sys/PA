@@ -2,10 +2,11 @@ import "server-only";
 import { dismissProposal, PROPOSAL_LABEL, proposalFromAction } from "@/lib/agent/proposals";
 import { generateObject } from "@/lib/ai/router";
 import { logActivity } from "@/lib/db/queries/activity";
-import { getMeetingNote, proposalsByIds, saveMeetingSummary } from "@/lib/db/queries/meetings";
+import { createMeetingNote, deleteMeetingNote, getMeetingNote, proposalsByIds, saveMeetingSummary, updateMeetingNotes } from "@/lib/db/queries/meetings";
 import { getSettings } from "@/lib/db/queries/settings";
 import type { MeetingActionItem, MeetingNote, User } from "@/lib/db/schema";
 import { listEvents, type CalendarEvent } from "@/lib/integrations/calendar";
+import { GoogleNotConnectedError } from "@/lib/integrations/google";
 import { stripInvisible } from "@/lib/security/sanitize";
 import { formatDateTime, localDate } from "@/lib/time";
 import { buildMeetingPrompt, MEETING_SYSTEM, meetingExtractSchema, normalizeActionItems } from "./prompt";
@@ -97,4 +98,41 @@ export async function meetingView(userId: string, note: MeetingNote): Promise<Me
       return { title: i.title, owner: i.owner, due: i.due, proposal: p ? { id: p.id, kind: p.kind, label: PROPOSAL_LABEL[p.kind] ?? p.kind, summary: p.summary, status: p.status } : null };
     }),
   };
+}
+
+/**
+ * Save notes for one calendar event (shared by the website and the app). The first save snapshots
+ * the event (no attendee names or emails). Throws MeetingError for things the person can fix.
+ */
+export async function saveMeetingNotes(userId: string, input: { eventId: string; at: string; notes: string }) {
+  const existing = await getMeetingNote(userId, input.eventId);
+  if (existing) {
+    await updateMeetingNotes(userId, input.eventId, input.notes);
+    return;
+  }
+  let ev;
+  try {
+    ev = await findEvent(userId, input.eventId, new Date(input.at));
+  } catch (err) {
+    if (err instanceof GoogleNotConnectedError) throw new MeetingError(err.message);
+    throw err;
+  }
+  if (!ev || ev.allDay) throw new MeetingError("This meeting isn't on your calendar anymore.");
+  await createMeetingNote(userId, {
+    eventId: input.eventId,
+    eventTitle: ev.title.slice(0, 300),
+    eventStart: new Date(ev.start),
+    eventEnd: ev.end ? new Date(ev.end) : null,
+    attendeeCount: ev.attendees.length,
+    notes: input.notes,
+  });
+}
+
+/** Delete one meeting's notes and dismiss any action items still waiting for approval. */
+export async function deleteMeetingNotes(userId: string, eventId: string) {
+  const note = await getMeetingNote(userId, eventId);
+  if (!note) return;
+  for (const i of note.actionItems) if (i.proposalId) await dismissProposal(userId, i.proposalId);
+  await deleteMeetingNote(userId, eventId);
+  await logActivity({ userId, actor: "me", tool: "meeting.notes_deleted", inputSummary: `${note.actionItems.length} action items`, outcome: "success" });
 }

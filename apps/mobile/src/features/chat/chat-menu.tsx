@@ -11,17 +11,16 @@ import { color, space } from "@/theme/tokens";
 
 /** Rename or delete one chat (PATCH and DELETE /api/chat/conversations?id=). */
 export function ChatMenu({ open, onClose, conversationId, title }: { open: boolean; onClose: () => void; conversationId: string; title: string }) {
+  // Mounted only while open, so each opening starts at the menu with the current name.
+  return open ? <ChatMenuContent onClose={onClose} conversationId={conversationId} title={title} /> : null;
+}
+
+function ChatMenuContent({ onClose, conversationId, title }: { onClose: () => void; conversationId: string; title: string }) {
+  const open = true;
   const qc = useQueryClient();
   const [mode, setMode] = React.useState<"menu" | "rename" | "delete">("menu");
   const [name, setName] = React.useState(title);
   const [error, setError] = React.useState<string | null>(null);
-
-  React.useEffect(() => {
-    if (!open) return;
-    setMode("menu");
-    setName(title);
-    setError(null);
-  }, [open, title]);
 
   const rename = useMutation({
     mutationFn: (t: string) => api<{ ok: true }>(`/api/chat/conversations?id=${conversationId}`, { method: "PATCH", body: { title: t } }),

@@ -39,7 +39,8 @@ export type Today = {
   calendarConnected: boolean;
   /** Connected, but the events could not be read just now. Older servers omit it. */
   calendarFailed?: boolean;
-  events: { title: string; start: string; end: string; location: string | null }[];
+  /** id and allDay are absent from older servers. */
+  events: { id?: string; allDay?: boolean; title: string; start: string; end: string; location: string | null }[];
   tasks: TaskSummary[];
   review: TaskSummary[];
   mail: { id: string; from: string; subject: string; summary: string; category: string | null; receivedAt: string }[];

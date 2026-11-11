@@ -1,5 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { router, useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
 import { ArrowCounterClockwiseIcon, CalendarBlankIcon, CheckIcon, ClockIcon, TrashIcon, XIcon } from "phosphor-react-native";
 import * as React from "react";
 import { Controller, useForm, type Path, type PathValue } from "react-hook-form";

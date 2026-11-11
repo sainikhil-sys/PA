@@ -12,10 +12,10 @@ import { clock, relativeTime, shortDay } from "./format";
 import { useCompleteTask } from "./use-complete-task";
 
 /** A titled card on Home. */
-function HomeCard({ title, children }: { title: string; children: React.ReactNode }) {
+function HomeCard({ title, action, children }: { title: string; action?: React.ReactNode; children: React.ReactNode }) {
   return (
     <Card style={{ gap: space.sm }}>
-      <SectionHeader title={title} />
+      <SectionHeader title={title} action={action} />
       {children}
     </Card>
   );
@@ -92,7 +92,7 @@ export function ScheduleCard({ today, loading }: { today: Today | undefined; loa
           />
         </View>
       ) : today.calendarFailed ? (
-        <Quiet>Your calendar couldn't be read just now. Pull down to try again.</Quiet>
+        <Quiet>{"Your calendar couldn't be read just now. Pull down to try again."}</Quiet>
       ) : today.events.length === 0 ? (
         <Quiet>Nothing on your calendar today.</Quiet>
       ) : (
@@ -100,8 +100,8 @@ export function ScheduleCard({ today, loading }: { today: Today | undefined; loa
           const start = clock(e.start, tz);
           const end = clock(e.end, tz);
           const detail = [start && end ? `Until ${end}` : null, e.location].filter(Boolean).join(", ");
-          return (
-            <View key={`${e.start}-${i}`} accessible style={{ flexDirection: "row", gap: space.md, paddingVertical: space.xs }}>
+          const row = (
+            <>
               <Txt variant="label" style={{ minWidth: 76, color: color.muted }}>
                 {start ?? "All day"}
               </Txt>
@@ -109,6 +109,26 @@ export function ScheduleCard({ today, loading }: { today: Today | undefined; loa
                 <Txt variant="label">{e.title || "Untitled event"}</Txt>
                 {detail ? <Txt variant="small">{detail}</Txt> : null}
               </View>
+            </>
+          );
+          // Timed events open their meeting notes; all-day ones have none.
+          if (e.id && !e.allDay && start) {
+            const id = e.id;
+            return (
+              <Pressable
+                key={`${e.start}-${i}`}
+                accessibilityRole="button"
+                accessibilityLabel={`${start}. ${e.title || "Untitled event"}${detail ? `. ${detail}` : ""}. Opens meeting notes`}
+                onPress={() => router.push({ pathname: "/meeting/[id]", params: { id, at: e.start } })}
+                style={({ pressed }) => ({ flexDirection: "row", gap: space.md, paddingVertical: space.xs, minHeight: TOUCH, opacity: pressed ? 0.7 : 1 })}
+              >
+                {row}
+              </Pressable>
+            );
+          }
+          return (
+            <View key={`${e.start}-${i}`} accessible style={{ flexDirection: "row", gap: space.md, paddingVertical: space.xs }}>
+              {row}
             </View>
           );
         })

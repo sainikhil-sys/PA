@@ -51,7 +51,7 @@ export async function GET(req: Request) {
       calendarConnected: cal.connected,
       // True when the calendar is connected but could not be read, so the app never says "nothing today".
       calendarFailed: cal.failed,
-      events: cal.items.slice(0, 8).map((e) => ({ title: e.title, start: e.start, end: e.end, location: e.location ?? null })),
+      events: cal.items.slice(0, 8).map((e) => ({ id: e.id, allDay: e.allDay, title: e.title, start: e.start, end: e.end, location: e.location ?? null })),
       tasks: priorities.map(task),
       review: review.map(task),
       mail: mail.map((m) => ({ id: m.id, from: m.fromName ?? m.fromEmail ?? "Unknown", subject: m.subject, summary: m.summary ?? m.snippet, category: m.category, receivedAt: m.receivedAt })),

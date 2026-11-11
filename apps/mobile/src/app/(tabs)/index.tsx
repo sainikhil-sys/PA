@@ -1,10 +1,10 @@
 import { setChatIntent } from "@/lib/intent";
 import { router } from "expo-router";
-import { BellIcon, ChatCircleIcon } from "phosphor-react-native";
+import { BellIcon, CalendarDotsIcon, ChatCircleIcon, MagnifyingGlassIcon, NotebookIcon } from "phosphor-react-native";
 import * as React from "react";
 import { Pressable, RefreshControl, ScrollView, View } from "react-native";
 import { Orb } from "@/components/orb";
-import { CountBadge, ErrorState, IconButton, Screen, Txt } from "@/components/ui";
+import { Button, CountBadge, ErrorState, IconButton, Screen, Txt } from "@/components/ui";
 import { ApprovalsWaitingCard, BriefingCard, MailCard, ScheduleCard, TasksCard } from "@/features/home/cards";
 import { firstName, greeting, longDay } from "@/features/home/format";
 import { errorText } from "@/lib/api";
@@ -42,6 +42,7 @@ export default function HomeScreen() {
               {name ? `${greeting(tz)}, ${name}` : greeting(tz)}
             </Txt>
           </View>
+          <IconButton icon={MagnifyingGlassIcon} label="Search" onPress={() => router.push("/search")} />
           <View>
             <IconButton icon={BellIcon} label={unread > 0 ? `Notifications, ${unread} unread` : "Notifications"} onPress={() => router.push("/notifications")} />
             {unread > 0 ? (
@@ -82,6 +83,11 @@ export default function HomeScreen() {
             Ask anything
           </Txt>
         </Pressable>
+
+        <View style={{ flexDirection: "row", gap: space.sm }}>
+          <Button label="Notes" icon={NotebookIcon} compact style={{ flex: 1, minHeight: TOUCH }} onPress={() => router.push("/notes")} />
+          <Button label="Next 7 days" icon={CalendarDotsIcon} compact style={{ flex: 1, minHeight: TOUCH }} onPress={() => router.push("/agenda")} />
+        </View>
 
         {failed ? (
           <ErrorState message={errorText(today.error)} onRetry={() => void today.refetch()} />
