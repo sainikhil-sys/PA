@@ -65,7 +65,10 @@
       "@react-native-community/datetimepicker",
       "./plugins/with-release-signing",
       "expo-sharing",
-      "./plugins/with-short-native-paths"
+      "./plugins/with-short-native-paths",
+      "expo-image",
+      "expo-status-bar",
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": false,
