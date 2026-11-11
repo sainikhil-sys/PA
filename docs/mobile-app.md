@@ -7,7 +7,7 @@ The Android app is an Expo (React Native) client of the existing Cowork backend.
 | Path | What |
 |---|---|
 | `apps/mobile` | The Expo app (SDK 58, React Native 0.88, Expo Router). Own `package-lock.json`; not part of the web build (excluded in `tsconfig.json`, ESLint and `.vercelignore`). |
-| `apps/mobile/src/app` | Screens. `(auth)` sign-in, `onboarding/*`, `(tabs)` Home, Assistant, Tasks, Settings, plus `chat/[id]`, `task/[id]`, `approvals`, `notifications`, `settings/*`. |
+| `apps/mobile/src/app` | Screens. `(auth)` sign-in, `onboarding/*`, `(tabs)` Home, Assistant, Tasks, Settings, plus `chat/[id]`, `task/[id]`, `notes/*`, `agenda`, `meeting/[id]`, `search`, `approvals`, `notifications`, `settings/*`. |
 | `apps/mobile/src/lib` | API client (bearer token), chat stream (`expo/fetch` + NDJSON), TanStack Query hooks, session store (SecureStore), push registration. |
 | `apps/mobile/modules/phone-link` | Local Expo module (Kotlin): the notification listener that forwards calls and messages to `/api/phone/events`. Port of `android/phone-link`. |
 | `apps/mobile/plugins/with-release-signing.js` | Signs release builds with `credentials/upload.jks` when present. |
@@ -34,7 +34,10 @@ All additive. No migrations were needed for the app itself.
   - `phone`: link this phone without a pairing code, list, unlink (unlink also deletes that phone's events)
   - `push`: register or remove the phone's FCM token as an `fcmapp:` endpoint
   - `report`: report an AI response, as Play's generative-AI policy requires
-- Reused as-is: `/api/chat` (streaming), `/api/chat/conversations`, `/api/chat/suggestions`, `/api/knowledge/items`, `/api/knowledge/upload`, `/api/notifications`, `/api/activity`, `/api/phone/events`.
+  - `notes`, `notes/[id]`, `notes/bookmark`, `notes/[id]/refresh`: write, edit, pin and delete notes, save links
+  - `meetings` (PUT, DELETE) and `meetings/summarize`: meeting notes and their summary
+  - `search`: one keyword search over chats, tasks, notes, documents and memories
+- Reused: `/api/chat` (streaming; Stop saves the partial answer), `/api/chat/conversations` (now also PATCH rename and DELETE), `/api/chat/suggestions`, `/api/knowledge/items` (`?type=upload` for Documents), `/api/knowledge/upload`, `/api/notes`, `/api/notes/[id]`, `/api/schedule`, `/api/meetings`, `/api/notifications`, `/api/activity`, `/api/phone/events`.
 - Public page `/delete-account` (Play's account deletion requirement); the privacy policy covers the app.
 - The cron dispatcher now prunes phone events older than 3 days for every account.
 
@@ -68,4 +71,5 @@ Release signing uses `apps/mobile/credentials/upload.jks` and `credentials/keyst
 
 - Voice input uses the phone's speech recognition service (Google on most Android phones). There is no continuous or background listening.
 - Connecting integrations (Google, LinkedIn and others) happens on the website. The app shows their status and links there.
-- Notifications that link to web-only pages (inbox, automations, content) open nothing in the app yet.
+- Notifications that link to web-only pages (inbox, automations, content) open the Notifications list in the app.
+- Search matches words in titles and text; it is not semantic search.
