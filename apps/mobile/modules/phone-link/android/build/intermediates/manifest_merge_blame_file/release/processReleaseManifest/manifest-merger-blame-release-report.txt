@@ -1,0 +1,32 @@
+1<?xml version="1.0" encoding="utf-8"?>
+2<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+3    package="expo.modules.phonelink" >
+4
+5    <uses-sdk android:minSdkVersion="24" />
+5-->INJECTED
+5-->INJECTED
+6
+7    <application>
+7-->C:\Users\saini\OneDrive\Documents\PA\apps\mobile\modules\phone-link\android\src\main\AndroidManifest.xml:2:3-13:17
+8
+9        <!-- Receives notifications only after the person turns on Notification access for Cowork. -->
+10        <service
+10-->C:\Users\saini\OneDrive\Documents\PA\apps\mobile\modules\phone-link\android\src\main\AndroidManifest.xml:4:5-12:15
+11            android:name="expo.modules.phonelink.NotifyService"
+11-->C:\Users\saini\OneDrive\Documents\PA\apps\mobile\modules\phone-link\android\src\main\AndroidManifest.xml:5:7-58
+12            android:exported="true"
+12-->C:\Users\saini\OneDrive\Documents\PA\apps\mobile\modules\phone-link\android\src\main\AndroidManifest.xml:6:7-30
+13            android:label="Cowork Phone link"
+13-->C:\Users\saini\OneDrive\Documents\PA\apps\mobile\modules\phone-link\android\src\main\AndroidManifest.xml:7:7-40
+14            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE" >
+14-->C:\Users\saini\OneDrive\Documents\PA\apps\mobile\modules\phone-link\android\src\main\AndroidManifest.xml:8:7-81
+15            <intent-filter>
+15-->C:\Users\saini\OneDrive\Documents\PA\apps\mobile\modules\phone-link\android\src\main\AndroidManifest.xml:9:7-11:23
+16                <action android:name="android.service.notification.NotificationListenerService" />
+16-->C:\Users\saini\OneDrive\Documents\PA\apps\mobile\modules\phone-link\android\src\main\AndroidManifest.xml:10:9-91
+16-->C:\Users\saini\OneDrive\Documents\PA\apps\mobile\modules\phone-link\android\src\main\AndroidManifest.xml:10:17-88
+17            </intent-filter>
+18        </service>
+19    </application>
+20
+21</manifest>
