@@ -116,7 +116,7 @@ export default function SettingsTab() {
               <Row
                 icon={BellIcon}
                 title="Notifications"
-                detail="Approvals, reminders and replies from your agent"
+                detail="Reminders, your morning briefing, urgent email and automation results"
                 right={
                   <Switch
                     accessibilityLabel="Notifications on this phone"

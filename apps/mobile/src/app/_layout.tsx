@@ -24,7 +24,7 @@ const theme = {
  * a new account resumes onboarding where it stopped; everyone else lands on Home.
  */
 export default function RootLayout() {
-  const [fontsLoaded] = useFonts({ HankenGrotesk_400Regular, HankenGrotesk_500Medium, HankenGrotesk_600SemiBold, Newsreader_400Regular });
+  const [fontsLoaded, fontError] = useFonts({ HankenGrotesk_400Regular, HankenGrotesk_500Medium, HankenGrotesk_600SemiBold, Newsreader_400Regular });
   const status = useSession((s) => s.status);
   const onboarding = useSession((s) => s.onboarding);
   const restore = useSession((s) => s.restore);
@@ -38,7 +38,8 @@ export default function RootLayout() {
     if (status === "signedOut") queryClient.clear();
   }, [status]);
 
-  const ready = fontsLoaded && status !== "restoring";
+  // A font that fails to load falls back to the system face rather than holding the splash screen.
+  const ready = (fontsLoaded || Boolean(fontError)) && status !== "restoring";
   React.useEffect(() => {
     if (ready) void SplashScreen.hideAsync();
   }, [ready]);

@@ -48,7 +48,7 @@ export default function Privacy() {
           title="Connected services are read-only"
           body="When you connect Gmail or Calendar, Cowork can read them. The one thing it can create is a Gmail draft, which stays in your drafts until you send it."
         />
-        <InfoItem icon={HandPalmIcon} title="Nothing happens without your tap" body="Cowork never sends, posts or deletes anything on its own. It prepares the work and asks you to approve it." />
+        <InfoItem icon={HandPalmIcon} title="You approve what it prepares" body="When the agent prepares a task, draft or reminder in chat, nothing is created until you tap Approve. Automations you set up on the website run on their own schedule." />
         <InfoItem
           icon={ExportIcon}
           title="Your data stays yours"

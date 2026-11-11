@@ -26,11 +26,17 @@ export default function TasksScreen() {
     setRefreshing(false);
   }, [tasks]);
 
+  // isPending only updates on the next render, so a fast double tap would add the task twice.
+  const adding = React.useRef(false);
   const add = () => {
     const value = text.trim();
-    if (!value || quickAdd.isPending) return;
+    if (!value || adding.current) return;
+    adding.current = true;
     setNotice(null);
     quickAdd.mutate(value, {
+      onSettled: () => {
+        adding.current = false;
+      },
       onSuccess: (r) => {
         setText("");
         setNotice({ kind: "ok", text: `Added: ${r.summary}` });

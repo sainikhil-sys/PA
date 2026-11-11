@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import * as DocumentPicker from "expo-document-picker";
+import { File } from "expo-file-system";
 import { CheckCircleIcon, FileTextIcon, TrashIcon, UploadSimpleIcon, WarningCircleIcon } from "phosphor-react-native";
 import * as React from "react";
 import { ActivityIndicator, FlatList, View } from "react-native";
@@ -11,6 +12,16 @@ import { api, errorText } from "@/lib/api";
 import { keys, useDocuments } from "@/lib/queries";
 import type { DocumentItem } from "@/lib/types";
 import { color, radius, space } from "@/theme/tokens";
+
+/** Deletes the picker's cached copy of a file. Never touches the person's original. */
+function discardCopy(f: PickedFile) {
+  try {
+    const copy = new File(f.uri);
+    if (copy.exists) copy.delete();
+  } catch {
+    // Already gone, or not a cache copy we can remove: nothing to clean up.
+  }
+}
 
 type Upload =
   | { phase: "idle" }
@@ -64,11 +75,14 @@ export default function DocumentsScreen() {
     abortRef.current = job.abort;
     try {
       const result = await job.promise;
+      discardCopy(file);
       setUpload({ phase: "done", name: file.name, result });
       void qc.invalidateQueries({ queryKey: keys.documents });
     } catch (err) {
-      if (!mounted.current) return;
       const retryable = err instanceof UploadError ? err.retryable : true;
+      // The picker copied the file into the app's cache: keep the copy only while Retry can use it.
+      if (!retryable || !mounted.current) discardCopy(file);
+      if (!mounted.current) return;
       setUpload({ phase: "failed", name: file.name, message: err instanceof Error ? err.message : errorText(err), file: retryable ? file : null, type: retryable ? type : null });
     } finally {
       abortRef.current = null;
@@ -93,6 +107,7 @@ export default function DocumentsScreen() {
     const file: PickedFile = { uri: a.uri, name: a.name, size: a.size, mimeType: a.mimeType };
     const check = checkFile(file);
     if (!check.ok) {
+      discardCopy(file);
       setUpload({ phase: "failed", name: a.name, message: check.message, file: null, type: null });
       return;
     }

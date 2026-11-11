@@ -79,7 +79,7 @@ export default function NotificationsScreen() {
             <EmptyState
               icon={BellSimpleIcon}
               title="No notifications"
-              body="Reminders, finished tasks and items that need your approval show up here."
+              body="Reminders, your morning briefing, urgent email and automation results show up here."
               action={<Button label="Back to Home" compact style={{ minHeight: TOUCH }} onPress={() => router.replace("/")} />}
             />
           }

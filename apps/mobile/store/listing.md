@@ -15,17 +15,17 @@ Talk to an agent that reads your inbox and calendar and asks before it acts.
 Cowork is a personal work assistant on your phone. Ask it a question by voice or text and it answers using your own email, calendar, tasks and documents, with numbered sources you can open.
 
 What you can do
-- Talk or type to your agent. Replies stream as they are written, and you can stop, copy or retry any answer.
+- Talk or type to your agent. Replies stream as they are written. You can stop or copy an answer, and retry one that failed.
 - See your day on one screen: the morning briefing, today's meetings, top tasks and the email that needs a reply.
 - Add tasks in plain words, like "call the bank tomorrow 10am". Set due dates, times and reminders, and tick them off.
 - Approve or dismiss what the agent prepared. Creating a task, a Gmail draft or a reminder only happens after you tap Approve.
 - Keep a short list of memories the agent uses to personalize answers. You can read, correct and delete every one.
 - Upload PDF, Word, text and Markdown files to search them in chat.
-- Link this phone to see calls and messages from your notifications in Cowork on the web. Optional, and only after you allow Notification access.
+- Link this phone to see calls and messages from your notifications in Cowork on the website. Optional, and only after you allow Notification access.
 
 How it handles your data
 - Gmail and Calendar access is read-only, except for creating drafts you send yourself.
-- Nothing is sent, posted or deleted for you without your tap.
+- Anything the agent prepares in chat waits for your tap. Automations you set up on the website run on their own schedule.
 - Phone notifications are kept for 3 days, then deleted.
 - You can export your data on the website and delete your account in the app at any time.
 
@@ -54,8 +54,8 @@ Cowork uses the same account as the website. Sign in with a one-time code sent t
 | Messages (in-app chat) | Yes | Processed by the AI model provider | App functionality | No |
 | Other in-app messages (phone notifications: app name, title, text) | Yes, only with Phone link on | No | App functionality | Yes |
 | Emails (Gmail metadata and summaries) | Yes, only if Google is connected on the website | Processed by the AI model provider | App functionality | Yes |
-| Calendar events | Yes, only if Google is connected | No | App functionality | Yes |
-| Files and docs (uploaded documents, text only) | Yes | No | App functionality | Yes |
+| Calendar events | Yes, only if Google is connected | Processed by the AI model provider | App functionality | Yes |
+| Files and docs (uploaded documents, text only) | Yes | Processed by the AI model provider | App functionality | Yes |
 | Device or other IDs (push token) | Yes, if notifications are on | No | Notifications | Yes |
 | App info and performance | No | | | |
 | Location, contacts, photos, financial info | No | | | |

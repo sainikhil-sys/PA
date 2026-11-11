@@ -37,6 +37,8 @@ export type Today = {
   agentName: string;
   briefing: { date: string; isToday: boolean; headline: string; summary: string; priorities: string[] } | null;
   calendarConnected: boolean;
+  /** Connected, but the events could not be read just now. Older servers omit it. */
+  calendarFailed?: boolean;
   events: { title: string; start: string; end: string; location: string | null }[];
   tasks: TaskSummary[];
   review: TaskSummary[];

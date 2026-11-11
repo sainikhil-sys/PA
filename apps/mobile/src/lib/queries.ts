@@ -60,7 +60,7 @@ export const useSuggestions = () =>
 export const useTasks = () => useQuery({ queryKey: keys.tasks, queryFn: () => api<{ items: TaskSummary[] }>("/api/mobile/tasks").then((r) => r.items) });
 export const useTask = (id: string) => useQuery({ queryKey: keys.task(id), queryFn: () => api<TaskDetail>(`/api/mobile/tasks/${id}`) });
 export const useMemories = () => useQuery({ queryKey: keys.memories, queryFn: () => api<{ items: Memory[] }>("/api/mobile/memories").then((r) => r.items) });
-export const useDocuments = () => useQuery({ queryKey: keys.documents, queryFn: () => api<{ items: DocumentItem[] }>("/api/knowledge/items").then((r) => r.items) });
+export const useDocuments = () => useQuery({ queryKey: keys.documents, queryFn: () => api<{ items: DocumentItem[] }>("/api/knowledge/items?type=upload").then((r) => r.items) });
 export const useNotifications = () =>
   useQuery({ queryKey: keys.notifications, queryFn: () => api<{ items: AppNotification[]; unread: number }>("/api/notifications") });
 export const useActivity = () => useQuery({ queryKey: keys.activity, queryFn: () => api<{ items: ActivityEntry[] }>("/api/activity").then((r) => r.items) });

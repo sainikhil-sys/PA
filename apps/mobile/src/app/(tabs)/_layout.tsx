@@ -1,6 +1,7 @@
 import { Tabs } from "expo-router";
 import type { ColorValue } from "react-native";
 import { ChatCircleIcon, CheckSquareIcon, GearSixIcon, SunHorizonIcon, type Icon } from "phosphor-react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useMe } from "@/lib/queries";
 import { color, font } from "@/theme/tokens";
 
@@ -13,6 +14,8 @@ function tabIcon(IconCmp: Icon) {
 /** Four destinations: Home, Assistant, Tasks, Settings. */
 export default function TabLayout() {
   const me = useMe();
+  // The bar's height includes the system navigation area; a fixed height clips labels on 3-button navigation.
+  const insets = useSafeAreaInsets();
   const pending = me.data?.pendingApprovals ?? 0;
   return (
     <Tabs
@@ -20,7 +23,7 @@ export default function TabLayout() {
         headerShown: false,
         tabBarActiveTintColor: color.text,
         tabBarInactiveTintColor: color.subtle,
-        tabBarStyle: { backgroundColor: color.bg, borderTopColor: color.border, height: 64, paddingTop: 6 },
+        tabBarStyle: { backgroundColor: color.bg, borderTopColor: color.border, height: 64 + insets.bottom, paddingTop: 6, paddingBottom: Math.max(insets.bottom, 6) },
         tabBarLabelStyle: { fontFamily: font.medium, fontSize: 11 },
         sceneStyle: { backgroundColor: color.bg },
       }}

@@ -6,12 +6,14 @@ import { Controller, useForm, type Path, type PathValue } from "react-hook-form"
 import { KeyboardAvoidingView, RefreshControl, ScrollView, View } from "react-native";
 import { ConfirmSheet } from "@/components/sheet";
 import { Button, Card, Divider, ErrorState, IconButton, Input, Screen, SectionHeader, Skeleton, Txt } from "@/components/ui";
+import { Markdown } from "@/features/chat/markdown";
 import { Segmented } from "@/features/tasks/components";
 import { dayLabel, fromYmd, PRIORITY_LABEL, timeLabel, ymd } from "@/features/tasks/dates";
 import { diff, DURATIONS, taskSchema, toForm, type TaskForm } from "@/features/tasks/form";
 import { useDeleteTask, useSetDone, useUpdateTask } from "@/features/tasks/mutations";
 import { pickDate, pickTime } from "@/features/tasks/pickers";
 import { ApiError, errorText } from "@/lib/api";
+import { goBackOr } from "@/lib/nav";
 import { useTask } from "@/lib/queries";
 import type { TaskDetail } from "@/lib/types";
 import { color, space } from "@/theme/tokens";
@@ -43,7 +45,7 @@ export default function TaskScreen() {
         <Txt variant="heading" accessibilityRole="header">
           Task
         </Txt>
-        <IconButton icon={XIcon} label="Close" tone="plain" onPress={() => router.back()} />
+        <IconButton icon={XIcon} label="Close" tone="plain" onPress={close} />
       </View>
       <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
         <ScrollView
@@ -57,6 +59,8 @@ export default function TaskScreen() {
     </Screen>
   );
 }
+
+const close = () => goBackOr("/tasks");
 
 function TaskEditor({ task }: { task: TaskDetail }) {
   const server = React.useMemo(() => toForm(task), [task]);
@@ -260,9 +264,7 @@ function TaskEditor({ task }: { task: TaskDetail }) {
         <View>
           <SectionHeader title="Result from Cowork" />
           <Card>
-            <Txt variant="body" selectable>
-              {task.resultMarkdown}
-            </Txt>
+            <Markdown text={task.resultMarkdown} />
           </Card>
         </View>
       ) : null}
@@ -303,7 +305,7 @@ function TaskEditor({ task }: { task: TaskDetail }) {
           del.mutate(undefined, {
             onSuccess: () => {
               setConfirmDelete(false);
-              router.back();
+              close();
             },
             onError: (err) => {
               setConfirmDelete(false);

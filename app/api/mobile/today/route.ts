@@ -24,10 +24,11 @@ export async function GET(req: Request) {
   const { start, end, date } = localDayBounds(s.timezone, 0);
 
   const calendar = listEvents(u.id, start, end)
-    .then((items) => ({ connected: true, items }))
+    .then((items) => ({ connected: true, failed: false, items }))
     .catch((err) => {
       if (!(err instanceof GoogleNotConnectedError)) log.warn("mobile.today_calendar_failed", { error: errMessage(err) });
-      return { connected: !(err instanceof GoogleNotConnectedError), items: [] };
+      const notConnected = err instanceof GoogleNotConnectedError;
+      return { connected: !notConnected, failed: !notConnected, items: [] };
     });
   const [briefing, cal, priorities, review, mail, pending] = await Promise.all([
     latestBriefing(u.id).catch(() => null),
@@ -48,6 +49,8 @@ export async function GET(req: Request) {
         ? { date: briefing.date, isToday: briefing.date === date, headline: briefing.content.headline, summary: briefing.content.summary, priorities: briefing.content.priorities.slice(0, 4) }
         : null,
       calendarConnected: cal.connected,
+      // True when the calendar is connected but could not be read, so the app never says "nothing today".
+      calendarFailed: cal.failed,
       events: cal.items.slice(0, 8).map((e) => ({ title: e.title, start: e.start, end: e.end, location: e.location ?? null })),
       tasks: priorities.map(task),
       review: review.map(task),

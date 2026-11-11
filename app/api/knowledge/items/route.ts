@@ -1,4 +1,4 @@
-import { and, desc, eq, ilike } from "drizzle-orm";
+import { and, desc, eq, ilike, inArray } from "drizzle-orm";
 import { apiGuard } from "@/lib/auth/api";
 import { db, schema } from "@/lib/db";
 
@@ -14,6 +14,20 @@ export async function GET(req: Request) {
   const conds = [eq(schema.knowledgeItems.userId, g.user.id)];
   if (q) conds.push(ilike(schema.knowledgeItems.title, `%${q.replace(/[%_\\]/g, "")}%`));
   if (source && /^[0-9a-f-]{36}$/i.test(source)) conds.push(eq(schema.knowledgeItems.sourceId, source));
+  // ?type=upload limits the list to one kind of source (the app's Documents screen shows only uploads,
+  // not synced mail or mirrored notes).
+  const type = url.searchParams.get("type");
+  if (type && /^[a-z_]{1,32}$/.test(type)) {
+    conds.push(
+      inArray(
+        schema.knowledgeItems.sourceId,
+        db()
+          .select({ id: schema.knowledgeSources.id })
+          .from(schema.knowledgeSources)
+          .where(and(eq(schema.knowledgeSources.userId, g.user.id), eq(schema.knowledgeSources.type, type))),
+      ),
+    );
+  }
   const items = await db()
     .select({ id: schema.knowledgeItems.id, title: schema.knowledgeItems.title, url: schema.knowledgeItems.url, chars: schema.knowledgeItems.chars, sourceId: schema.knowledgeItems.sourceId, updatedAt: schema.knowledgeItems.updatedAt })
     .from(schema.knowledgeItems)

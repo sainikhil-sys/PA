@@ -1,4 +1,4 @@
-import { authHeaders } from "@/lib/api";
+import { authHeaders, messageFrom } from "@/lib/api";
 import { API_URL } from "@/lib/config";
 import { useSession } from "@/lib/session";
 
@@ -82,12 +82,8 @@ export function uploadDocument(
       if (xhr.status >= 200 && xhr.status < 300 && body?.ok) return resolve(body.result ?? "created");
       // 4xx other than rate limiting means the file itself was refused: retrying the same file won't help.
       const retryable = xhr.status === 429 || xhr.status >= 500 || xhr.status === 0;
-      const msg = body?.error || body?.message;
-      if (msg) return reject(new UploadError(msg, retryable));
       if (xhr.status === 413) return reject(new UploadError("Files up to 4 MB, please.", false));
-      if (xhr.status === 429) return reject(new UploadError("Too many requests. Wait a moment and try again.", true));
-      if (xhr.status >= 500) return reject(new UploadError("Cowork is having trouble right now. Try again in a minute.", true));
-      reject(new UploadError("Couldn't upload that file. Please try again.", retryable));
+      reject(new UploadError(body?.error || body?.message ? messageFrom(body, xhr.status) : xhr.status >= 400 && xhr.status < 500 && xhr.status !== 429 ? "Couldn't upload that file. Please try again." : messageFrom(null, xhr.status), retryable));
     };
     xhr.timeout = 150_000;
     const form = new FormData();

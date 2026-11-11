@@ -95,7 +95,7 @@ export default function PhoneScreen() {
         setNote({ text: "Linked. Turn on Notification access for Cowork in the screen that opened, then come back here.", access: true });
         PhoneLink.openAccessSettings();
       } else {
-        setNote({ text: "Linked. New notifications on this phone will reach your agent." });
+        setNote({ text: "Linked. New calls and messages from this phone's notifications will show in Cowork on the website." });
       }
     } catch (err) {
       setNote({ text: errorText(err), error: true });

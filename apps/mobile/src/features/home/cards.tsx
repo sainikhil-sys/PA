@@ -91,6 +91,8 @@ export function ScheduleCard({ today, loading }: { today: Today | undefined; loa
             onPress={() => void WebBrowser.openBrowserAsync(`${API_URL}/integrations`).catch(() => {})}
           />
         </View>
+      ) : today.calendarFailed ? (
+        <Quiet>Your calendar couldn't be read just now. Pull down to try again.</Quiet>
       ) : today.events.length === 0 ? (
         <Quiet>Nothing on your calendar today.</Quiet>
       ) : (

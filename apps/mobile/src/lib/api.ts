@@ -44,7 +44,8 @@ const CODES: Record<string, string> = {
   "not found": "That item no longer exists.",
 };
 
-function messageFrom(body: unknown, status: number): string {
+/** A sentence for people from an error body: known codes are translated, raw codes never shown. */
+export function messageFrom(body: unknown, status: number): string {
   if (body && typeof body === "object") {
     const b = body as { message?: unknown; error?: unknown };
     if (typeof b.message === "string" && b.message) return b.message;
