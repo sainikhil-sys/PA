@@ -10,11 +10,12 @@ import { db, schema } from "@/lib/db";
 import { logActivity } from "@/lib/db/queries/activity";
 import { sha256 } from "@/lib/security/crypto";
 import { publishToLinkedIn } from "@/lib/integrations/linkedin";
+import { AI_UNAVAILABLE } from "@/lib/ai/messages";
 
 const uuid = z.string().uuid();
 
 function friendly(err: unknown): never {
-  if (err instanceof NoProviderError) throw new UserFacingError("Connect an AI provider in Settings > Agent to generate drafts.");
+  if (err instanceof NoProviderError) throw new UserFacingError(AI_UNAVAILABLE);
   throw err;
 }
 

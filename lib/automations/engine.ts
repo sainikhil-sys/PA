@@ -23,6 +23,8 @@ import { checkConditions } from "./match";
 import { fillTemplate } from "./template-vars";
 export { fillTemplate };
 import { ACTION_LABEL } from "./templates";
+import { AI_UNAVAILABLE } from "@/lib/ai/messages";
+import { safeFetch } from "@/lib/security/safe-fetch";
 
 /** Thrown for failures that should not be retried (bad config, missing permission). */
 export class PermanentError extends Error {}
@@ -132,13 +134,20 @@ async function execute(user: User, a: Automation, run: AutomationRun, action: Au
     case "call_webhook": {
       const url = new URL(action.url);
       if (url.protocol !== "https:") throw new PermanentError("Webhooks must use https");
-      // Metadata only — never email bodies, documents or agent output.
-      const res = await fetch(url, {
-        method: "POST",
-        headers: { "content-type": "application/json", "user-agent": "Cowork-automations/1.0" },
-        body: JSON.stringify({ automation: a.name, runId: run.id, trigger: a.trigger.type, at: new Date().toISOString(), dryRun: false }),
-        signal: AbortSignal.timeout(10_000),
-        redirect: "error",
+      // Metadata only — never email bodies, documents or agent output. safeFetch refuses private,
+      // loopback and link-local hosts (also after DNS), so a webhook can't reach internal services.
+      const res = await safeFetch(
+        url,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json", "user-agent": "Cowork-automations/1.0" },
+          body: JSON.stringify({ automation: a.name, runId: run.id, trigger: a.trigger.type, at: new Date().toISOString(), dryRun: false }),
+          signal: AbortSignal.timeout(10_000),
+        },
+        0,
+      ).catch((err: unknown) => {
+        if (err instanceof Error && /Private addresses|credentials|redirects/i.test(err.message)) throw new PermanentError(`Webhook blocked: ${err.message.toLowerCase()}`);
+        throw err;
       });
       if (!res.ok) throw new Error(`Webhook returned ${res.status}`);
       return `Webhook responded ${res.status}`;
@@ -225,7 +234,7 @@ export async function runAutomation(runId: string, attempt: number, maxAttempts:
 export function humanize(err: unknown): string {
   const m = errMessage(err);
   if (/not connected|reconnect|expired/i.test(m)) return "An integration needs reconnecting. Check the Integrations page.";
-  if (/No AI provider/i.test(m)) return "No AI provider is configured. Add one in Settings > Agent.";
+  if (/No AI provider/i.test(m)) return AI_UNAVAILABLE;
   if (/Timed out/i.test(m)) return `${m}. Try a longer timeout or fewer actions.`;
   if (/Webhook returned/i.test(m)) return `${m}. Check the webhook URL.`;
   return m.length > 200 ? `${m.slice(0, 200)}…` : m;

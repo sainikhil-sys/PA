@@ -63,18 +63,20 @@ export async function GET(req: Request) {
     db().select().from(schema.activityLog).where(by(schema.activityLog)),
   ]);
   const [chatAttachments, focusSessions, meetingNotes, expenses, expenseBudgets, learningItems, learningLogs] = await newer;
+  // Exports carry the person's content, not secrets or internal routing: no encrypted keys, no model or run ids.
+  const strip = <T extends Record<string, unknown>>(rows: T[], keys: string[]) => rows.map((r) => Object.fromEntries(Object.entries(r).filter(([k]) => !keys.includes(k))));
   const data = {
     exportedAt: new Date().toISOString(),
     profile: { email: g.user.email, name: g.user.name, role: g.user.role, bio: g.user.bio },
-    settings,
-    tasks,
+    settings: strip(settings, ["aiProvider"]),
+    tasks: strip(tasks, ["agentProvider"]),
     taskComments: comments,
     emails,
-    briefings,
+    briefings: strip(briefings, ["model"]),
     notes,
     memories,
     conversations,
-    messages,
+    messages: messages.map(({ meta: { model: _model, runId: _runId, ...meta }, ...m }) => ({ ...m, meta })),
     automations,
     automationRuns: runs,
     ideas,
@@ -83,7 +85,7 @@ export async function GET(req: Request) {
     knowledgeItems: items,
     chatAttachments,
     focusSessions,
-    meetingNotes,
+    meetingNotes: strip(meetingNotes, ["model"]),
     expenses,
     expenseBudgets,
     learningItems,

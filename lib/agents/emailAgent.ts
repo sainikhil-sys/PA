@@ -84,7 +84,7 @@ export async function draftReply(user: User, email: Email, instructions?: string
     temperature: 0.5,
   });
   const draftText = stripInvisible(text).trim();
-  if (!draftText) throw new Error("The model returned an empty draft.");
+  if (!draftText) throw new Error("Cowork couldn't write a draft this time. Try again.");
 
   const draftId = await createReplyDraft(user.id, {
     threadId: email.threadId,

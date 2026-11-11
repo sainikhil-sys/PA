@@ -7,6 +7,7 @@ import { NoProviderError } from "@/lib/ai/router";
 import { StructuredOutputError } from "@/lib/ai/structured";
 import { deleteMeetingNotes, MeetingError, saveMeetingNotes, summarizeMeeting } from "@/lib/meetings/notes";
 import { rateLimit } from "@/lib/security/ratelimit";
+import { AI_UNAVAILABLE } from "@/lib/ai/messages";
 
 const eventId = z.string().min(1).max(300).regex(/^[A-Za-z0-9_@.-]+$/, "Invalid meeting");
 // Google start times carry an offset, e.g. 2026-10-19T09:00:00+05:30.
@@ -36,8 +37,8 @@ export const summarizeMeetingAction = ownerAction(z.object({ eventId }), async (
     return res;
   } catch (err) {
     if (err instanceof MeetingError) throw new UserFacingError(err.message);
-    if (err instanceof NoProviderError) throw new UserFacingError("Connect an AI provider in Settings > Agent to summarize meetings.");
-    if (err instanceof StructuredOutputError) throw new UserFacingError("The model couldn't summarize these notes. Try again.");
+    if (err instanceof NoProviderError) throw new UserFacingError(AI_UNAVAILABLE);
+    if (err instanceof StructuredOutputError) throw new UserFacingError("Cowork couldn't summarize these notes. Try again.");
     throw err;
   }
 });

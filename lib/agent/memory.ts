@@ -54,6 +54,21 @@ export async function saveMemory(
 }
 
 /**
+ * A memory the owner typed themselves (website settings or the app). Same rules as chat memories:
+ * no secrets, no duplicates (a more detailed version updates the old one), and the size limit.
+ * Returns a sentence for people when it can't be saved.
+ */
+export async function addOwnMemory(
+  userId: string,
+  input: { content: string; kind: MemoryKind },
+): Promise<{ ok: true; id: string; status: "saved" | "updated" | "exists" } | { ok: false; message: string }> {
+  if (looksSensitive(input.content)) return { ok: false, message: "That looks like a password, code or account number. Cowork doesn't keep secrets in memory." };
+  const r = await saveMemory(userId, { ...input, source: "settings" });
+  if (r.status === "full") return { ok: false, message: `Memory is full (${MEMORY_LIMIT} items). Remove some old ones first.` };
+  return { ok: true, id: r.memory.id, status: r.status };
+}
+
+/**
  * Save what the planner pulled from the owner's OWN message, behind
  * deterministic gates: a memory cue in the message, every item grounded in the
  * message's words, and nothing that looks like a secret.
@@ -66,7 +81,7 @@ export async function captureMemories(
   if (!opts.enabled) {
     return {
       results: [],
-      promptNote: "\nAutomatic memory is switched off, so nothing was saved this turn. If the owner wants something remembered, they can add it in Settings > Agent > Memory.",
+      promptNote: "\nAutomatic memory is switched off, so nothing was saved this turn. If the owner wants something remembered, they can add it in Cowork's memory settings.",
     };
   }
 
@@ -102,7 +117,7 @@ export async function captureMemories(
     note += `\nSaved to memory this turn (the owner sees a confirmation with Undo):\n${results.map((r) => `- ${r.content}${r.status === "exists" ? " (was already saved)" : r.status === "updated" ? " (updated an older, shorter version)" : ""}`).join("\n")}`;
   }
   if (sensitive) note += "\nThe owner asked you to remember something that looks like a password, code or account number. It was NOT saved; say you don't store secrets.";
-  if (full) note += "\nMemory is full, so nothing new was saved; the owner can remove old items in Settings > Agent.";
+  if (full) note += "\nMemory is full, so nothing new was saved; the owner can remove old items in Cowork's memory settings.";
   return { results, promptNote: note };
 }
 

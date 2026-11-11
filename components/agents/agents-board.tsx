@@ -91,7 +91,7 @@ function ConnectorCard({ c }: { c: Connector }) {
       <BrandLogo id={c.logo} size={24} box />
       <div className="min-w-0 flex-1">
         <p className="text-sm font-medium">{c.name}</p>
-        <p className="truncate text-[12px] text-muted">{c.connected ? `${c.model} · key ${c.keyHint}` : "Not connected"}</p>
+        <p className="truncate text-[12px] text-muted">{c.connected ? `Connected · key ${c.keyHint}` : "Not connected"}</p>
       </div>
       <Button size="sm" variant={c.connected ? "ghost" : "secondary"} onClick={() => setOpen(true)}>
         {c.connected ? "Manage" : "Connect"}

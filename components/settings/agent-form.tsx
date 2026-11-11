@@ -26,6 +26,8 @@ const CAPS: { key: keyof AgentSettings["capabilities"]; label: string; hint: str
   { key: "manageTasks", label: "Manage tasks", hint: "Propose and create tasks" },
   { key: "runAutomations", label: "Run automations", hint: "Start an automation after you approve" },
   { key: "searchKnowledge", label: "Search knowledge", hint: "Answer from your documents" },
+  { key: "searchWeb", label: "Search the web", hint: "Look things up online when you ask" },
+  { key: "autoMemory", label: "Remember from chat", hint: "Save facts you ask it to remember. Off means nothing new is saved" },
 ];
 
 export function AgentForm({ initial, aiPresets, ownKey, memories, quiet, serverTts }: { initial: AgentSettings; aiPresets: AiPresetInfo[]; ownKey: OwnAiKey; memories: MemoryRow[]; quiet: { start: string | null; end: string | null }; serverTts: boolean }) {

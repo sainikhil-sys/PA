@@ -5,6 +5,7 @@ import { apiGuard } from "@/lib/auth/api";
 import { MeetingError, summarizeMeeting } from "@/lib/meetings/notes";
 import { fail, noStore, readJson } from "@/lib/mobile/http";
 import { rateLimit } from "@/lib/security/ratelimit";
+import { AI_UNAVAILABLE } from "@/lib/ai/messages";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -24,8 +25,8 @@ export async function POST(req: Request) {
     return Response.json({ ok: true }, { headers: noStore });
   } catch (err) {
     if (err instanceof MeetingError) return fail(422, err.message);
-    if (err instanceof NoProviderError) return fail(422, "Connect an AI provider in Settings > Agent on the website to summarize meetings.");
-    if (err instanceof StructuredOutputError) return fail(502, "The model couldn't summarize these notes. Try again.");
+    if (err instanceof NoProviderError) return fail(422, AI_UNAVAILABLE);
+    if (err instanceof StructuredOutputError) return fail(502, "Cowork couldn't summarize these notes. Try again.");
     throw err;
   }
 }

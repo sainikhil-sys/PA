@@ -79,6 +79,20 @@ export const otpCodes = pgTable(
   (t) => [index("otp_email_idx").on(t.emailHash, t.createdAt)],
 );
 
+/**
+ * Shared rate-limit counters, used when Upstash Redis isn't configured. One row per limit and key
+ * (fixed window); the atomic upsert in lib/security/ratelimit.ts makes it work across instances.
+ */
+export const rateLimits = pgTable(
+  "rate_limits",
+  {
+    key: text("key").primaryKey(),
+    count: integer("count").notNull(),
+    resetAt: ts("reset_at").notNull(),
+  },
+  (t) => [index("rate_limits_reset_idx").on(t.resetAt)],
+);
+
 export const sessions = pgTable(
   "sessions",
   {

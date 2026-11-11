@@ -258,11 +258,6 @@ export function AssistantMessage({
           {item.id ? <MiniAction icon={FlagIcon} label="Report" accessibilityLabel="Report this response" onPress={() => onReport(item.id!)} /> : null}
         </View>
       ) : null}
-      {!item.streaming && item.model ? (
-        <Txt variant="small" style={{ color: color.subtle, fontSize: 12 }} accessibilityLabel={`Written by ${item.model}`}>
-          {item.model}
-        </Txt>
-      ) : null}
     </View>
   );
 }

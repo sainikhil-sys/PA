@@ -40,8 +40,6 @@ export type AssistantItem = {
   memories: ChatMemory[];
   /** Fixed notes from Cowork, such as "Web search isn't set up". */
   notices: string[];
-  /** The model that wrote the answer, when the server said. */
-  model?: string;
   /** Stopped before it finished: the text is partial. */
   stopped?: boolean;
 };
@@ -71,7 +69,6 @@ export function itemsFromHistory(d: ConversationDetail): ChatItem[] {
       voice: false,
       memories: m.meta.memories ?? [],
       notices: m.meta.notices ?? [],
-      model: m.meta.model,
       stopped: m.meta.stopped,
     };
   });
@@ -149,7 +146,7 @@ export function useChat(initialId: string | undefined, opts: { onReply?: (text: 
                 break;
               case "done":
                 done = true;
-                patch(aKey, (a) => ({ ...a, id: e.messageId, streaming: false, status: undefined, model: e.model }));
+                patch(aKey, (a) => ({ ...a, id: e.messageId, streaming: false, status: undefined }));
                 break;
               case "error":
                 failed = true;

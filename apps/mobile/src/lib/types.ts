@@ -76,7 +76,6 @@ export type StoredMessage = {
     attachment?: { name: string };
     memories?: ChatMemory[];
     notices?: string[];
-    model?: string;
     stopped?: boolean;
   } & Record<string, unknown>;
 };
@@ -93,7 +92,7 @@ export type ChatEvent =
   | { type: "proposal"; proposal: { id: string; kind: string; label: string; summary: string } }
   | { type: "memory"; memory: ChatMemory }
   | { type: "notice"; text: string }
-  | { type: "done"; messageId: string; generalKnowledge: boolean; model?: string }
+  | { type: "done"; messageId: string; generalKnowledge: boolean }
   | { type: "error"; message: string };
 
 export type Memory = { id: string; content: string; kind: string; updatedAt: string };

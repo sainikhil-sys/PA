@@ -51,7 +51,7 @@ export async function runAgentTask(userId: string, taskId: string): Promise<void
       .insert(schema.aiRuns)
       .values({ userId, taskKind: `agent.${provider}`, provider: "own", model: conn.model, ok: true, attempts: 1, durationMs: Date.now() - started, inputTokens: usage?.inputTokens ?? 0, outputTokens: usage?.outputTokens ?? 0, keySource: "own" })
       .catch(() => {});
-    await completeTask(userId, taskId, "agent", { markdown: `**${info.name}** (${conn.model})\n\n${text.slice(0, 20_000)}` });
+    await completeTask(userId, taskId, "agent", { markdown: text.slice(0, 20_000) });
     await logActivity({ userId, actor: "agent", tool: `agents.${provider}.completed`, inputSummary: task.title.slice(0, 80), outcome: "success" });
     await notify(userId, { kind: "automation", title: `${info.name} finished: ${task.title}`.slice(0, 200), body: "Review the result and approve or request changes.", href: `/tasks?task=${taskId}`, dedupeKey: `agent:${taskId}:${Date.now()}` });
   } catch (err) {

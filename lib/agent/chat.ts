@@ -1,6 +1,7 @@
 import "server-only";
 import { and, asc, desc, eq, exists, gte, ilike, inArray, ne, or, sql } from "drizzle-orm";
 import { UNTRUSTED_CONTENT_RULES } from "@/lib/ai/prompts";
+import { AI_NO_RESPONSE, AI_UNAVAILABLE } from "@/lib/ai/messages";
 import { generateObject, NoProviderError, streamGenerate } from "@/lib/ai/router";
 import { MAX_ATTACHMENT_CHARS, TRANSFORM_LABEL, type AttachmentKind, type TransformKind, type TranslateLanguage } from "@/lib/chat/attachments";
 import { db, schema } from "@/lib/db";
@@ -25,7 +26,7 @@ export type ChatEvent =
   | { type: "proposal"; proposal: { id: string; kind: string; label: string; summary: string } }
   | { type: "memory"; memory: MessageMemory }
   | { type: "notice"; text: string }
-  | { type: "done"; messageId: string; generalKnowledge: boolean; model?: string }
+  | { type: "done"; messageId: string; generalKnowledge: boolean }
   | { type: "error"; message: string };
 
 const RULES = `How to answer:
@@ -171,7 +172,7 @@ export async function* runChatTurn(opts: {
     .join("\n");
   const mems = await memoriesForPrompt(user.id, `${opts.message}\n${recentUser}`);
   const memoryNote = mems.length
-    ? `\nWhat you know about the owner (their saved memories, newest first; if two conflict, trust the newer one; they can edit these in Settings > Agent):\n${mems.map((m) => `- ${m.content}`).join("\n")}`
+    ? `\nWhat you know about the owner (their saved memories, newest first; if two conflict, trust the newer one; they can review and edit these in Cowork's memory settings):\n${mems.map((m) => `- ${m.content}`).join("\n")}`
     : "";
   const voiceNote = opts.trigger === "voice" ? "\nThis is a voice conversation: start with 1-2 short sentences that work when read aloud; put any longer detail after them as a brief list." : "";
   const system = `${personaPrompt(settings.agent, user.name)}${memoryNote}${remembered.promptNote}\n\n${RULES}${voiceNote}${proposalsNote}${transformNote}\n\nContext:\n${ctx.blocks.join("\n\n") || "(no data sources were needed)"}${attachmentBlock}`;
@@ -193,7 +194,7 @@ export async function* runChatTurn(opts: {
     await trace.end(answerSpan, "ok", "Answer written", { chars: text.length });
   } catch (err) {
     await trace.end(answerSpan, "error", "Model unavailable");
-    const msg = err instanceof NoProviderError ? "No AI provider is configured yet. Add one in Settings > Agent." : "The model didn't respond. Please try again.";
+    const msg = err instanceof NoProviderError ? AI_UNAVAILABLE : AI_NO_RESPONSE;
     if (!text) {
       text = msg;
       failed = true;
@@ -237,7 +238,7 @@ export async function* runChatTurn(opts: {
     })
     .returning();
   await db().update(schema.conversations).set({ updatedAt: new Date() }).where(eq(schema.conversations.id, convo.id));
-  yield { type: "done", messageId: assistant!.id, generalKnowledge, model };
+  yield { type: "done", messageId: assistant!.id, generalKnowledge };
 }
 
 /** `%` and `_` match literally (ILIKE with the default `\` escape). */
@@ -280,7 +281,9 @@ export async function getConversation(userId: string, id: string) {
         .from(schema.memories)
         .where(and(eq(schema.memories.userId, userId), inArray(schema.memories.id, memIds)))
     : [];
-  return { convo, messages: msgs, proposals: props, memoryIds: live.map((r) => r.id) };
+  // Which model or run wrote an answer is internal (usage records keep it); it never leaves the server.
+  const messages = msgs.map(({ meta: { model: _model, runId: _runId, ...meta }, ...m }) => ({ ...m, meta }));
+  return { convo, messages, proposals: props, memoryIds: live.map((r) => r.id) };
 }
 
 /** Rename one of the owner's chats. Returns false when it doesn't exist (or isn't theirs). */

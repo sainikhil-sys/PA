@@ -3,6 +3,7 @@ import { forEachUser } from "@/lib/jobs/each-user";
 import { scheduleDueWork } from "@/lib/jobs/scheduler";
 import { pruneAllPhoneEvents } from "@/lib/phone-server";
 import { unauthorizedCron, verifyCron } from "@/lib/security/cron";
+import { pruneRateLimits } from "@/lib/security/ratelimit";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -16,6 +17,7 @@ export async function GET(req: Request) {
   const scheduled = await forEachUser("dispatch", scheduleDueWork);
   // Phone notifications are kept 3 days (the privacy policy promises it), even for phones that stopped sending.
   await pruneAllPhoneEvents().catch(() => {});
+  await pruneRateLimits().catch(() => {});
   const result = await processJobs({ budgetMs: 240_000, batchSize: 4 });
   return Response.json({ scheduled, ...result });
 }

@@ -1,5 +1,6 @@
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
+import { sql } from "drizzle-orm";
 import { log } from "@/lib/log";
 
 export type LimitName = "mcp" | "api" | "auth" | "oauth" | "ai" | "otpEmail" | "otpIp" | "otpVerify" | "webhook" | "notifyEmail" | "phone";
@@ -32,7 +33,7 @@ function upstash(): Map<LimitName, Ratelimit> | null {
   const token = process.env.UPSTASH_REDIS_REST_TOKEN;
   if (!url || !token) {
     if (process.env.NODE_ENV === "production") {
-      log.warn("ratelimit.fallback", { reason: "UPSTASH not configured; using per-instance memory limiter" });
+      log.warn("ratelimit.fallback", { reason: "UPSTASH not configured; using the shared Postgres limiter" });
     }
     limiters = null;
     return limiters;
@@ -52,7 +53,7 @@ function upstash(): Map<LimitName, Ratelimit> | null {
   return limiters;
 }
 
-// Fallback for local dev: fixed window per instance.
+// Last resort (no database either, or it failed): fixed window per instance.
 const memory = new Map<string, { count: number; reset: number }>();
 
 function windowMs(w: string): number {
@@ -73,17 +74,58 @@ export function memoryLimit(name: LimitName, key: string, now = Date.now()): Lim
   return { success: entry.count <= tokens, limit: tokens, remaining: Math.max(0, tokens - entry.count), reset: entry.reset };
 }
 
+let dbLimiterReady = true;
+
+/**
+ * Fixed-window counter in Postgres, shared by every server instance (a per-instance memory counter
+ * is no limit at all on serverless). One atomic upsert per check: a new or expired window restarts at 1.
+ */
+async function dbLimit(name: LimitName, key: string): Promise<LimitResult | null> {
+  if (!dbLimiterReady || !process.env.DATABASE_URL) return null;
+  const { tokens, window } = LIMITS[name];
+  const ms = windowMs(window);
+  try {
+    // Loaded on first use, so importing this module (e.g. in unit tests) never opens a database client.
+    const { db } = await import("@/lib/db");
+    const rows = await db().execute<{ count: number; reset_at: Date | string }>(sql`
+      insert into rate_limits (key, count, reset_at)
+      values (${`${name}:${key}`}, 1, now() + (${ms} * interval '1 millisecond'))
+      on conflict (key) do update set
+        count = case when rate_limits.reset_at <= now() then 1 else rate_limits.count + 1 end,
+        reset_at = case when rate_limits.reset_at <= now() then excluded.reset_at else rate_limits.reset_at end
+      returning count, reset_at`);
+    const row = rows[0];
+    if (!row) return null;
+    const count = Number(row.count);
+    const reset = new Date(row.reset_at).getTime();
+    return { success: count <= tokens, limit: tokens, remaining: Math.max(0, tokens - count), reset };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "unknown";
+    // Before migration 0012 is applied the table doesn't exist: stop trying until the next cold start.
+    if (/rate_limits/.test(message) && /does not exist/.test(message)) dbLimiterReady = false;
+    log.error("ratelimit.db_error", { name, error: message });
+    return null;
+  }
+}
+
 export async function rateLimit(name: LimitName, key: string): Promise<LimitResult> {
   const l = upstash()?.get(name);
-  if (!l) return memoryLimit(name, key);
-  try {
-    const r = await l.limit(key);
-    return { success: r.success, limit: r.limit, remaining: r.remaining, reset: r.reset };
-  } catch (err) {
-    // Fail open on limiter outage, but log it.
-    log.error("ratelimit.error", { name, error: err instanceof Error ? err.message : "unknown" });
-    return memoryLimit(name, key);
+  if (l) {
+    try {
+      const r = await l.limit(key);
+      return { success: r.success, limit: r.limit, remaining: r.remaining, reset: r.reset };
+    } catch (err) {
+      log.error("ratelimit.error", { name, error: err instanceof Error ? err.message : "unknown" });
+    }
   }
+  return (await dbLimit(name, key)) ?? memoryLimit(name, key);
+}
+
+/** Drops counters whose window ended over a day ago (called by the dispatcher). */
+export async function pruneRateLimits(): Promise<void> {
+  if (!dbLimiterReady || !process.env.DATABASE_URL) return;
+  const { db } = await import("@/lib/db");
+  await db().execute(sql`delete from rate_limits where reset_at < now() - interval '1 day'`);
 }
 
 export function rateLimitResponse(r: LimitResult): Response {

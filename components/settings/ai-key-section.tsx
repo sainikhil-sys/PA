@@ -42,9 +42,6 @@ export function AiKeySection({ presets, current }: { presets: AiPresetInfo[]; cu
             <p className="font-medium">
               {current.label} <span className="font-normal text-muted">· key {current.keyHint}</span>
             </p>
-            <p className="truncate text-muted">
-              Fast: <span className="font-mono">{current.fastModel}</span> · Smart: <span className="font-mono">{current.smartModel}</span>
-            </p>
           </div>
           <Button
             size="sm"
