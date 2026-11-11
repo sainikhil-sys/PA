@@ -82,6 +82,14 @@ export async function listNotifications(userId: string, limit = 20) {
   return { items, unread: row?.n ?? 0 };
 }
 
+/** Mark one of the owner's notifications read (a tap on it in the app). */
+export async function markRead(userId: string, id: string) {
+  await db()
+    .update(schema.notifications)
+    .set({ readAt: new Date() })
+    .where(and(eq(schema.notifications.userId, userId), eq(schema.notifications.id, id), isNull(schema.notifications.readAt)));
+}
+
 export async function markAllRead(userId: string) {
   await db()
     .update(schema.notifications)

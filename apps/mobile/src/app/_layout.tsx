@@ -8,6 +8,7 @@ import { StatusBar } from "expo-status-bar";
 import * as React from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import { PushRouter } from "@/features/notifications/push-router";
 import { queryClient } from "@/lib/queries";
 import { useSession } from "@/lib/session";
 import { color } from "@/theme/tokens";
@@ -74,6 +75,8 @@ export default function RootLayout() {
                 <Stack.Screen name="notes" />
               </Stack.Protected>
             </Stack>
+            {/* After the Stack, so the navigator is mounted before a cold-start tap navigates. */}
+            {signedIn && onboarded ? <PushRouter /> : null}
           </ThemeProvider>
         </QueryClientProvider>
       </SafeAreaProvider>

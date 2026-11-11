@@ -8,24 +8,9 @@ import { relativeTime } from "@/features/home/format";
 import { BackHeader } from "@/features/home/header";
 import { api, errorText } from "@/lib/api";
 import { keys, useMe, useNotifications } from "@/lib/queries";
+import { appRoute } from "@/lib/routes";
 import type { AppNotification } from "@/lib/types";
 import { color, space, TOUCH } from "@/theme/tokens";
-
-/** Where a notification's web link goes in the app, or null when the app has no matching screen. */
-function appRoute(href: string | null): string | null {
-  if (!href) return null;
-  if (href === "/") return "/";
-  if (href.startsWith("/chat/")) return href;
-  if (href === "/approvals" || href.startsWith("/approvals?")) return "/approvals";
-  if (href === "/tasks" || href.startsWith("/tasks?")) {
-    const task = /[?&]task=([\w-]+)/.exec(href)?.[1];
-    return task ? `/task/${task}` : "/(tabs)/tasks";
-  }
-  // An agent run's result lives on the task itself.
-  const agentTask = href.startsWith("/agents?") ? /[?&]task=([\w-]+)/.exec(href)?.[1] : undefined;
-  if (agentTask) return `/task/${agentTask}`;
-  return null;
-}
 
 /** Recent notifications, newest first. */
 export default function NotificationsScreen() {
@@ -91,6 +76,7 @@ export default function NotificationsScreen() {
 }
 
 function NotificationRow({ item, tz }: { item: AppNotification; tz?: string }) {
+  const qc = useQueryClient();
   const route = appRoute(item.href);
   const unread = !item.readAt;
   const when = relativeTime(item.createdAt, tz);
@@ -123,7 +109,15 @@ function NotificationRow({ item, tz }: { item: AppNotification; tz?: string }) {
     );
   }
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={() => router.push(route)} style={({ pressed }) => (pressed ? { backgroundColor: color.surface2 } : undefined)}>
+    <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={() => {
+        if (unread) {
+          // Mark just this one read; the list and badge refresh when it lands.
+          void api("/api/mobile/notifications/read", { body: { id: item.id } })
+            .then(() => Promise.all([qc.invalidateQueries({ queryKey: keys.notifications }), qc.invalidateQueries({ queryKey: keys.me })]))
+            .catch(() => {});
+        }
+        router.push(route);
+      }} style={({ pressed }) => (pressed ? { backgroundColor: color.surface2 } : undefined)}>
       {content}
     </Pressable>
   );

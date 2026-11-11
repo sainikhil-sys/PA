@@ -43,7 +43,8 @@ export async function sendFcm(token: string, msg: { title: string; body: string;
               token,
               notification: { title: msg.title, body: msg.body },
               data: { href: msg.href, url: `${appUrl()}${msg.href}`, tag: msg.tag ?? "" },
-              android: { priority: "high", notification: { tag: msg.tag || undefined, default_sound: true } },
+              // channel_id matches the channel the Cowork app creates, so Android shows it at high importance.
+              android: { priority: "high", notification: { tag: msg.tag || undefined, default_sound: true, channel_id: "default" } },
             }
           : {
               token,
