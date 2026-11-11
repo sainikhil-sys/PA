@@ -71,6 +71,8 @@ export async function* runChatTurn(opts: {
   trigger: "text" | "voice";
   /** Regenerate / edit: drop messages from this point before answering. */
   replaceFromMessageId?: string;
+  /** Aborted when the person presses Stop or disconnects: the answer so far is saved, and nothing is proposed. */
+  signal?: AbortSignal;
 }): AsyncGenerator<ChatEvent> {
   const { user } = opts;
   const settings = await getSettings(user.id);
@@ -181,6 +183,7 @@ export async function* runChatTurn(opts: {
   const answerSpan = await trace.start("model:smart", "Writing the answer");
   try {
     for await (const ev of streamGenerate({ kind: "chat", userId: user.id, tier: "smart", system, messages: [...prior.map((m) => ({ role: m.role, content: m.content })), { role: "user", content: opts.message }] })) {
+      if (opts.signal?.aborted) break;
       if (ev.type === "model") model = ev.model;
       else {
         text += ev.delta;
@@ -198,12 +201,13 @@ export async function* runChatTurn(opts: {
     }
   }
 
+  const stopped = Boolean(opts.signal?.aborted);
   const clean = stripInvalidCitations(text, ctx.citations.length);
   const generalKnowledge = /general knowledge:/i.test(clean) || (ctx.citations.length === 0 && (p.sources.includes("knowledge") || p.sources.includes("web")));
 
   // 5) Proposals (confirmation cards). Nothing executes here.
   const proposalIds: string[] = [];
-  for (const a of p.actions) {
+  for (const a of stopped ? [] : p.actions) {
     const prop = await proposalFromAction(user, a, { source: opts.trigger === "voice" ? "voice" : "chat", conversationId: convo.id }).catch(() => null);
     if (!prop) continue;
     proposalIds.push(prop.id);
@@ -226,6 +230,7 @@ export async function* runChatTurn(opts: {
         model,
         runId: trace.runId,
         ...(failed ? { error: true } : {}),
+        ...(stopped ? { stopped: true } : {}),
         ...(remembered.results.length ? { memories: remembered.results } : {}),
         ...(ctx.notices.length ? { notices: ctx.notices } : {}),
       } as MessageMeta,
@@ -276,4 +281,34 @@ export async function getConversation(userId: string, id: string) {
         .where(and(eq(schema.memories.userId, userId), inArray(schema.memories.id, memIds)))
     : [];
   return { convo, messages: msgs, proposals: props, memoryIds: live.map((r) => r.id) };
+}
+
+/** Rename one of the owner's chats. Returns false when it doesn't exist (or isn't theirs). */
+export async function renameConversation(userId: string, id: string, title: string): Promise<boolean> {
+  const rows = await db()
+    .update(schema.conversations)
+    .set({ title: title.trim().slice(0, 120) })
+    .where(and(eq(schema.conversations.id, id), eq(schema.conversations.userId, userId)))
+    .returning({ id: schema.conversations.id });
+  return rows.length > 0;
+}
+
+/**
+ * Delete one of the owner's chats with its messages (cascade). Proposals it raised that are still
+ * waiting are dismissed, so Approvals never shows a card whose conversation is gone. Memories saved
+ * from it stay: they are the owner's, listed and deletable on their own.
+ */
+export async function deleteConversation(userId: string, id: string): Promise<boolean> {
+  return db().transaction(async (tx) => {
+    const rows = await tx
+      .delete(schema.conversations)
+      .where(and(eq(schema.conversations.id, id), eq(schema.conversations.userId, userId)))
+      .returning({ id: schema.conversations.id });
+    if (!rows.length) return false;
+    await tx
+      .update(schema.proposals)
+      .set({ status: "dismissed" })
+      .where(and(eq(schema.proposals.userId, userId), eq(schema.proposals.conversationId, id), eq(schema.proposals.status, "pending")));
+    return true;
+  });
 }

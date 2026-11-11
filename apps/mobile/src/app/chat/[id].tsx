@@ -1,9 +1,10 @@
 import { router, useLocalSearchParams } from "expo-router";
-import { CaretLeftIcon, ChatCircleIcon, MicrophoneIcon, SpeakerHighIcon, SpeakerSlashIcon, WarningCircleIcon, XIcon } from "phosphor-react-native";
+import { CaretLeftIcon, ChatCircleIcon, DotsThreeVerticalIcon, MicrophoneIcon, PencilSimpleIcon, SpeakerHighIcon, SpeakerSlashIcon, WarningCircleIcon, XIcon } from "phosphor-react-native";
 import * as React from "react";
 import { FlatList, Keyboard, KeyboardAvoidingView, Linking, Pressable, ScrollView, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button, EmptyState, ErrorState, IconButton, Screen, Skeleton, Txt } from "@/components/ui";
+import { ChatMenu } from "@/features/chat/chat-menu";
 import { AssistantMessage, Composer, ReportSheet, UserBubble } from "@/features/chat/components";
 import { useChat, type ChatItem } from "@/features/chat/use-chat";
 import { useSpeaker } from "@/features/voice/speech";
@@ -40,6 +41,7 @@ export default function ChatScreen() {
   const [draft, setDraft] = React.useState(() => (intent?.send ? "" : (params.prompt?.slice(0, 8000) ?? "")));
   const [draftVoice, setDraftVoice] = React.useState(false);
   const [reportId, setReportId] = React.useState<string | null>(null);
+  const [menuOpen, setMenuOpen] = React.useState(false);
   const inputRef = React.useRef<React.ComponentRef<typeof TextInput>>(null);
 
   const voice = useVoice({
@@ -71,9 +73,30 @@ export default function ChatScreen() {
     else if (intent.listen) void voice.start();
   }, [ready, intent, chat, voice]);
 
+  // Editing a sent message: the composer holds its text, and Send replaces it and everything after.
+  const [editing, setEditing] = React.useState<{ key: string; before: string } | null>(null);
+  const startEdit = (key: string, text: string) => {
+    if (chat.streaming) return;
+    // Keep the draft from before the first edit, so Cancel restores what the person was typing.
+    setEditing((e) => ({ key, before: e?.before ?? draft }));
+    setDraft(text);
+    setDraftVoice(false);
+    setTimeout(() => inputRef.current?.focus(), 50);
+  };
+  const cancelEdit = () => {
+    if (editing) setDraft(editing.before);
+    setEditing(null);
+  };
+
   const send = (text = draft, trigger: "text" | "voice" = draftVoice ? "voice" : "text") => {
     if (!text.trim() || chat.streaming) return;
     speaker.stop();
+    if (editing) {
+      if (!chat.edit(editing.key, text)) return;
+      setEditing(null);
+      setDraft("");
+      return;
+    }
     if (!chat.send(text, trigger)) return;
     setDraft("");
     setDraftVoice(false);
@@ -130,9 +153,16 @@ export default function ChatScreen() {
         contentContainerStyle={{ paddingHorizontal: space.lg, paddingVertical: space.lg, gap: space.lg }}
         renderItem={({ item }: { item: ChatItem }) =>
           item.kind === "user" ? (
-            <UserBubble text={item.text} />
+            <UserBubble text={item.text} onEdit={item.id && !chat.streaming ? () => startEdit(item.key, item.text) : undefined} />
           ) : (
-            <AssistantMessage item={item} isLast={item.key === lastKey && !chat.streaming} onRetry={chat.retry} onReport={setReportId} onProposalStatus={chat.setProposalStatus} />
+            <AssistantMessage
+              item={item}
+              isLast={item.key === lastKey && !chat.streaming}
+              onRetry={chat.retry}
+              onRegenerate={item.key === lastKey && !chat.streaming && !item.error ? () => void chat.regenerate(item.key) : undefined}
+              onReport={setReportId}
+              onProposalStatus={chat.setProposalStatus}
+            />
           )
         }
       />
@@ -149,6 +179,7 @@ export default function ChatScreen() {
           <Txt variant="heading" numberOfLines={1} accessibilityRole="header" style={{ flex: 1 }}>
             {title}
           </Txt>
+          {chat.conversationId.current && !chat.streaming ? <IconButton icon={DotsThreeVerticalIcon} label="Chat options" tone="plain" onPress={() => setMenuOpen(true)} /> : null}
           <Pressable
             accessibilityRole="switch"
             accessibilityLabel="Speak replies to voice messages"
@@ -192,6 +223,15 @@ export default function ChatScreen() {
 
         {showComposer ? (
           <View style={{ paddingBottom: keyboardOpen ? 0 : insets.bottom, backgroundColor: color.bg }}>
+            {editing ? (
+              <View style={{ flexDirection: "row", alignItems: "center", gap: space.sm, paddingLeft: space.lg, paddingRight: space.sm, borderTopWidth: 1, borderTopColor: color.border, backgroundColor: color.surface }}>
+                <PencilSimpleIcon size={16} color={color.warm} />
+                <Txt variant="small" style={{ flex: 1 }}>
+                  Editing your message. Sending replaces it and the answers after it.
+                </Txt>
+                <Button label="Cancel" compact variant="ghost" onPress={cancelEdit} accessibilityLabel="Cancel editing" style={{ minHeight: TOUCH }} />
+              </View>
+            ) : null}
             <VoiceOverlay state={voice.state} transcript={voice.transcript} onStop={voice.stop} onCancel={voice.cancel} />
             {voice.error ? <VoiceError message={voice.error} denied={voice.denied} onDismiss={voice.clearError} /> : null}
             <Composer
@@ -211,6 +251,7 @@ export default function ChatScreen() {
         ) : null}
       </KeyboardAvoidingView>
       <ReportSheet messageId={reportId} onClose={() => setReportId(null)} />
+      {chat.conversationId.current ? <ChatMenu open={menuOpen} onClose={() => setMenuOpen(false)} conversationId={chat.conversationId.current} title={title} /> : null}
     </Screen>
   );
 }

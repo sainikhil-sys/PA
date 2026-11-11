@@ -1,12 +1,12 @@
 import * as Clipboard from "expo-clipboard";
-import { ArrowClockwiseIcon, ArrowUpIcon, CheckIcon, CopyIcon, FlagIcon, LinkIcon, MicrophoneIcon, StopIcon, WarningCircleIcon, type Icon } from "phosphor-react-native";
+import { ArrowClockwiseIcon, ArrowUpIcon, BrainIcon, CheckIcon, CopyIcon, FlagIcon, InfoIcon, LinkIcon, MicrophoneIcon, StopIcon, WarningCircleIcon, type Icon } from "phosphor-react-native";
 import * as React from "react";
 import { ActivityIndicator, Pressable, Text, TextInput, View } from "react-native";
 import { ConfirmSheet, Sheet } from "@/components/sheet";
 import { Button, IconButton, Input, Txt } from "@/components/ui";
 import { api, errorText } from "@/lib/api";
 import { useDecide } from "@/lib/queries";
-import type { Citation } from "@/lib/types";
+import type { ChatMemory, Citation } from "@/lib/types";
 import { color, font, radius, space, TOUCH, type } from "@/theme/tokens";
 import { Markdown, openLink } from "./markdown";
 import type { AssistantItem, ChatProposal } from "./use-chat";
@@ -28,13 +28,48 @@ function MiniAction({ icon: IconCmp, label, onPress, accessibilityLabel, tint = 
   );
 }
 
-/** The user's own message, right aligned. */
-export function UserBubble({ text }: { text: string }) {
+/** The user's own message, right aligned. Long press to edit it when the server has stored it. */
+export function UserBubble({ text, onEdit }: { text: string; onEdit?: () => void }) {
+  const bubble = { alignSelf: "flex-end" as const, maxWidth: "86%" as const, backgroundColor: color.surface2, borderRadius: radius.card, borderWidth: 1, borderColor: color.border, paddingHorizontal: space.lg, paddingVertical: space.md };
+  if (!onEdit) {
+    return (
+      <View style={bubble}>
+        <Txt selectable>{text}</Txt>
+      </View>
+    );
+  }
   return (
-    <View style={{ alignSelf: "flex-end", maxWidth: "86%", backgroundColor: color.surface2, borderRadius: radius.card, borderWidth: 1, borderColor: color.border, paddingHorizontal: space.lg, paddingVertical: space.md }}>
-      <Txt selectable>{text}</Txt>
+    <Pressable
+      onLongPress={onEdit}
+      delayLongPress={350}
+      accessibilityRole="button"
+      accessibilityLabel={text}
+      accessibilityHint="Long press to edit this message"
+      accessibilityActions={[{ name: "edit", label: "Edit message" }]}
+      onAccessibilityAction={(e) => e.nativeEvent.actionName === "edit" && onEdit()}
+      style={({ pressed }) => [bubble, pressed ? { borderColor: color.borderStrong } : null]}
+    >
+      <Txt>{text}</Txt>
+    </Pressable>
+  );
+}
+
+/** A one-line note under an answer (a Cowork notice, a memory saved from the question). */
+function NoteLine({ icon: IconCmp, text }: { icon: Icon; text: string }) {
+  return (
+    <View style={{ flexDirection: "row", alignItems: "flex-start", gap: space.sm }}>
+      <IconCmp size={16} color={color.muted} style={{ marginTop: 2 }} />
+      <Txt variant="small" style={{ flex: 1 }}>
+        {text}
+      </Txt>
     </View>
   );
+}
+
+function memoryLine(m: ChatMemory): string {
+  if (m.status === "exists") return `Already in memory: ${m.content}`;
+  if (m.status === "updated") return `Memory updated: ${m.content}`;
+  return `Saved to memory: ${m.content}`;
 }
 
 /** An inline error with Retry (failed turn, dropped connection, or a stopped answer). */
@@ -168,12 +203,15 @@ export function AssistantMessage({
   item,
   isLast,
   onRetry,
+  onRegenerate,
   onReport,
   onProposalStatus,
 }: {
   item: AssistantItem;
   isLast: boolean;
   onRetry: () => void;
+  /** Ask the question again; absent while another answer is being written. */
+  onRegenerate?: () => void;
   onReport: (messageId: string) => void;
   onProposalStatus: (id: string, status: string) => void;
 }) {
@@ -194,7 +232,14 @@ export function AssistantMessage({
         </View>
       ) : null}
       {item.text ? <Markdown text={item.text} /> : null}
+      {item.stopped && !item.streaming ? <NoteLine icon={StopIcon} text="Stopped before it finished." /> : null}
       {!item.streaming ? <Sources citations={item.citations} /> : null}
+      {item.notices.map((n) => (
+        <NoteLine key={n} icon={InfoIcon} text={n} />
+      ))}
+      {item.memories.map((m) => (
+        <NoteLine key={m.id} icon={BrainIcon} text={memoryLine(m)} />
+      ))}
       {item.proposals.map((p) => (
         <ProposalCard key={p.id} proposal={p} onStatus={onProposalStatus} />
       ))}
@@ -209,8 +254,14 @@ export function AssistantMessage({
               void Clipboard.setStringAsync(item.text).then(() => setCopied(true), () => {});
             }}
           />
+          {onRegenerate ? <MiniAction icon={ArrowClockwiseIcon} label="Ask again" accessibilityLabel="Ask the question again for a new answer" onPress={onRegenerate} /> : null}
           {item.id ? <MiniAction icon={FlagIcon} label="Report" accessibilityLabel="Report this response" onPress={() => onReport(item.id!)} /> : null}
         </View>
+      ) : null}
+      {!item.streaming && item.model ? (
+        <Txt variant="small" style={{ color: color.subtle, fontSize: 12 }} accessibilityLabel={`Written by ${item.model}`}>
+          {item.model}
+        </Txt>
       ) : null}
     </View>
   );

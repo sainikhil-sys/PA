@@ -58,6 +58,9 @@ export type Approval = {
 
 export type Conversation = { id: string; title: string; updatedAt: string; createdAt: string };
 
+/** A memory the agent saved from a message ("exists" means it already knew it). */
+export type ChatMemory = { id: string; content: string; kind: string; status: "saved" | "updated" | "exists"; previous?: string };
+
 export type Citation = { n: number; title: string; url?: string | null; source?: string };
 
 export type StoredMessage = {
@@ -65,7 +68,16 @@ export type StoredMessage = {
   role: "user" | "assistant";
   content: string;
   createdAt: string;
-  meta: { proposalIds?: string[]; citations?: Citation[]; error?: boolean; attachment?: { name: string } } & Record<string, unknown>;
+  meta: {
+    proposalIds?: string[];
+    citations?: Citation[];
+    error?: boolean;
+    attachment?: { name: string };
+    memories?: ChatMemory[];
+    notices?: string[];
+    model?: string;
+    stopped?: boolean;
+  } & Record<string, unknown>;
 };
 
 export type StoredProposal = { id: string; kind: string; summary: string; status: string };
@@ -78,6 +90,8 @@ export type ChatEvent =
   | { type: "citations"; citations: Citation[] }
   | { type: "text"; delta: string }
   | { type: "proposal"; proposal: { id: string; kind: string; label: string; summary: string } }
+  | { type: "memory"; memory: ChatMemory }
+  | { type: "notice"; text: string }
   | { type: "done"; messageId: string; generalKnowledge: boolean; model?: string }
   | { type: "error"; message: string };
 

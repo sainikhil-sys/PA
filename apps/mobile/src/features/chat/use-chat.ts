@@ -4,7 +4,7 @@ import { ApiError, errorText } from "@/lib/api";
 import { streamChat } from "@/lib/chat";
 import { keys } from "@/lib/queries";
 import { useSession } from "@/lib/session";
-import type { Citation, ConversationDetail } from "@/lib/types";
+import type { ChatMemory, Citation, ConversationDetail } from "@/lib/types";
 
 /** Same labels as the server's PROPOSAL_LABEL (stored proposals carry only their kind). */
 const PROPOSAL_LABEL: Record<string, string> = {
@@ -36,6 +36,14 @@ export type AssistantItem = {
   error?: string;
   /** Reply to a voice message: may be read aloud. */
   voice: boolean;
+  /** Memories saved from the question this answers. */
+  memories: ChatMemory[];
+  /** Fixed notes from Cowork, such as "Web search isn't set up". */
+  notices: string[];
+  /** The model that wrote the answer, when the server said. */
+  model?: string;
+  /** Stopped before it finished: the text is partial. */
+  stopped?: boolean;
 };
 export type ChatItem = UserItem | AssistantItem;
 
@@ -61,6 +69,10 @@ export function itemsFromHistory(d: ConversationDetail): ChatItem[] {
       proposals,
       streaming: false,
       voice: false,
+      memories: m.meta.memories ?? [],
+      notices: m.meta.notices ?? [],
+      model: m.meta.model,
+      stopped: m.meta.stopped,
     };
   });
 }
@@ -95,7 +107,7 @@ export function useChat(initialId: string | undefined, opts: { onReply?: (text: 
       setItems((list) => [
         ...list,
         { kind: "user", key: userKey, text, trigger },
-        { kind: "assistant", key: aKey, text: "", citations: [], proposals: [], streaming: true, voice: trigger === "voice" },
+        { kind: "assistant", key: aKey, text: "", citations: [], proposals: [], streaming: true, voice: trigger === "voice", memories: [], notices: [] },
       ]);
       const ctrl = new AbortController();
       abort.current = ctrl;
@@ -128,9 +140,16 @@ export function useChat(initialId: string | undefined, opts: { onReply?: (text: 
                 void qc.invalidateQueries({ queryKey: keys.approvals });
                 void qc.invalidateQueries({ queryKey: keys.me });
                 break;
+              case "memory":
+                patch(aKey, (a) => ({ ...a, memories: [...a.memories.filter((m) => m.id !== e.memory.id), e.memory] }));
+                if (e.memory.status !== "exists") void qc.invalidateQueries({ queryKey: keys.memories });
+                break;
+              case "notice":
+                patch(aKey, (a) => (a.notices.includes(e.text) ? a : { ...a, notices: [...a.notices, e.text] }));
+                break;
               case "done":
                 done = true;
-                patch(aKey, (a) => ({ ...a, id: e.messageId, streaming: false, status: undefined }));
+                patch(aKey, (a) => ({ ...a, id: e.messageId, streaming: false, status: undefined, model: e.model }));
                 break;
               case "error":
                 failed = true;
@@ -145,7 +164,7 @@ export function useChat(initialId: string | undefined, opts: { onReply?: (text: 
         const stopped = ctrl.signal.aborted || (err as Error)?.name === "AbortError";
         // The stream bypasses api(), so an expired session is handled here the same way.
         if (err instanceof ApiError && err.status === 401) useSession.getState().markExpired();
-        patch(aKey, (a) => ({ ...a, streaming: false, status: undefined, error: stopped ? (a.text ? undefined : "Stopped.") : errorText(err) }));
+        patch(aKey, (a) => ({ ...a, streaming: false, status: undefined, stopped: stopped && Boolean(a.text), error: stopped ? (a.text ? undefined : "Stopped.") : errorText(err) }));
       } finally {
         if (abort.current === ctrl) abort.current = null;
         setStreaming(false);
@@ -178,11 +197,42 @@ export function useChat(initialId: string | undefined, opts: { onReply?: (text: 
     void run(lastUser.text, lastUser.trigger, lastUser.id);
   }, [run]);
 
+  /**
+   * Edit a sent message: the server drops it and everything after, then answers the new text.
+   * Only for messages the server has stored (they have an id).
+   */
+  const edit = React.useCallback(
+    (userKey: string, text: string): boolean => {
+      const t = text.trim();
+      if (!t || abort.current) return false;
+      const list = itemsRef.current;
+      const idx = list.findIndex((it) => it.key === userKey && it.kind === "user");
+      const item = list[idx] as UserItem | undefined;
+      if (!item?.id) return false;
+      setItems(list.slice(0, idx));
+      void run(t, "text", item.id);
+      return true;
+    },
+    [run],
+  );
+
+  /** Ask again: answer the question before this reply once more, replacing the reply. */
+  const regenerate = React.useCallback(
+    (assistantKey: string): boolean => {
+      const list = itemsRef.current;
+      const aIdx = list.findIndex((it) => it.key === assistantKey);
+      const uIdx = list.slice(0, aIdx).findLastIndex((it) => it.kind === "user");
+      const item = list[uIdx] as UserItem | undefined;
+      return item ? edit(item.key, item.text) : false;
+    },
+    [edit],
+  );
+
   const stop = React.useCallback(() => abort.current?.abort(), []);
 
   const setProposalStatus = React.useCallback((proposalId: string, status: string) => {
     setItems((list) => list.map((it) => (it.kind === "assistant" && it.proposals.some((p) => p.id === proposalId) ? { ...it, proposals: it.proposals.map((p) => (p.id === proposalId ? { ...p, status } : p)) } : it)));
   }, []);
 
-  return { items, streaming, send, retry, stop, hydrate, setProposalStatus, conversationId };
+  return { items, streaming, send, retry, edit, regenerate, stop, hydrate, setProposalStatus, conversationId };
 }

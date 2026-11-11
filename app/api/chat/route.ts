@@ -34,17 +34,35 @@ export async function POST(req: Request) {
   if (!parsed.success) return errorJson(400, "invalid_request");
 
   const enc = new TextEncoder();
+  // Stop on the client closes the connection. The turn then ends early but still saves what was written
+  // so far (marked stopped), so reopening the chat shows the partial answer, not a bare question.
+  const stop = new AbortController();
+  req.signal.addEventListener("abort", () => stop.abort(), { once: true });
   const stream = new ReadableStream({
     async start(controller) {
-      const send = (e: ChatEvent) => controller.enqueue(enc.encode(`${JSON.stringify(e)}\n`));
+      const send = (e: ChatEvent) => {
+        if (stop.signal.aborted) return;
+        try {
+          controller.enqueue(enc.encode(`${JSON.stringify(e)}\n`));
+        } catch {
+          stop.abort();
+        }
+      };
       try {
-        for await (const ev of runChatTurn({ user: g.user, ...parsed.data })) send(ev);
+        for await (const ev of runChatTurn({ user: g.user, ...parsed.data, signal: stop.signal })) send(ev);
       } catch (err) {
         log.error("chat.failed", { error: errMessage(err) });
         send({ type: "error", message: "Something went wrong. Please try again." });
       } finally {
-        controller.close();
+        try {
+          controller.close();
+        } catch {
+          // Already closed by the client.
+        }
       }
+    },
+    cancel() {
+      stop.abort();
     },
   });
   return new Response(stream, { headers: { "content-type": "application/x-ndjson; charset=utf-8", "cache-control": "no-store", "x-accel-buffering": "no" } });

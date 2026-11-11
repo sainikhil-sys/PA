@@ -822,6 +822,8 @@ export type MessageMeta = {
   notices?: string[];
   /** Steps the agent took this turn (max 7), shown as the step timeline. */
   steps?: AgentStepMeta[];
+  /** The person pressed Stop; the text is the part written before that. */
+  stopped?: boolean;
 };
 
 export const messages = pgTable(
