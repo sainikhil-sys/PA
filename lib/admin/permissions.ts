@@ -12,6 +12,8 @@ export const PERMISSIONS = [
   "users.suspend",
   "users.sessions.revoke",
   "users.delete",
+  /** Record a deletion request (support); only the owner completes it (users.delete). */
+  "users.deletion_request",
   "config.read",
   "config.write",
   "config.rollback",
@@ -56,8 +58,8 @@ const ADMIN = new Set<Permission>(PERMISSIONS.filter((p) => !OWNER_ONLY.has(p)))
 export const ROLE_PERMISSIONS: Record<AdminRole, ReadonlySet<Permission>> = {
   owner: ALL,
   admin: ADMIN,
-  moderator: new Set<Permission>(["overview.read", "users.read", "users.suspend", "community.moderate"]),
-  support: new Set<Permission>(["overview.read", "users.read", "users.sessions.revoke"]),
+  moderator: new Set<Permission>(["overview.read", "users.read", "community.moderate"]),
+  support: new Set<Permission>(["overview.read", "users.read", "users.sessions.revoke", "users.deletion_request"]),
   analyst: new Set<Permission>(["overview.read", "analytics.read", "infra.read", "ai.read", "connect.read"]),
 };
 

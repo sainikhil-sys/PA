@@ -25,6 +25,9 @@ describe("admin permissions", () => {
     expect(can("support", "users.suspend")).toBe(false);
     expect(can("support", "users.sessions.revoke")).toBe(true);
     expect(can("moderator", "notifications.send")).toBe(false);
+    expect(can("moderator", "users.suspend")).toBe(false);
+    expect(can("support", "users.deletion_request")).toBe(true);
+    expect(can("support", "users.delete")).toBe(false);
     expect(can("analyst", "users.read")).toBe(false);
     expect(can("analyst", "analytics.read")).toBe(true);
   });

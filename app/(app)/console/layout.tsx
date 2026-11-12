@@ -3,19 +3,10 @@ import { ConsoleNav } from "@/components/admin/parts";
 import { LockButton } from "@/components/admin/step-up";
 import { getAdminSession } from "@/lib/admin/admin-session";
 import { requireAdminRole } from "@/lib/admin/guard";
-import { can, type Permission } from "@/lib/admin/permissions";
+import { CONSOLE_PAGES } from "@/lib/admin/nav";
+import { can } from "@/lib/admin/permissions";
 import { getAdminRole } from "@/lib/admin/roles";
 import { getOwner } from "@/lib/auth/session";
-
-/** The permission each console page needs; the page itself checks it again. */
-const TAB_PERMISSION: Record<string, Permission> = {
-  "/console": "overview.read",
-  "/console/users": "users.read",
-  "/console/broadcast": "notifications.send",
-  "/console/ai": "ai.read",
-  "/console/system": "infra.read",
-  "/console/security": "audit.read",
-};
 
 /** The title only for role holders: everyone else gets the same page title as any missing page. */
 export async function generateMetadata(): Promise<Metadata> {
@@ -30,7 +21,7 @@ const ROLE_LABEL = { owner: "Owner", admin: "Admin", moderator: "Moderator", sup
 export default async function ConsoleLayout({ children }: { children: React.ReactNode }) {
   const { adminRole } = await requireAdminRole();
   const unlocked = Boolean(await getAdminSession());
-  const allowed = Object.keys(TAB_PERMISSION).filter((href) => can(adminRole, TAB_PERMISSION[href]!));
+  const tabs = CONSOLE_PAGES.filter((p) => can(adminRole, p.permission)).map(({ href, label }) => ({ href, label }));
   return (
     <>
       <div className="mb-3 flex items-end justify-between gap-3">
@@ -42,7 +33,7 @@ export default async function ConsoleLayout({ children }: { children: React.Reac
           </div>
         ) : null}
       </div>
-      {unlocked ? <ConsoleNav allowed={allowed} /> : null}
+      {unlocked ? <ConsoleNav tabs={tabs} /> : null}
       {children}
     </>
   );
