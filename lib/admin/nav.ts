@@ -7,6 +7,7 @@ import type { Permission } from "./permissions";
 export const CONSOLE_PAGES: readonly { href: string; label: string; permission: Permission }[] = [
   { href: "/console", label: "Overview", permission: "overview.read" },
   { href: "/console/users", label: "Users", permission: "users.read" },
+  { href: "/console/reports", label: "Reports", permission: "community.moderate" },
   { href: "/console/deletion", label: "Deletion requests", permission: "users.deletion_request" },
   { href: "/console/announcements", label: "Announcements", permission: "notifications.send" },
   { href: "/console/broadcast", label: "Broadcast", permission: "notifications.send" },

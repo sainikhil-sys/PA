@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 import { apiGuard } from "@/lib/auth/api";
 import { db, schema } from "@/lib/db";
 import { logActivity } from "@/lib/db/queries/activity";
+import { socialExport } from "./social";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -63,6 +64,7 @@ export async function GET(req: Request) {
     db().select().from(schema.activityLog).where(by(schema.activityLog)),
   ]);
   const [chatAttachments, focusSessions, meetingNotes, expenses, expenseBudgets, learningItems, learningLogs] = await newer;
+  const social = await socialExport(uid);
   // Exports carry the person's content, not secrets or internal routing: no encrypted keys, no model or run ids.
   const strip = <T extends Record<string, unknown>>(rows: T[], keys: string[]) => rows.map((r) => Object.fromEntries(Object.entries(r).filter(([k]) => !keys.includes(k))));
   const data = {
@@ -91,6 +93,7 @@ export async function GET(req: Request) {
     learningItems,
     learningLogs,
     activity,
+    social,
   };
   await logActivity({ userId: uid, actor: "me", tool: "data.exported", inputSummary: format, outcome: "success" });
   const stamp = new Date().toISOString().slice(0, 10);
@@ -127,6 +130,20 @@ export async function GET(req: Request) {
     ...drafts.map((d) => `### ${d.title} (${d.status})\n\n${d.body}\n`),
     `\n## Conversations (${conversations.length})\n`,
     ...conversations.map((c) => [`### ${c.title}`, ...messages.filter((m) => m.conversationId === c.id).map((m) => `**${m.role === "user" ? "You" : "Agent"}:** ${m.content}\n`)].join("\n\n")),
+    ...(social.profile
+      ? [
+          `\n## Chats\n\nHandle @${social.profile.handle} (${social.profile.displayName})`,
+          `\n### Friends (${social.friends.filter((f) => f.status === "accepted").length})\n`,
+          ...social.friends.filter((f) => f.status === "accepted").map((f) => `- @${f.handle}`),
+          `\n### Blocked (${social.blocked.length})\n`,
+          ...social.blocked.map((b) => `- @${b.handle}`),
+          `\n### Messages you sent (${social.messagesSent.length})\n`,
+          ...social.chats.map((c) => {
+            const mine = social.messagesSent.filter((m) => m.threadId === c.threadId);
+            return mine.length ? [`#### ${c.kind === "group" ? (c.title ?? "Group") : "Direct chat"}`, ...mine.map((m) => `- ${m.createdAt.toISOString().slice(0, 16).replace("T", " ")}: ${m.body}`)].join("\n") : "";
+          }),
+        ]
+      : []),
   ].join("\n");
   return new Response(md, { headers: { "content-type": "text/markdown; charset=utf-8", "content-disposition": `attachment; filename="cowork-export-${stamp}.md"`, "cache-control": "no-store" } });
 }

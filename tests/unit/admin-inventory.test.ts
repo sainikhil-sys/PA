@@ -46,7 +46,7 @@ describe("admin route inventory", () => {
 });
 
 /** admin-auth.ts is the exception: it creates the admin session the ops require. */
-const actionFiles = fs.readdirSync(path.join(ROOT, "app/actions")).filter((f) => /^admin(-[\w-]+)?\.ts$/.test(f) && f !== "admin-auth.ts");
+const actionFiles = fs.readdirSync(path.join(ROOT, "app/actions")).filter((f) => /^(admin(-[\w-]+)?|moderation)\.ts$/.test(f) && f !== "admin-auth.ts");
 
 describe.each(actionFiles)("admin server actions in %s", (file) => {
   const src = fs.readFileSync(path.join(ROOT, "app/actions", file), "utf8");
