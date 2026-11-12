@@ -1,14 +1,18 @@
 import { sql } from "drizzle-orm";
 import {
+  bigint,
+  bigserial,
   boolean,
   customType,
   date,
   doublePrecision,
+  foreignKey,
   index,
   integer,
   jsonb,
   pgEnum,
   pgTable,
+  primaryKey,
   text,
   timestamp,
   uniqueIndex,
@@ -106,32 +110,284 @@ export const sessions = pgTable(
     expiresAt: ts("expires_at").notNull(),
     revokedAt: ts("revoked_at"),
     createdAt: createdAt(),
+    /** Latest client details from request headers (X-Cowork-*), stored during the session touch. */
+    platform: text("platform"),
+    appVersion: text("app_version"),
+    appBuild: integer("app_build"),
+    runtimeVersion: text("runtime_version"),
+    updateId: text("update_id"),
   },
   (t) => [index("sessions_user_idx").on(t.userId)],
 );
 
-// ---------- Admin console ----------
+// ---------- Admin console (docs/ADMIN_CONSOLE_PROPOSAL.md, section 3) ----------
 /** Roles are fixed in code (lib/admin/permissions.ts); this enum only names them. */
 export const adminRole = pgEnum("admin_role", ["owner", "admin", "moderator", "support", "analyst"]);
 
 /**
- * Who holds an admin role. Written only by scripts/admin-bootstrap.ts (the owner) and, later, by the
- * owner through the console. One row per user; at most one owner (partial unique index).
+ * Who holds an admin role. The owner row is written only by scripts/admin-bootstrap.mjs; other roles by
+ * the owner (roles.manage). One active role per person, at most one active owner. Revoked rows stay.
  */
 export const adminRoleAssignments = pgTable(
   "admin_role_assignments",
   {
-    userId: uuid("user_id")
-      .primaryKey()
-      .references(() => users.id, { onDelete: "cascade" }),
+    id: id(),
+    userId: userId(),
     role: adminRole("role").notNull(),
     grantedBy: uuid("granted_by").references(() => users.id, { onDelete: "set null" }),
-    /** How the role was granted: "bootstrap" (server script) or "console". */
-    source: text("source").notNull(),
+    /** "bootstrap" (server script) or "console". */
+    source: text("source").$type<"bootstrap" | "console">().notNull(),
+    note: text("note"),
+    createdAt: createdAt(),
+    revokedAt: ts("revoked_at"),
+    revokedBy: uuid("revoked_by").references(() => users.id, { onDelete: "set null" }),
+  },
+  (t) => [
+    uniqueIndex("admin_role_active_user_idx").on(t.userId).where(sql`revoked_at is null`),
+    uniqueIndex("admin_role_one_owner_idx").on(t.role).where(sql`role = 'owner' and revoked_at is null`),
+  ],
+);
+
+/** TOTP second factor for admin work. The secret is AES-256-GCM encrypted (lib/security/crypto). */
+export const adminMfa = pgTable("admin_mfa", {
+  userId: uuid("user_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  totpSecretEnc: text("totp_secret_enc").notNull(),
+  /** Last accepted 30-second step; a code for this step or earlier is refused (replay). */
+  lastUsedStep: bigint("last_used_step", { mode: "number" }),
+  /** SHA-256 hashes of single-use recovery codes; a used code is removed. */
+  recoveryCodeHashes: text("recovery_code_hashes").array().notNull(),
+  /** Null until the first code is confirmed; an unconfirmed secret grants nothing. */
+  enabledAt: ts("enabled_at"),
+  failedCount: integer("failed_count").notNull().default(0),
+  lockedUntil: ts("locked_until"),
+  updatedAt: updatedAt(),
+});
+
+/** Short admin session created by a step-up, bound to one user session. Stored hashed. */
+export const adminSessions = pgTable(
+  "admin_sessions",
+  {
+    id: id(),
+    userId: userId(),
+    userSessionId: uuid("user_session_id")
+      .notNull()
+      .references(() => sessions.id, { onDelete: "cascade" }),
+    tokenHash: text("token_hash").notNull().unique(),
+    method: text("method").$type<"totp" | "recovery" | "passkey">().notNull(),
+    platform: text("platform").$type<"web" | "android">().notNull(),
+    ipPrefix: text("ip_prefix"),
+    userAgent: text("user_agent"),
+    lastSeenAt: ts("last_seen_at").notNull().defaultNow(),
+    /** Absolute limit (2 hours). The idle limit (15 minutes) is checked against lastSeenAt. */
+    expiresAt: ts("expires_at").notNull(),
+    revokedAt: ts("revoked_at"),
     createdAt: createdAt(),
   },
-  (t) => [uniqueIndex("admin_role_one_owner_idx").on(t.role).where(sql`role = 'owner'`)],
+  (t) => [index("admin_sessions_user_idx").on(t.userId, t.createdAt)],
 );
+
+/**
+ * Append-only admin audit trail. Triggers in the migration set prev_hash and hash on insert and reject
+ * UPDATE, DELETE and TRUNCATE. No foreign keys, so deleting a user never deletes history.
+ */
+export const adminAuditLogs = pgTable(
+  "admin_audit_logs",
+  {
+    seq: bigserial("seq", { mode: "number" }).primaryKey(),
+    createdAt: createdAt(),
+    actorUserId: uuid("actor_user_id"),
+    actorEmailHash: text("actor_email_hash"),
+    actorRole: text("actor_role"),
+    adminSessionId: uuid("admin_session_id"),
+    action: text("action").notNull(),
+    resourceType: text("resource_type").notNull(),
+    resourceId: text("resource_id"),
+    before: jsonb("before"),
+    after: jsonb("after"),
+    reason: text("reason"),
+    outcome: text("outcome").$type<"success" | "denied" | "failed">().notNull(),
+    ipPrefix: text("ip_prefix"),
+    userAgent: text("user_agent"),
+    requestId: text("request_id"),
+    /** Set by the insert trigger. */
+    prevHash: text("prev_hash"),
+    hash: text("hash").notNull().default(""),
+  },
+  (t) => [index("audit_created_idx").on(t.createdAt), index("audit_actor_idx").on(t.actorUserId, t.createdAt), index("audit_resource_idx").on(t.resourceType, t.resourceId)],
+);
+
+/** One-time confirmation tokens for destructive admin operations (2 minutes, bound to the exact input). */
+export const adminConfirmations = pgTable(
+  "admin_confirmations",
+  {
+    id: id(),
+    userId: userId(),
+    tokenHash: text("token_hash").notNull().unique(),
+    action: text("action").notNull(),
+    /** SHA-256 of the canonical JSON input; the commit must match it. */
+    inputHash: text("input_hash").notNull(),
+    expiresAt: ts("expires_at").notNull(),
+    usedAt: ts("used_at"),
+    createdAt: createdAt(),
+  },
+  (t) => [index("admin_confirmations_user_idx").on(t.userId)],
+);
+
+// ---------- Configuration (keys must exist in lib/config/registry.ts) ----------
+export const appConfiguration = pgTable("app_configuration", {
+  key: text("key").primaryKey(),
+  value: jsonb("value").notNull(),
+  version: integer("version").notNull().default(1),
+  updatedBy: uuid("updated_by").references(() => users.id, { onDelete: "set null" }),
+  updatedAt: updatedAt(),
+});
+
+export const appConfigurationHistory = pgTable(
+  "app_configuration_history",
+  {
+    id: id(),
+    key: text("key").notNull(),
+    version: integer("version").notNull(),
+    value: jsonb("value").notNull(),
+    previousValue: jsonb("previous_value"),
+    restoredFromVersion: integer("restored_from_version"),
+    actorUserId: uuid("actor_user_id"),
+    reason: text("reason"),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("config_history_key_version_idx").on(t.key, t.version)],
+);
+
+// ---------- Feature flags (keys must exist in lib/flags/registry.ts) ----------
+export type FlagTargeting = {
+  platforms?: ("web" | "android")[];
+  minAppVersion?: string;
+  maxAppVersion?: string;
+  segments?: ("admins" | "beta" | "new_users_30d" | "signed_up_before")[];
+  signedUpBefore?: string;
+  allowUserIds?: string[];
+  denyUserIds?: string[];
+};
+
+export const featureFlags = pgTable("feature_flags", {
+  key: text("key").primaryKey(),
+  description: text("description").notNull().default(""),
+  enabled: boolean("enabled").notNull().default(false),
+  rolloutPercent: integer("rollout_percent").notNull().default(0),
+  targeting: jsonb("targeting").$type<FlagTargeting>().notNull().default({}),
+  startsAt: ts("starts_at"),
+  endsAt: ts("ends_at"),
+  version: integer("version").notNull().default(1),
+  updatedBy: uuid("updated_by").references(() => users.id, { onDelete: "set null" }),
+  updatedAt: updatedAt(),
+  archivedAt: ts("archived_at"),
+});
+
+export const featureFlagHistory = pgTable(
+  "feature_flag_history",
+  {
+    id: id(),
+    key: text("key").notNull(),
+    version: integer("version").notNull(),
+    value: jsonb("value").notNull(),
+    previousValue: jsonb("previous_value"),
+    restoredFromVersion: integer("restored_from_version"),
+    actorUserId: uuid("actor_user_id"),
+    reason: text("reason"),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("flag_history_key_version_idx").on(t.key, t.version)],
+);
+
+// ---------- Releases (the update policy is a configuration key per platform) ----------
+export const applicationReleases = pgTable(
+  "application_releases",
+  {
+    id: id(),
+    platform: text("platform").$type<"android" | "web">().notNull(),
+    kind: text("kind").$type<"store" | "ota">().notNull(),
+    version: text("version").notNull(),
+    buildNumber: integer("build_number"),
+    runtimeVersion: text("runtime_version"),
+    channel: text("channel").notNull().default("production"),
+    updateGroupId: text("update_group_id"),
+    status: text("status").$type<"draft" | "testing" | "live" | "halted" | "retired">().notNull().default("draft"),
+    notes: text("notes").notNull().default(""),
+    storeUrl: text("store_url"),
+    createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+    releasedAt: ts("released_at"),
+  },
+  (t) => [uniqueIndex("release_unique_idx").on(t.platform, t.kind, t.version, t.channel)],
+);
+
+// ---------- Announcements (persistent and time-boxed; broadcasts stay one-shot sends) ----------
+export const systemAnnouncements = pgTable("system_announcements", {
+  id: id(),
+  title: text("title").notNull(),
+  body: text("body").notNull(),
+  severity: text("severity").$type<"info" | "warning" | "critical">().notNull().default("info"),
+  placement: text("placement").$type<"banner" | "home_card">().notNull().default("banner"),
+  /** In-app path only, same rule as broadcasts. */
+  href: text("href"),
+  targeting: jsonb("targeting").$type<FlagTargeting>().notNull().default({}),
+  dismissible: boolean("dismissible").notNull().default(true),
+  startsAt: ts("starts_at").notNull(),
+  endsAt: ts("ends_at"),
+  createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
+  createdAt: createdAt(),
+  archivedAt: ts("archived_at"),
+});
+
+export const announcementDismissals = pgTable(
+  "announcement_dismissals",
+  {
+    userId: userId(),
+    announcementId: uuid("announcement_id").notNull(),
+    dismissedAt: createdAt(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.userId, t.announcementId] }),
+    foreignKey({ name: "announcement_dismissals_announcement_fk", columns: [t.announcementId], foreignColumns: [systemAnnouncements.id] }).onDelete("cascade"),
+  ],
+);
+
+// ---------- Users: restrictions and deletion requests ----------
+export const RESTRICTABLE_FEATURES = ["ai", "uploads", "automations", "connect", "community"] as const;
+export type RestrictableFeature = (typeof RESTRICTABLE_FEATURES)[number];
+
+export const userRestrictions = pgTable(
+  "user_restrictions",
+  {
+    id: id(),
+    userId: userId(),
+    feature: text("feature").$type<RestrictableFeature>().notNull(),
+    reason: text("reason").notNull(),
+    expiresAt: ts("expires_at"),
+    createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+    liftedAt: ts("lifted_at"),
+  },
+  (t) => [index("user_restrictions_user_idx").on(t.userId)],
+);
+
+export const accountDeletionRequests = pgTable("account_deletion_requests", {
+  id: id(),
+  userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
+  /** Kept after deletion as proof it was done. */
+  emailHash: text("email_hash").notNull(),
+  source: text("source").$type<"email" | "support">().notNull(),
+  status: text("status").$type<"received" | "verified" | "completed" | "rejected">().notNull().default("received"),
+  /** received + 30 days, as /delete-account promises. */
+  dueBy: ts("due_by").notNull(),
+  note: text("note"),
+  recordedBy: uuid("recorded_by"),
+  completedBy: uuid("completed_by"),
+  createdAt: createdAt(),
+  completedAt: ts("completed_at"),
+});
 
 export type AgentSettings = {
   name: string;

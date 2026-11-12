@@ -11,6 +11,7 @@ const TABS = [
   { href: "/console/broadcast", label: "Broadcast" },
   { href: "/console/ai", label: "AI & tokens" },
   { href: "/console/system", label: "System" },
+  { href: "/console/security", label: "Security" },
 ];
 
 /** `allowed`: the tab hrefs this account's role may open (decided on the server). */

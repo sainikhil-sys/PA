@@ -3,7 +3,7 @@ import { Redis } from "@upstash/redis";
 import { sql } from "drizzle-orm";
 import { log } from "@/lib/log";
 
-export type LimitName = "mcp" | "api" | "auth" | "oauth" | "ai" | "otpEmail" | "otpIp" | "otpVerify" | "webhook" | "notifyEmail" | "phone";
+export type LimitName = "mcp" | "api" | "auth" | "oauth" | "ai" | "otpEmail" | "otpIp" | "otpVerify" | "webhook" | "notifyEmail" | "phone" | "admin" | "adminStepUp" | "adminEmailCode";
 
 /** Requests per window. Tuned for a single user plus Claude. */
 const LIMITS: Record<LimitName, { tokens: number; window: `${number} s` | `${number} m` }> = {
@@ -21,6 +21,12 @@ const LIMITS: Record<LimitName, { tokens: number; window: `${number} s` | `${num
   notifyEmail: { tokens: 30, window: "1440 m" },
   // Linked phones post in small batches; generous but bounded.
   phone: { tokens: 120, window: "1 m" },
+  // Admin console operations per person.
+  admin: { tokens: 120, window: "1 m" },
+  // Step-up code attempts per person and per IP (lockout after 5 wrong codes is separate).
+  adminStepUp: { tokens: 10, window: "15 m" },
+  // Enrolment email codes per person.
+  adminEmailCode: { tokens: 5, window: "60 m" },
 };
 
 export type LimitResult = { success: boolean; limit: number; remaining: number; reset: number };

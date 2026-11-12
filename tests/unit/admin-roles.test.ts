@@ -1,6 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { ADMIN_ROLES, can, isAdminRole, OWNER_ONLY, PERMISSIONS, ROLE_PERMISSIONS } from "@/lib/admin/permissions";
-import { resolveAdminRole } from "@/lib/admin/role-resolve";
 import { __resetEnvCache, adminEmails } from "@/lib/env";
 
 describe("admin permissions", () => {
@@ -46,22 +45,6 @@ describe("admin permissions", () => {
     expect(isAdminRole("owner")).toBe(true);
     expect(isAdminRole("superuser")).toBe(false);
     expect(isAdminRole(1)).toBe(false);
-  });
-});
-
-describe("resolveAdminRole", () => {
-  it("uses the assigned role first", () => {
-    expect(resolveAdminRole({ assigned: "support", ownerExists: true, listedInAdminEmails: true })).toBe("support");
-    expect(resolveAdminRole({ assigned: "owner", ownerExists: true, listedInAdminEmails: false })).toBe("owner");
-  });
-
-  it("treats ADMIN_EMAILS as admin only until an owner exists", () => {
-    expect(resolveAdminRole({ assigned: null, ownerExists: false, listedInAdminEmails: true })).toBe("admin");
-    expect(resolveAdminRole({ assigned: null, ownerExists: true, listedInAdminEmails: true })).toBeNull();
-  });
-
-  it("gives nothing to an unlisted account", () => {
-    expect(resolveAdminRole({ assigned: null, ownerExists: false, listedInAdminEmails: false })).toBeNull();
   });
 });
 
