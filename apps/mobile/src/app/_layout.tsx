@@ -145,6 +145,9 @@ function App({ scheme, signedIn, onboarded, gate, covered }: { scheme: Scheme; s
                   <Stack.Screen name="u/[handle]" />
                   <Stack.Screen name="follows" />
                   <Stack.Screen name="connect" />
+                  <Stack.Screen name="space/new" options={{ presentation: "modal" }} />
+                  <Stack.Screen name="space/[id]" />
+                  <Stack.Screen name="workspace" />
                   <Stack.Screen name="admin" />
                 </Stack.Protected>
               </Stack>

@@ -12,22 +12,35 @@ const KEY = "cowork.connect.identity";
 const NAME = "cowork.connect.name";
 
 let cached: KeyPair | null = null;
+let pending: Promise<KeyPair> | null = null;
 
-export async function loadIdentity(): Promise<KeyPair> {
-  if (cached) return cached;
-  const stored = await SecureStore.getItemAsync(KEY);
-  if (stored && /^[0-9a-f]{64}$/.test(stored)) {
-    cached = keyPairFromPrivate(fromHex(stored));
-    return cached;
-  }
-  const kp = generateKeyPair();
-  await SecureStore.setItemAsync(KEY, toHex(kp.privateKey));
-  cached = kp;
-  return kp;
+/**
+ * Single-flight: Connect, Calls, Walkie and Groups all ask for the identity at the same moment
+ * when Connect opens. Before this, on a fresh install each caller found no stored key and made its
+ * own, so the link and Calls/Walkie used different keys and every call invite and Walkie join was
+ * rejected as "not from this person". Every caller now waits for the same load-or-create.
+ */
+export function loadIdentity(): Promise<KeyPair> {
+  if (cached) return Promise.resolve(cached);
+  pending ??= (async () => {
+    const stored = await SecureStore.getItemAsync(KEY);
+    if (stored && /^[0-9a-f]{64}$/.test(stored)) {
+      cached = keyPairFromPrivate(fromHex(stored));
+      return cached;
+    }
+    const kp = generateKeyPair();
+    await SecureStore.setItemAsync(KEY, toHex(kp.privateKey));
+    cached = kp;
+    return kp;
+  })().finally(() => {
+    pending = null;
+  });
+  return pending;
 }
 
 export async function resetIdentity(): Promise<void> {
   cached = null;
+  pending = null;
   await SecureStore.deleteItemAsync(KEY);
 }
 

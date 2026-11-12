@@ -25,11 +25,12 @@ export const CONFIRM_HEADER = "x-cowork-confirm";
  * can't be forged by a browser. Responses never include secrets: only what the op returns.
  */
 export function adminRoute<S extends z.ZodType, R>(def: OpDef<S, R>, method: "GET" | "POST" | "PATCH" | "DELETE") {
-  return async (req: Request, ctx?: { params?: Promise<Record<string, string>> }): Promise<Response> => {
+  // Next passes the route context on every call; its type must match what next build checks (params is required).
+  return async (req: Request, ctx: { params: Promise<Record<string, string>> }): Promise<Response> => {
     if (req.method !== method) return errorJson(405, "Method not allowed", { code: "method_not_allowed" });
     const bearer = /^Bearer /.test(req.headers.get("authorization") ?? "");
     if (method !== "GET" && !bearer && !isSameOrigin(req)) return errorJson(403, "forbidden", { code: "forbidden" });
-    const params = ctx?.params ? await ctx.params : {};
+    const params: Record<string, string> = (await ctx?.params) ?? {};
     let body: unknown = {};
     if (method === "GET") {
       body = Object.fromEntries(new URL(req.url).searchParams);

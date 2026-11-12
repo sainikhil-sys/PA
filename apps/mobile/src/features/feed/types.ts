@@ -21,7 +21,14 @@ export type Post = {
   mine: boolean;
   createdAt: string;
   editedAt: string | null;
+  /** Newer servers: posts in Spaces can be announcements or polls, and can be pinned. */
+  kind?: "post" | "announcement" | "poll";
+  pinned?: boolean;
+  space?: { id: string; slug: string; name: string } | null;
+  poll?: Poll | null;
 };
+
+export type Poll = { options: { text: string; votes: number; mine: boolean }[]; multiple: boolean; closesAt: string | null; closed: boolean; total: number };
 
 export type FeedPage = { items: Post[]; next: string | null };
 

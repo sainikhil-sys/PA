@@ -8,7 +8,7 @@ import { Button, IconButton, Screen, Txt } from "@/components/ui";
 import { useCreatePost } from "@/features/feed/api";
 import { VISIBILITY_LABEL, type Visibility } from "@/features/feed/types";
 import { pickPhotos, photosSupported, uploadPhoto, type LocalPhoto } from "@/features/feed/upload";
-import { errorText } from "@/lib/api";
+import { ApiError, errorText } from "@/lib/api";
 import { useMe } from "@/lib/queries";
 import { color, radius, space, TOUCH, type } from "@/theme/tokens";
 
@@ -26,6 +26,8 @@ export default function NewPost() {
   const [photos, setPhotos] = React.useState<LocalPhoto[]>([]);
   const [busy, setBusy] = React.useState<string | null>(null);
   const [error, setError] = React.useState<string | null>(null);
+  // The server said uploads are off (503 until photo storage is set up): offer to post the text alone.
+  const [uploadsOff, setUploadsOff] = React.useState(false);
   const canPhotos = photosSupported();
 
   const addPhotos = async () => {
@@ -41,18 +43,20 @@ export default function NewPost() {
     }
   };
 
-  const publish = async () => {
+  const publish = async (withPhotos = true) => {
     setError(null);
     try {
       const mediaIds: string[] = [];
-      for (let i = 0; i < photos.length; i++) {
-        setBusy(`Uploading photo ${i + 1} of ${photos.length}...`);
-        mediaIds.push(await uploadPhoto(photos[i]!));
+      const toUpload = withPhotos ? photos : [];
+      for (let i = 0; i < toUpload.length; i++) {
+        setBusy(`Uploading photo ${i + 1} of ${toUpload.length}...`);
+        mediaIds.push(await uploadPhoto(toUpload[i]!));
       }
       setBusy("Posting...");
       const post = await create.mutateAsync({ body: body.trim(), visibility, mediaIds });
       router.replace(post.status === "held" ? `/post/${post.id}` : "/");
     } catch (e) {
+      if (e instanceof ApiError && e.status === 503) setUploadsOff(true);
       setError(errorText(e));
     } finally {
       setBusy(null);
@@ -147,6 +151,18 @@ export default function NewPost() {
             <Txt variant="small" style={{ color: color.danger }} accessibilityLiveRegion="polite">
               {error}
             </Txt>
+          ) : null}
+          {uploadsOff && photos.length && body.trim() ? (
+            <Button
+              label="Post without photos"
+              variant="primary"
+              disabled={Boolean(busy)}
+              onPress={() => {
+                setPhotos([]);
+                setUploadsOff(false);
+                void publish(false);
+              }}
+            />
           ) : null}
           <View style={{ height: insets.bottom }} />
         </ScrollView>
