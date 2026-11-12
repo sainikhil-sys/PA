@@ -6,9 +6,11 @@ import * as React from "react";
 import { toast } from "sonner";
 import { retryDeadJob, setUserDisabled, testServerAi } from "@/app/actions/admin";
 import { Button } from "@/components/ui/button";
+import { useConfirm } from "./confirm";
 
 export function DisableToggle({ userId, disabled, self }: { userId: string; disabled: boolean; self: boolean }) {
   const router = useRouter();
+  const confirm = useConfirm();
   const [pending, start] = React.useTransition();
   if (self) return <span className="text-[12px] text-subtle">You</span>;
   return (
@@ -18,7 +20,7 @@ export function DisableToggle({ userId, disabled, self }: { userId: string; disa
       disabled={pending}
       onClick={() =>
         start(async () => {
-          if (!disabled && !window.confirm("Disable this account? They're signed out everywhere and can't sign in until you enable it.")) return;
+          if (!disabled && !(await confirm({ title: "Disable this account?", message: "They're signed out everywhere and can't sign in until you enable it.", confirmLabel: "Disable", danger: true }))) return;
           const r = await setUserDisabled({ userId, disabled: !disabled });
           if (!r.ok) return void toast.error(r.error);
           toast.success(disabled ? "Account enabled" : "Account disabled");

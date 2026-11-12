@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { FieldError, FieldHint, Input, inputClass, Label } from "@/components/ui/input";
 import type { AdminActionResult } from "@/lib/admin/adapters";
 import { cn } from "@/lib/utils";
+import { useConfirm } from "./confirm";
 
 const ROLES = [
   { value: "admin", label: "Admin" },
@@ -23,13 +24,14 @@ type Role = (typeof ROLES)[number]["value"];
  */
 function useAdminCall() {
   const router = useRouter();
+  const confirm = useConfirm();
   const [pending, start] = React.useTransition();
   const run = React.useCallback(
     (call: (token?: string) => Promise<AdminActionResult<unknown>>, done: string, onError?: (msg: string) => void) =>
       start(async () => {
         let r = await call();
         if (!r.ok && r.code === "confirm_required" && r.confirm) {
-          if (!window.confirm(r.confirm.summary)) return;
+          if (!(await confirm({ title: "Confirm this change", message: r.confirm.summary, danger: true }))) return;
           r = await call(r.confirm.token);
         }
         if (!r.ok) {
@@ -40,9 +42,9 @@ function useAdminCall() {
         toast.success(done);
         router.refresh();
       }),
-    [router],
+    [router, confirm],
   );
-  return { pending, run };
+  return { pending, run, confirm };
 }
 
 export function GrantRoleForm() {
@@ -128,14 +130,14 @@ export function RoleRowActions({ userId, role, hasMfa }: { userId: string; role:
 
 /** Ends an admin session. `own`: one of yours (any role); otherwise the owner ends someone else's. */
 export function RevokeSessionButton({ id, own, current }: { id: string; own: boolean; current: boolean }) {
-  const { pending, run } = useAdminCall();
+  const { pending, run, confirm } = useAdminCall();
   return (
     <Button
       size="sm"
       variant="ghost"
       disabled={pending}
-      onClick={() => {
-        if (current && !window.confirm("This is the session you're using now. Ending it locks the console here.")) return;
+      onClick={async () => {
+        if (current && !(await confirm({ title: "End this session?", message: "This is the session you're using now. Ending it locks the console here.", confirmLabel: "End session" }))) return;
         run(() => (own ? revokeMyAdminSession({ id }) : revokeAdminSession({ id })), "Admin session ended");
       }}
     >

@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import type { AdminActionResult } from "@/lib/admin/adapters";
+import type { ConfirmOptions } from "./confirm";
 import type { ConfigField } from "@/lib/config/registry";
 import { Input, inputClass, Textarea } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -10,10 +11,10 @@ import { cn } from "@/lib/utils";
  * Runs a console action. A destructive one answers "confirm_required" with a plain summary: the person
  * confirms it and the action runs again with the one-time token.
  */
-export async function runConfirmed<R>(call: (token?: string) => Promise<AdminActionResult<R>>): Promise<AdminActionResult<R> | null> {
+export async function runConfirmed<R>(call: (token?: string) => Promise<AdminActionResult<R>>, confirm: (o: ConfirmOptions) => Promise<boolean>): Promise<AdminActionResult<R> | null> {
   const first = await call();
   if (first.ok || first.code !== "confirm_required" || !first.confirm) return first;
-  if (!window.confirm(`${first.confirm.summary}\n\nContinue?`)) return null;
+  if (!(await confirm({ title: "Confirm this change", message: first.confirm.summary, confirmLabel: "Confirm", danger: true }))) return null;
   return call(first.confirm.token);
 }
 

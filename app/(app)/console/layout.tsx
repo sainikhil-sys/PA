@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { ConfirmProvider } from "@/components/admin/confirm";
 import { ConsoleNav } from "@/components/admin/parts";
 import { LockButton } from "@/components/admin/step-up";
 import { getAdminSession } from "@/lib/admin/admin-session";
@@ -23,7 +24,7 @@ export default async function ConsoleLayout({ children }: { children: React.Reac
   const unlocked = Boolean(await getAdminSession());
   const tabs = CONSOLE_PAGES.filter((p) => can(adminRole, p.permission)).map(({ href, label }) => ({ href, label }));
   return (
-    <>
+    <ConfirmProvider>
       <div className="mb-3 flex items-end justify-between gap-3">
         <h1 className="font-serif text-[26px] leading-tight tracking-[-0.02em] sm:text-[30px]">Console</h1>
         {unlocked ? (
@@ -35,6 +36,6 @@ export default async function ConsoleLayout({ children }: { children: React.Reac
       </div>
       {unlocked ? <ConsoleNav tabs={tabs} /> : null}
       {children}
-    </>
+    </ConfirmProvider>
   );
 }

@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import type { ConfigField } from "@/lib/config/registry";
 import { timeAgo } from "@/lib/utils";
 import { FieldInput, fromLocalInput, ReasonInput, runConfirmed, selectClass, showValue, toLocalInput, ValueDiff, type HistoryRow } from "./config-shared";
+import { useConfirm } from "./confirm";
 
 /** What the page sends for each key (no schemas: the server validates every save). */
 export type ConfigItem = {
@@ -102,6 +103,7 @@ export function ConfigRow({ item, canRestore }: { item: ConfigItem; canRestore: 
 
 function ConfigHistory({ configKey, canRestore }: { configKey: string; canRestore: boolean }) {
   const router = useRouter();
+  const confirm = useConfirm();
   const [rows, setRows] = React.useState<HistoryRow[] | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [pending, start] = React.useTransition();
@@ -122,7 +124,7 @@ function ConfigHistory({ configKey, canRestore }: { configKey: string; canRestor
     start(async () => {
       const reason = window.prompt(`Why restore version ${version}? This goes in the audit log.`);
       if (!reason || reason.trim().length < 3) return;
-      const r = await runConfirmed((token) => rollbackConfig({ key: configKey, version, reason }, token));
+      const r = await runConfirmed((token) => rollbackConfig({ key: configKey, version, reason }, token), confirm);
       if (!r) return;
       if (!r.ok) return void toast.error(r.error);
       toast.success(`Restored as version ${r.data.version}`);
@@ -165,13 +167,14 @@ export type MaintenanceState = { active: boolean; message: string | null; endsAt
 /** Owner only. Every change asks for confirmation, and a fresh unlock. */
 export function MaintenanceCard({ state, canEdit }: { state: MaintenanceState; canEdit: boolean }) {
   const router = useRouter();
+  const confirm = useConfirm();
   const [draft, setDraft] = React.useState<MaintenanceState>(state);
   const [reason, setReason] = React.useState("");
   const [pending, start] = React.useTransition();
 
   const save = () =>
     start(async () => {
-      const r = await runConfirmed((token) => setMaintenance({ ...draft, reason }, token));
+      const r = await runConfirmed((token) => setMaintenance({ ...draft, reason }, token), confirm);
       if (!r) return;
       if (!r.ok) return void toast.error(r.error);
       toast.success(draft.active ? "Maintenance is on" : "Maintenance saved");

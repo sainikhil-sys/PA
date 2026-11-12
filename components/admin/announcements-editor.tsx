@@ -1,5 +1,6 @@
 "use client";
 
+import { useConfirm } from "./confirm";
 import * as React from "react";
 import { archiveAnnouncement, cancelScheduledBroadcast, createAnnouncement, updateAnnouncement } from "@/app/actions/admin-announcements";
 import { Button } from "@/components/ui/button";
@@ -221,6 +222,7 @@ export function NewAnnouncement() {
 
 export function AnnouncementActions({ announcement, archived }: { announcement: EditableAnnouncement; archived: boolean }) {
   const { pending, run } = useAdminCall();
+  const confirm = useConfirm();
   const [editing, setEditing] = React.useState(false);
   if (archived) return null;
   return (
@@ -232,8 +234,8 @@ export function AnnouncementActions({ announcement, archived }: { announcement: 
         size="sm"
         variant="ghost"
         disabled={pending}
-        onClick={() => {
-          if (!window.confirm("Archive this announcement? It disappears for everyone right away.")) return;
+        onClick={async () => {
+          if (!(await confirm({ title: "Archive this announcement?", message: "It disappears for everyone right away.", confirmLabel: "Archive" }))) return;
           run(() => archiveAnnouncement({ id: announcement.id }), { done: "Archived" });
         }}
       >
@@ -248,13 +250,14 @@ export function AnnouncementActions({ announcement, archived }: { announcement: 
 
 export function CancelScheduledBroadcast({ id }: { id: string }) {
   const { pending, run } = useAdminCall();
+  const confirm = useConfirm();
   return (
     <Button
       size="sm"
       variant="ghost"
       disabled={pending}
-      onClick={() => {
-        if (!window.confirm("Cancel this scheduled broadcast? Nobody receives it.")) return;
+      onClick={async () => {
+        if (!(await confirm({ title: "Cancel this scheduled broadcast?", message: "Nobody receives it.", confirmLabel: "Cancel broadcast", danger: true }))) return;
         run(() => cancelScheduledBroadcast({ id }), { done: "Scheduled broadcast cancelled" });
       }}
     >

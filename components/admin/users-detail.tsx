@@ -1,5 +1,6 @@
 "use client";
 
+import { useConfirm } from "./confirm";
 import * as React from "react";
 import { addUserRestriction, liftUserRestriction, revokeUserSessions, setUserSuspended } from "@/app/actions/admin-users";
 import { Button } from "@/components/ui/button";
@@ -18,13 +19,14 @@ type Feature = (typeof FEATURES)[number]["value"];
 
 export function SuspendButton({ userId, suspended }: { userId: string; suspended: boolean }) {
   const { pending, run } = useAdminCall();
+  const confirm = useConfirm();
   return (
     <Button
       size="sm"
       variant={suspended ? "secondary" : "danger"}
       disabled={pending}
-      onClick={() => {
-        if (!suspended && !window.confirm("Suspend this account? They're signed out everywhere and can't sign in until you restore it.")) return;
+      onClick={async () => {
+        if (!suspended && !(await confirm({ title: "Suspend this account?", message: "They're signed out everywhere and can't sign in until you restore it.", confirmLabel: "Suspend", danger: true }))) return;
         run(() => setUserSuspended({ userId, disabled: !suspended }), { done: suspended ? "Account restored" : "Account suspended" });
       }}
     >
@@ -35,13 +37,14 @@ export function SuspendButton({ userId, suspended }: { userId: string; suspended
 
 export function RevokeSessionsButton({ userId, sessions }: { userId: string; sessions: number }) {
   const { pending, run } = useAdminCall();
+  const confirm = useConfirm();
   return (
     <Button
       size="sm"
       variant="secondary"
       disabled={pending || sessions === 0}
-      onClick={() => {
-        if (!window.confirm(`Sign this person out of ${sessions} session${sessions === 1 ? "" : "s"}? They can sign in again with a new code.`)) return;
+      onClick={async () => {
+        if (!(await confirm({ title: "Sign out everywhere?", message: `This signs the person out of ${sessions} session${sessions === 1 ? "" : "s"}. They can sign in again with a new code.`, confirmLabel: "Sign out" }))) return;
         run(() => revokeUserSessions({ userId }), { done: (d) => `Signed out of ${d.revoked} session${d.revoked === 1 ? "" : "s"}` });
       }}
     >

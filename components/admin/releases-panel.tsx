@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input, Textarea } from "@/components/ui/input";
 import type { UpdatePolicy } from "@/lib/config/registry";
 import { ReasonInput, runConfirmed, selectClass, ValueDiff } from "./config-shared";
+import { useConfirm } from "./confirm";
 
 function Field({ label, id, children, hint }: { label: string; id: string; children: React.ReactNode; hint?: string }) {
   return (
@@ -26,6 +27,7 @@ const numOrNull = (v: string) => (v.trim() === "" ? null : Math.max(0, Math.roun
 /** The Android update policy. Raising the required build asks the owner to confirm. */
 export function PolicyForm({ policy, canEdit, canMandate, blockedReason }: { policy: UpdatePolicy; canEdit: boolean; canMandate: boolean; blockedReason: string | null }) {
   const router = useRouter();
+  const confirm = useConfirm();
   const [draft, setDraft] = React.useState<UpdatePolicy>(policy);
   const [reason, setReason] = React.useState("");
   const [pending, start] = React.useTransition();
@@ -33,7 +35,7 @@ export function PolicyForm({ policy, canEdit, canMandate, blockedReason }: { pol
 
   const save = () =>
     start(async () => {
-      const r = await runConfirmed((token) => updatePolicy({ policy: draft, reason }, token));
+      const r = await runConfirmed((token) => updatePolicy({ policy: draft, reason }, token), confirm);
       if (!r) return;
       if (!r.ok) return void toast.error(r.error);
       toast.success("Update policy saved");
