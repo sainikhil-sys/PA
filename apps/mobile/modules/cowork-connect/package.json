@@ -1,0 +1,7 @@
+{
+  "name": "cowork-connect",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Offline nearby transport for Cowork Connect: Google Nearby Connections (Bluetooth, BLE, Wi-Fi). Android only for now.",
+  "main": "index.ts"
+}

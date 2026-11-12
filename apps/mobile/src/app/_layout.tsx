@@ -129,6 +129,11 @@ function App({ scheme, signedIn, onboarded }: { scheme: Scheme; signedIn: boolea
                 <Stack.Screen name="notes" />
                 <Stack.Screen name="dm" />
                 <Stack.Screen name="people" />
+                <Stack.Screen name="post/new" options={{ presentation: "modal" }} />
+                <Stack.Screen name="post/[id]" />
+                <Stack.Screen name="u/[handle]" />
+                <Stack.Screen name="follows" />
+                <Stack.Screen name="connect" />
               </Stack.Protected>
             </Stack>
             {/* After the Stack, so the navigator is mounted before a cold-start tap navigates. */}
