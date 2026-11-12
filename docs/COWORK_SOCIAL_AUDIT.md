@@ -186,6 +186,11 @@ Legend: **W** working, **P** partial, **B** broken, **M** missing, **X** needs e
 
 - B3 and B4 server side shipped: migration `0016` (applied with approval), feeds, posts, comments, reactions, saves, follows, profiles, reports, uploads, text moderation with holds, Take down in the console. Verified on an in-memory Postgres with every migration applied (13 checks). Not done yet: website pages for the feed, image moderation (needs a vision-capable model), thumbnails, and removing R2 objects when posts or accounts are deleted.
 
+- B4 website pages shipped: /feed, /p/[id], /u/[handle].
+- B5 Spaces shipped (migration `0018`, applied with approval): public or private Spaces, open, request or invite-link joining, roles, bans, adults-only and temporary Spaces, announcements, pins, moderator take-downs, polls, events with replies; website /spaces, /s/[slug], /join/[code]. Verified on an in-memory Postgres (8 checks).
+- B6 Moments shipped (migration `0019`, applied with approval): 24-hour photo, video or text Moments to followers or close friends, server-enforced expiry with an author archive, views, private replies and reactions, moderation holds; website Moments row and viewer. Verified on an in-memory Postgres (7 checks). Live with `0d393f0`; CI green.
+- Not done yet: image moderation (needs a vision-capable model), thumbnails, private snaps, Moments camera on the website (the app shares photos and videos), B7 to B10.
+
 ## 12. Migration plan (backend and web; mobile phases are the mobile session's)
 
 Each step is reversible, keeps every existing feature, and uses Drizzle migrations reviewed before `pnpm db:migrate` (production).
