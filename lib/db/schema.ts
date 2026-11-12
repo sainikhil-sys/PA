@@ -1654,6 +1654,12 @@ export const posts = pgTable(
       .references(() => users.id, { onDelete: "cascade" }),
     body: text("body").notNull().default(""),
     visibility: text("visibility").$type<"public" | "followers" | "friends">().notNull().default("public"),
+    /** Posted in a Space: the Space's rules decide who sees it, not `visibility`. */
+    spaceId: uuid("space_id").references(() => spaces.id, { onDelete: "cascade" }),
+    /** "announcement": only owners and moderators of the Space can post one. "poll": has a post_polls row. */
+    kind: text("kind").$type<"post" | "announcement" | "poll">().notNull().default("post"),
+    /** Pinned to the top of its Space by an owner or moderator. */
+    pinnedAt: ts("pinned_at"),
     status: text("status").$type<"published" | "held" | "removed">().notNull().default("published"),
     /** Kept up to date by the service, so feeds never count rows. */
     commentCount: integer("comment_count").notNull().default(0),
@@ -1665,6 +1671,7 @@ export const posts = pgTable(
   (t) => [
     index("posts_author_idx").on(t.authorId, t.createdAt),
     index("posts_recent_idx").on(t.createdAt),
+    index("posts_space_idx").on(t.spaceId, t.createdAt),
     index("posts_body_fts_idx").using("gin", sql`to_tsvector('simple', ${t.body})`),
   ],
 );
@@ -1744,6 +1751,131 @@ export const hiddenPosts = pgTable(
   },
   (t) => [primaryKey({ columns: [t.userId, t.postId] })],
 );
+
+// ---------- Spaces (B5): communities ----------
+
+export const SPACE_CATEGORIES = ["university", "professional", "gaming", "technology", "entertainment", "interest", "local", "other"] as const;
+
+/**
+ * A community. Public Spaces can be read by anyone signed in (joining is open or by request);
+ * private Spaces only by members. `audience` "adults" keeps everyone under 18 out. A Space with
+ * `expiresAt` is temporary and becomes read-only after that time.
+ */
+export const spaces = pgTable(
+  "spaces",
+  {
+    id: id(),
+    /** Lowercase, 3 to 40 of a-z 0-9 and hyphens; the Space's address. */
+    slug: text("slug").notNull(),
+    name: text("name").notNull(),
+    description: text("description").notNull().default(""),
+    rules: text("rules").notNull().default(""),
+    category: text("category").$type<(typeof SPACE_CATEGORIES)[number]>().notNull().default("interest"),
+    visibility: text("visibility").$type<"public" | "private">().notNull().default("public"),
+    joinPolicy: text("join_policy").$type<"open" | "request" | "invite">().notNull().default("open"),
+    audience: text("audience").$type<"all" | "adults">().notNull().default("all"),
+    status: text("status").$type<"active" | "archived" | "removed">().notNull().default("active"),
+    createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
+    memberCount: integer("member_count").notNull().default(0),
+    expiresAt: ts("expires_at"),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [uniqueIndex("spaces_slug_idx").on(t.slug), index("spaces_category_idx").on(t.category, t.memberCount), index("spaces_name_fts_idx").using("gin", sql`to_tsvector('simple', ${t.name} || ' ' || ${t.description})`)],
+);
+
+/** Membership: role, and whether it's a pending request or a ban (banned people can't rejoin). */
+export const spaceMembers = pgTable(
+  "space_members",
+  {
+    spaceId: uuid("space_id")
+      .notNull()
+      .references(() => spaces.id, { onDelete: "cascade" }),
+    userId: userId(),
+    role: text("role").$type<"owner" | "moderator" | "member">().notNull().default("member"),
+    status: text("status").$type<"active" | "requested" | "banned">().notNull().default("active"),
+    joinedAt: createdAt(),
+  },
+  (t) => [primaryKey({ columns: [t.spaceId, t.userId] }), index("space_members_user_idx").on(t.userId, t.status)],
+);
+
+/** Invite links: a random code, optional expiry and use limit. */
+export const spaceInvites = pgTable(
+  "space_invites",
+  {
+    code: text("code").primaryKey(),
+    spaceId: uuid("space_id")
+      .notNull()
+      .references(() => spaces.id, { onDelete: "cascade" }),
+    createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
+    maxUses: integer("max_uses"),
+    uses: integer("uses").notNull().default(0),
+    expiresAt: ts("expires_at"),
+    revokedAt: ts("revoked_at"),
+    createdAt: createdAt(),
+  },
+  (t) => [index("space_invites_space_idx").on(t.spaceId)],
+);
+
+export const spaceEvents = pgTable(
+  "space_events",
+  {
+    id: id(),
+    spaceId: uuid("space_id")
+      .notNull()
+      .references(() => spaces.id, { onDelete: "cascade" }),
+    createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
+    title: text("title").notNull(),
+    description: text("description").notNull().default(""),
+    /** Free text: a room, an address or a link. Never geocoded. */
+    location: text("location").notNull().default(""),
+    startsAt: ts("starts_at").notNull(),
+    endsAt: ts("ends_at"),
+    cancelledAt: ts("cancelled_at"),
+    createdAt: createdAt(),
+  },
+  (t) => [index("space_events_space_idx").on(t.spaceId, t.startsAt)],
+);
+
+export const eventRsvps = pgTable(
+  "event_rsvps",
+  {
+    eventId: uuid("event_id")
+      .notNull()
+      .references(() => spaceEvents.id, { onDelete: "cascade" }),
+    userId: userId(),
+    status: text("status").$type<"going" | "maybe" | "not_going">().notNull(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [primaryKey({ columns: [t.eventId, t.userId] })],
+);
+
+/** A poll attached to a post (posts.kind = "poll"). Options are fixed once posted. */
+export const postPolls = pgTable("post_polls", {
+  postId: uuid("post_id")
+    .primaryKey()
+    .references(() => posts.id, { onDelete: "cascade" }),
+  options: jsonb("options").$type<string[]>().notNull(),
+  multiple: boolean("multiple").notNull().default(false),
+  closesAt: ts("closes_at"),
+});
+
+export const pollVotes = pgTable(
+  "poll_votes",
+  {
+    postId: uuid("post_id")
+      .notNull()
+      .references(() => postPolls.postId, { onDelete: "cascade" }),
+    userId: userId(),
+    option: integer("option").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [primaryKey({ columns: [t.postId, t.userId, t.option] })],
+);
+
+export type Space = typeof spaces.$inferSelect;
+export type SpaceMember = typeof spaceMembers.$inferSelect;
+export type SpaceEvent = typeof spaceEvents.$inferSelect;
 
 export type Media = typeof media.$inferSelect;
 export type Post = typeof posts.$inferSelect;

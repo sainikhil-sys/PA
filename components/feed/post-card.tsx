@@ -24,16 +24,27 @@ export type FeedPost = {
   mine: boolean;
   createdAt: string;
   editedAt: string | null;
+  kind?: "post" | "announcement" | "poll";
+  pinned?: boolean;
+  space?: { id: string; slug: string; name: string } | null;
+  poll?: {
+    options: { text: string; votes: number; mine: boolean }[];
+    multiple: boolean;
+    closesAt: string | null;
+    closed: boolean;
+    total: number;
+  } | null;
 };
 
 const AUDIENCE = { public: "Everyone", followers: "Followers", friends: "Friends" } as const;
 
 /** One post: author, text, photos, and like / comment / save, plus hide, report or delete. */
-export function PostCard({ post, linkToPost = true }: { post: FeedPost; linkToPost?: boolean }) {
+export function PostCard({ post, linkToPost = true, canModerate = false }: { post: FeedPost; linkToPost?: boolean; canModerate?: boolean }) {
   const router = useRouter();
   const [liked, setLiked] = React.useState(post.myReactions.includes("like"));
   const [likes, setLikes] = React.useState(post.reactionCount);
   const [saved, setSaved] = React.useState(post.saved);
+  const [poll, setPoll] = React.useState(post.poll ?? null);
   const [gone, setGone] = React.useState(false);
   const [pending, start] = React.useTransition();
 
@@ -67,6 +78,20 @@ export function PostCard({ post, linkToPost = true }: { post: FeedPost; linkToPo
       if (!r.ok) return void toast.error(r.error);
       toast.success("Reported. Thank you.");
     });
+  const vote = (option: number) =>
+    start(async () => {
+      const r = await call<{ post: FeedPost }>(`/api/posts/${post.id}/vote`, { body: { option } });
+      if (!r.ok) return void toast.error(r.error);
+      setPoll(r.data.post.poll ?? null);
+    });
+  const moderate = (action: "pin" | "unpin" | "remove") =>
+    start(async () => {
+      if (action === "remove" && !window.confirm("Take this post down for everyone in the Space?")) return;
+      const r = await call(`/api/posts/${post.id}/moderate`, { body: { action } });
+      if (!r.ok) return void toast.error(r.error);
+      if (action === "remove") setGone(true);
+      router.refresh();
+    });
   const remove = () =>
     start(async () => {
       if (!window.confirm("Delete this post? This can't be undone.")) return;
@@ -85,11 +110,19 @@ export function PostCard({ post, linkToPost = true }: { post: FeedPost; linkToPo
             <span className="block truncate text-[14px] font-medium">{post.author.name}</span>
             <span className="block truncate text-[12px] text-muted">
               @{post.author.handle} · {timeAgo(post.createdAt)}
-              {post.editedAt ? " · edited" : ""} · {AUDIENCE[post.visibility]}
+              {post.editedAt ? " · edited" : ""} · {post.space ? `in ${post.space.name}` : AUDIENCE[post.visibility]}
             </span>
           </span>
         </Link>
+        {post.pinned || post.kind === "announcement" ? (
+          <span className="ml-auto shrink-0 rounded-[8px] border border-border px-2 py-0.5 text-[11px] text-muted">{post.kind === "announcement" ? "Announcement" : "Pinned"}</span>
+        ) : null}
       </header>
+      {post.space && !linkToPost ? (
+        <Link href={`/s/${post.space.slug}`} className="mt-2 block text-[12px] text-muted underline">
+          {post.space.name}
+        </Link>
+      ) : null}
       {post.status === "held" ? (
         <p className="mt-3 rounded-[10px] bg-surface px-3 py-2 text-[13px] text-muted">This post is being reviewed. Only you can see it until then.</p>
       ) : null}
@@ -113,6 +146,34 @@ export function PostCard({ post, linkToPost = true }: { post: FeedPost; linkToPo
           )}
         </div>
       ) : null}
+      {poll ? (
+        <div className="mt-3 flex flex-col gap-1.5" role="group" aria-label="Poll">
+          {poll.options.map((o, i) => {
+            const share = poll.total ? Math.round((o.votes / poll.total) * 100) : 0;
+            return (
+              <button
+                key={o.text}
+                type="button"
+                disabled={pending || poll.closed}
+                onClick={() => vote(i)}
+                aria-pressed={o.mine}
+                className={cn("relative overflow-hidden rounded-[10px] border px-3 py-2 text-left text-[14px]", o.mine ? "border-foreground" : "border-border")}
+              >
+                <span className="absolute inset-y-0 left-0 bg-surface" style={{ width: `${share}%` }} aria-hidden />
+                <span className="relative flex justify-between gap-2">
+                  <span>{o.text}</span>
+                  <span className="tabular text-muted">{share}%</span>
+                </span>
+              </button>
+            );
+          })}
+          <p className="text-[12px] text-muted">
+            {poll.total} {poll.total === 1 ? "vote" : "votes"}
+            {poll.multiple ? " · choose any" : ""}
+            {poll.closed ? " · closed" : ""}
+          </p>
+        </div>
+      ) : null}
       <footer className="mt-3 flex flex-wrap items-center gap-1">
         <Button size="sm" variant="quiet" disabled={pending} onClick={like} aria-pressed={liked} aria-label={liked ? "Unlike" : "Like"}>
           <Heart weight={liked ? "fill" : "regular"} className={cn(liked && "text-primary-text")} /> <span className="tabular">{likes}</span>
@@ -126,6 +187,18 @@ export function PostCard({ post, linkToPost = true }: { post: FeedPost; linkToPo
           <BookmarkSimple weight={saved ? "fill" : "regular"} />
         </Button>
         <span className="ml-auto flex gap-1">
+          {canModerate && post.space ? (
+            <>
+              <Button size="sm" variant="quiet" disabled={pending} onClick={() => moderate(post.pinned ? "unpin" : "pin")}>
+                {post.pinned ? "Unpin" : "Pin"}
+              </Button>
+              {!post.mine ? (
+                <Button size="sm" variant="quiet" disabled={pending} onClick={() => moderate("remove")}>
+                  Take down
+                </Button>
+              ) : null}
+            </>
+          ) : null}
           {post.mine ? (
             <Button size="sm" variant="quiet" disabled={pending} onClick={remove}>
               Delete

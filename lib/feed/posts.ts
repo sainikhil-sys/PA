@@ -7,7 +7,7 @@ import { r2Config, readUrl } from "@/lib/media/r2";
 import { moderateText, reasonFor, type TextVerdict } from "@/lib/moderation/text";
 import { REACTIONS, type ReactionKind, type ReportReason } from "@/lib/social/rules";
 import { SocialError } from "@/lib/social/service";
-import { canSee, effectivelyPublic, notHiddenBy } from "./access";
+import { canSee, effectivelyPublic, inMySpaces, inPublicSpace, notHiddenBy } from "./access";
 import { requireSocial } from "./people";
 
 export const POST_MAX = 5000;
@@ -44,6 +44,11 @@ const postColumns = {
   reactionCount: p.reactionCount,
   createdAt: p.createdAt,
   editedAt: p.editedAt,
+  spaceId: p.spaceId,
+  kind: p.kind,
+  pinnedAt: p.pinnedAt,
+  spaceSlug: schema.spaces.slug,
+  spaceName: schema.spaces.name,
   handle: sp.handle,
   name: sp.displayName,
   avatarUrl: u.avatarUrl,
@@ -58,13 +63,23 @@ type Row = {
   reactionCount: number;
   createdAt: Date;
   editedAt: Date | null;
+  spaceId: string | null;
+  kind: "post" | "announcement" | "poll";
+  pinnedAt: Date | null;
+  spaceSlug: string | null;
+  spaceName: string | null;
   handle: string;
   name: string;
   avatarUrl: string | null;
 };
 
 function base() {
-  return db().select(postColumns).from(p).innerJoin(u, eq(u.id, p.authorId)).innerJoin(sp, eq(sp.userId, p.authorId));
+  return db()
+    .select(postColumns)
+    .from(p)
+    .innerJoin(u, eq(u.id, p.authorId))
+    .innerJoin(sp, eq(sp.userId, p.authorId))
+    .leftJoin(schema.spaces, eq(schema.spaces.id, p.spaceId));
 }
 
 export type PostView = Awaited<ReturnType<typeof present>>[number];
@@ -73,7 +88,8 @@ export type PostView = Awaited<ReturnType<typeof present>>[number];
 async function present(viewerId: string, rows: Row[]) {
   if (!rows.length) return [];
   const ids = rows.map((r) => r.id);
-  const [mediaRows, mine, saved] = await Promise.all([
+  const pollIds = rows.filter((r) => r.kind === "poll").map((r) => r.id);
+  const [mediaRows, mine, saved, polls, tallies, myVotes] = await Promise.all([
     db()
       .select({ postId: schema.postMedia.postId, id: schema.media.id, kind: schema.media.kind, key: schema.media.key, width: schema.media.width, height: schema.media.height, position: schema.postMedia.position })
       .from(schema.postMedia)
@@ -88,6 +104,17 @@ async function present(viewerId: string, rows: Row[]) {
       .select({ postId: schema.savedPosts.postId })
       .from(schema.savedPosts)
       .where(and(inArray(schema.savedPosts.postId, ids), eq(schema.savedPosts.userId, viewerId))),
+    pollIds.length ? db().select().from(schema.postPolls).where(inArray(schema.postPolls.postId, pollIds)) : Promise.resolve([]),
+    pollIds.length
+      ? db()
+          .select({ postId: schema.pollVotes.postId, option: schema.pollVotes.option, n: sql<number>`count(*)::int` })
+          .from(schema.pollVotes)
+          .where(inArray(schema.pollVotes.postId, pollIds))
+          .groupBy(schema.pollVotes.postId, schema.pollVotes.option)
+      : Promise.resolve([]),
+    pollIds.length
+      ? db().select({ postId: schema.pollVotes.postId, option: schema.pollVotes.option }).from(schema.pollVotes).where(and(inArray(schema.pollVotes.postId, pollIds), eq(schema.pollVotes.userId, viewerId)))
+      : Promise.resolve([]),
   ]);
   const r2 = r2Config();
   const savedSet = new Set(saved.map((s) => s.postId));
@@ -106,7 +133,27 @@ async function present(viewerId: string, rows: Row[]) {
     mine: r.authorId === viewerId,
     createdAt: r.createdAt.toISOString(),
     editedAt: r.editedAt?.toISOString() ?? null,
+    kind: r.kind,
+    pinned: Boolean(r.pinnedAt),
+    space: r.spaceId ? { id: r.spaceId, slug: r.spaceSlug!, name: r.spaceName! } : null,
+    poll: pollView(polls.find((x) => x.postId === r.id), tallies.filter((t) => t.postId === r.id), myVotes.filter((v) => v.postId === r.id)),
   }));
+}
+
+function pollView(
+  poll: { options: string[]; multiple: boolean; closesAt: Date | null } | undefined,
+  tallies: { option: number; n: number }[],
+  mine: { option: number }[],
+) {
+  if (!poll) return null;
+  const counts = poll.options.map((_, i) => tallies.find((t) => t.option === i)?.n ?? 0);
+  return {
+    options: poll.options.map((text, i) => ({ text, votes: counts[i]!, mine: mine.some((m) => m.option === i) })),
+    multiple: poll.multiple,
+    closesAt: poll.closesAt?.toISOString() ?? null,
+    closed: Boolean(poll.closesAt && poll.closesAt.getTime() <= Date.now()),
+    total: counts.reduce((a, b) => a + b, 0),
+  };
 }
 
 function page(viewerId: string, rows: Row[]) {
@@ -119,9 +166,9 @@ export async function getPost(viewerId: string, postId: string) {
   return (await present(viewerId, rows))[0]!;
 }
 
-/** People you follow, plus your own posts, newest first. */
+/** People you follow, Spaces you're in, and your own posts, newest first. */
 export async function followingFeed(viewerId: string, cursor?: string | null) {
-  const following = sql`(${p.authorId} = ${viewerId} or exists (select 1 from ${schema.follows} f where f.follower_id = ${viewerId} and f.followee_id = ${p.authorId} and f.status = 'accepted'))`;
+  const following = sql`(${p.authorId} = ${viewerId} or ${inMySpaces(viewerId)} or exists (select 1 from ${schema.follows} f where f.follower_id = ${viewerId} and f.followee_id = ${p.authorId} and f.status = 'accepted'))`;
   const rows = await base()
     .where(and(following, canSee(viewerId), notHiddenBy(viewerId), before(decodeCursor(cursor))))
     .orderBy(desc(p.createdAt), desc(p.id))
@@ -138,7 +185,7 @@ export async function forYouFeed(viewerId: string, cursor?: string | null) {
   const offset = Math.min(Math.max(Number(cursor ?? 0) || 0, 0), PAGE * 9);
   const score = sql`(1 + ${p.reactionCount} * 2 + ${p.commentCount} * 3) / power(extract(epoch from (now() - ${p.createdAt})) / 3600 + 2, 1.5)`;
   const rows = await base()
-    .where(and(effectivelyPublic, canSee(viewerId), notHiddenBy(viewerId), sql`${p.authorId} <> ${viewerId}`, gt(p.createdAt, sql`now() - interval '14 days'`)))
+    .where(and(or(effectivelyPublic, inPublicSpace), canSee(viewerId), notHiddenBy(viewerId), sql`${p.authorId} <> ${viewerId}`, gt(p.createdAt, sql`now() - interval '14 days'`)))
     .orderBy(desc(score), desc(p.createdAt))
     .limit(PAGE)
     .offset(offset);
@@ -149,7 +196,7 @@ export async function forYouFeed(viewerId: string, cursor?: string | null) {
 /** One person's posts that you're allowed to see. */
 export async function profilePosts(viewerId: string, authorId: string, cursor?: string | null) {
   const rows = await base()
-    .where(and(eq(p.authorId, authorId), canSee(viewerId), before(decodeCursor(cursor))))
+    .where(and(eq(p.authorId, authorId), isNull(p.spaceId), canSee(viewerId), before(decodeCursor(cursor))))
     .orderBy(desc(p.createdAt), desc(p.id))
     .limit(PAGE);
   return page(viewerId, rows);
@@ -178,10 +225,27 @@ async function applyVerdict(target: { postId?: string; commentId?: string; autho
   }
 }
 
-export async function createPost(author: User, input: { body: string; visibility: Visibility; mediaIds: string[] }) {
+export type NewPost = {
+  body: string;
+  visibility: Visibility;
+  mediaIds: string[];
+  /** Set by lib/spaces after it checked membership and the Space's rules. */
+  spaceId?: string | null;
+  kind?: "post" | "announcement" | "poll";
+  poll?: { options: string[]; multiple?: boolean; closesAt?: Date | null } | null;
+};
+
+export async function createPost(author: User, input: NewPost) {
   const me = await requireSocial(author);
+  const kind = input.poll ? "poll" : (input.kind ?? "post");
+  if (input.poll) {
+    const options = input.poll.options.map((o) => o.trim()).filter(Boolean);
+    if (options.length < 2 || options.length > 6 || new Set(options.map((o) => o.toLowerCase())).size !== options.length) throw new SocialError(400, "A poll needs 2 to 6 different options.");
+    if (options.some((o) => o.length > 80)) throw new SocialError(400, "Poll options can be up to 80 characters.");
+    input = { ...input, poll: { ...input.poll, options } };
+  }
   const body = input.body.trim();
-  if (!body && !input.mediaIds.length) throw new SocialError(400, "Write something or add a photo.");
+  if (!body && !input.mediaIds.length && !input.poll) throw new SocialError(400, "Write something or add a photo.");
   if (body.length > POST_MAX) throw new SocialError(400, `Posts can be up to ${POST_MAX} characters.`);
   // Teens and private accounts can't post publicly; "public" becomes followers only.
   const visibility: Visibility = me.privateAccount && input.visibility === "public" ? "followers" : input.visibility;
@@ -193,14 +257,38 @@ export async function createPost(author: User, input: { body: string; visibility
       .where(and(inArray(schema.media.id, mediaIds), eq(schema.media.userId, author.id), eq(schema.media.status, "ready"), sql`${schema.media.moderation} <> 'flagged'`));
     if (owned.length !== mediaIds.length) throw new SocialError(400, "One of those photos isn't ready yet. Wait for it to finish uploading.");
   }
-  const verdict = body ? await moderateText(author.id, body) : ({ verdict: "ok" } as const);
+  const text = [body, ...(input.poll?.options ?? [])].join("\n").trim();
+  const verdict = text ? await moderateText(author.id, text) : ({ verdict: "ok" } as const);
   const [post] = await db()
     .insert(p)
-    .values({ authorId: author.id, body, visibility, status: verdict.verdict === "flagged" ? "held" : "published" })
+    .values({ authorId: author.id, body, visibility, spaceId: input.spaceId ?? null, kind, status: verdict.verdict === "flagged" ? "held" : "published" })
     .returning({ id: p.id });
+  if (input.poll) await db().insert(schema.postPolls).values({ postId: post!.id, options: input.poll.options, multiple: input.poll.multiple ?? false, closesAt: input.poll.closesAt ?? null });
   if (mediaIds.length) await db().insert(schema.postMedia).values(mediaIds.map((mediaId, position) => ({ postId: post!.id, mediaId, position })));
-  await applyVerdict({ postId: post!.id, authorId: author.id, text: body }, verdict);
+  await applyVerdict({ postId: post!.id, authorId: author.id, text }, verdict);
   return getPost(author.id, post!.id);
+}
+
+/** Vote in a poll you can see. Single-choice polls replace your vote; multiple-choice toggle an option. */
+export async function vote(viewer: User, postId: string, option: number) {
+  await requireSocial(viewer);
+  await getPost(viewer.id, postId);
+  const [poll] = await db().select().from(schema.postPolls).where(eq(schema.postPolls.postId, postId)).limit(1);
+  if (!poll) throw new SocialError(404, "That poll isn't available.");
+  if (poll.closesAt && poll.closesAt.getTime() <= Date.now()) throw new SocialError(409, "This poll has closed.");
+  if (!Number.isInteger(option) || option < 0 || option >= poll.options.length) throw new SocialError(400, "Choose one of the options.");
+  const v = schema.pollVotes;
+  await db().transaction(async (tx) => {
+    const mine = and(eq(v.postId, postId), eq(v.userId, viewer.id));
+    if (poll.multiple) {
+      const removed = await tx.delete(v).where(and(mine, eq(v.option, option))).returning({ option: v.option });
+      if (!removed.length) await tx.insert(v).values({ postId, userId: viewer.id, option });
+    } else {
+      await tx.delete(v).where(mine);
+      await tx.insert(v).values({ postId, userId: viewer.id, option });
+    }
+  });
+  return getPost(viewer.id, postId);
 }
 
 export async function editPost(author: User, postId: string, body: string) {
