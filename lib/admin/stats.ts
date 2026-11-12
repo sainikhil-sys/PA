@@ -174,3 +174,35 @@ export async function broadcastAudience() {
   const [row] = await db().select({ n: count() }).from(schema.users).where(isNull(schema.users.disabledAt));
   return Number(row?.n ?? 0);
 }
+
+export type ReleaseRow = { platform: string; appVersion: string | null; appBuild: number | null; runtimeVersion: string | null; users: number; sessions: number };
+
+/**
+ * Which app versions are in use: open sessions seen in the last 30 days, grouped by the version
+ * headers the app sends (stored on the session). Sessions without headers are counted separately:
+ * builds before the version headers, and the website, send none. Counts only.
+ */
+export async function releaseAdoption(): Promise<{ rows: ReleaseRow[]; unreported: { users: number; sessions: number } }> {
+  const d30 = daysAgo(30).toISOString();
+  const rows = rowsOf<Record<string, unknown>>(
+    await db().execute(sql`
+      select ${schema.sessions.platform} as platform, ${schema.sessions.appVersion} as app_version, ${schema.sessions.appBuild} as app_build,
+        ${schema.sessions.runtimeVersion} as runtime_version,
+        count(distinct ${schema.sessions.userId})::int as users, count(*)::int as sessions
+      from ${schema.sessions}
+      where ${schema.sessions.revokedAt} is null and ${schema.sessions.expiresAt} > now() and ${schema.sessions.lastSeenAt} >= ${d30}::timestamptz
+      group by 1, 2, 3, 4
+      order by users desc, sessions desc
+      limit 100`),
+  );
+  const out: ReleaseRow[] = [];
+  let unreported = { users: 0, sessions: 0 };
+  // The headers are client-supplied: show them only when they look like a platform or version.
+  const label = (v: unknown, max: number) => (v === null || v === undefined || v === "" ? null : /^[\w.+-]+$/.test(String(v)) && String(v).length <= max ? String(v) : "other");
+  for (const r of rows) {
+    const row = { platform: label(r.platform, 20) ?? "", appVersion: label(r.app_version, 40), appBuild: r.app_build === null || r.app_build === undefined ? null : Number(r.app_build), runtimeVersion: label(r.runtime_version, 80), users: Number(r.users ?? 0), sessions: Number(r.sessions ?? 0) };
+    if (!row.platform && !row.appVersion && row.appBuild === null) unreported = { users: row.users, sessions: row.sessions };
+    else out.push(row);
+  }
+  return { rows: out, unreported };
+}
