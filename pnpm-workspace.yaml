@@ -2,7 +2,7 @@ onlyBuiltDependencies:
   - esbuild
   - unrs-resolver
 allowBuilds:
-  '@firebase/util': set this to true or false
+  '@firebase/util': false
   esbuild: true
-  protobufjs: set this to true or false
+  protobufjs: false
   unrs-resolver: true
