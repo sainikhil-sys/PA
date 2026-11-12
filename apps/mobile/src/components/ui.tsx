@@ -16,7 +16,7 @@ import {
   type ViewStyle,
 } from "react-native";
 import { SafeAreaView, type Edge } from "react-native-safe-area-context";
-import { color, font, radius, space, TOUCH, type } from "@/theme/tokens";
+import { color, elevation, font, radius, space, TOUCH, type } from "@/theme/tokens";
 
 /** Full-screen container on the near-black background. */
 export function Screen({ children, edges = ["top"], style }: { children: React.ReactNode; edges?: Edge[]; style?: StyleProp<ViewStyle> }) {
@@ -56,7 +56,7 @@ export function Button({
   accessibilityLabel?: string;
 }) {
   const off = disabled || loading;
-  const fg = variant === "primary" ? color.onOrange : variant === "danger" ? color.danger : color.text;
+  const fg = variant === "primary" ? color.onAccent : variant === "danger" ? color.danger : color.text;
   return (
     <Pressable
       accessibilityRole="button"
@@ -70,7 +70,7 @@ export function Button({
       style={({ pressed }) => [
         styles.button,
         compact && { minHeight: TOUCH, paddingHorizontal: space.md },
-        variant === "primary" && { backgroundColor: color.orange, borderColor: color.orange },
+        variant === "primary" && { backgroundColor: color.accent, borderColor: color.accent },
         variant === "secondary" && { backgroundColor: color.surface2, borderColor: color.borderStrong },
         variant === "ghost" && { backgroundColor: "transparent", borderColor: "transparent" },
         variant === "danger" && { backgroundColor: color.surface2, borderColor: color.borderStrong },
@@ -99,12 +99,12 @@ export function IconButton({ icon: IconCmp, label, onPress, tone = "default", si
       style={({ pressed }) => [
         { width: size, height: size, borderRadius: radius.control, alignItems: "center", justifyContent: "center" },
         tone === "default" && { backgroundColor: color.surface2, borderWidth: 1, borderColor: color.border },
-        tone === "accent" && { backgroundColor: color.orange },
+        tone === "accent" && { backgroundColor: color.accent },
         pressed && { opacity: 0.75 },
         disabled && { opacity: 0.4 },
       ]}
     >
-      <IconCmp size={20} color={tone === "accent" ? color.onOrange : color.text} weight={tone === "accent" ? "bold" : "regular"} />
+      <IconCmp size={20} color={tone === "accent" ? color.onAccent : color.text} weight={tone === "accent" ? "bold" : "regular"} />
     </Pressable>
   );
 }
@@ -116,8 +116,8 @@ export function Input({ label, error, style, ref, ...rest }: TextInputProps & { 
       <TextInput
         ref={ref}
         placeholderTextColor={color.subtle}
-        selectionColor={color.orange}
-        cursorColor={color.orange}
+        selectionColor={color.accentText}
+        cursorColor={color.accentText}
         accessibilityLabel={rest.accessibilityLabel ?? label}
         {...rest}
         style={[styles.input, error ? { borderColor: color.danger } : null, style]}
@@ -155,8 +155,8 @@ export function SectionHeader({ title, action }: { title: string; action?: React
 export function CountBadge({ count }: { count: number }) {
   if (count <= 0) return null;
   return (
-    <View style={{ minWidth: 20, height: 20, paddingHorizontal: 5, borderRadius: 6, backgroundColor: color.orange, alignItems: "center", justifyContent: "center" }}>
-      <Text style={{ fontFamily: font.semibold, fontSize: 12, color: color.onOrange }}>{count > 99 ? "99+" : count}</Text>
+    <View style={{ minWidth: 20, height: 20, paddingHorizontal: 5, borderRadius: 6, backgroundColor: color.accent, alignItems: "center", justifyContent: "center" }}>
+      <Text style={{ fontFamily: font.semibold, fontSize: 12, color: color.onAccent }}>{count > 99 ? "99+" : count}</Text>
     </View>
   );
 }
@@ -233,7 +233,8 @@ export function PressableScale(props: PressableProps & { children: React.ReactNo
   return <Pressable {...props} style={(s) => [typeof props.style === "function" ? props.style(s) : props.style, s.pressed && { opacity: 0.85 }]} />;
 }
 
-const styles = StyleSheet.create({
+// Colour-bearing styles are getters, so they always use the active palette (theme/tokens.ts).
+const styles = {
   button: {
     minHeight: TOUCH,
     paddingHorizontal: space.xl,
@@ -243,23 +244,28 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: space.sm,
+  } as ViewStyle,
+  get input(): TextStyle {
+    return {
+      minHeight: TOUCH + 4,
+      borderRadius: radius.control,
+      borderWidth: 1,
+      borderColor: color.borderStrong,
+      backgroundColor: color.surface,
+      color: color.text,
+      paddingHorizontal: space.lg,
+      fontFamily: font.regular,
+      fontSize: 16,
+    };
   },
-  input: {
-    minHeight: TOUCH + 4,
-    borderRadius: radius.control,
-    borderWidth: 1,
-    borderColor: color.borderStrong,
-    backgroundColor: color.surface,
-    color: color.text,
-    paddingHorizontal: space.lg,
-    fontFamily: font.regular,
-    fontSize: 16,
+  get card(): ViewStyle {
+    return {
+      backgroundColor: color.surface,
+      borderRadius: radius.card,
+      borderWidth: 1,
+      borderColor: color.border,
+      padding: space.lg,
+      ...elevation.card,
+    };
   },
-  card: {
-    backgroundColor: color.surface,
-    borderRadius: radius.card,
-    borderWidth: 1,
-    borderColor: color.border,
-    padding: space.lg,
-  },
-});
+};

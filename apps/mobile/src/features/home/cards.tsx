@@ -30,7 +30,7 @@ export function ApprovalsWaitingCard({ count }: { count: number }) {
   return (
     <Card onPress={() => router.push("/approvals")} accessibilityLabel={`${count} ${count === 1 ? "approval" : "approvals"} waiting. Open approvals.`}>
       <View style={{ flexDirection: "row", alignItems: "center", gap: space.md }}>
-        <SealCheckIcon size={22} color={color.orange} />
+        <SealCheckIcon size={22} color={color.accentText} />
         <View style={{ flex: 1 }}>
           <Txt variant="heading">Approvals waiting</Txt>
           <Txt variant="small">Nothing runs until you approve it.</Txt>
@@ -59,7 +59,7 @@ export function BriefingCard({ briefing, loading }: { briefing: Today["briefing"
             <View style={{ gap: space.xs, marginTop: space.xs }}>
               {briefing.priorities.slice(0, 4).map((p, i) => (
                 <View key={i} style={{ flexDirection: "row", gap: space.sm }}>
-                  <View style={{ width: 6, height: 6, borderRadius: 1, backgroundColor: color.orange, marginTop: 8 }} />
+                  <View style={{ width: 6, height: 6, borderRadius: 1, backgroundColor: color.accentText, marginTop: 8 }} />
                   <Txt variant="body" style={{ flex: 1 }}>
                     {p}
                   </Txt>

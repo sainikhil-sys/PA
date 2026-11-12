@@ -85,7 +85,7 @@ export default function AgendaScreen() {
           stickySectionHeadersEnabled={false}
           ListHeaderComponent={banner ?? undefined}
           contentContainerStyle={{ paddingBottom: space.xxxl, flexGrow: 1 }}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={color.orange} colors={[color.orange]} progressBackgroundColor={color.surface2} />}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={color.accentText} colors={[color.accentText]} progressBackgroundColor={color.surface2} />}
           renderSectionHeader={({ section }) => (
             <View style={{ paddingHorizontal: space.lg, paddingTop: space.lg }}>
               <SectionHeader title={section.title} />
@@ -137,7 +137,7 @@ function EventRow({ event, tz }: { event: ScheduleEvent; tz?: string }) {
       detail={detail || null}
       onPress={open}
       label={`${time}. ${event.title}${detail ? `. ${detail}` : ""}${open ? ". Opens meeting notes" : ""}`}
-      icon={event.hasNotes ? <NotebookIcon size={16} color={color.warm} /> : event.meetingUrl ? <VideoCameraIcon size={16} color={color.muted} /> : null}
+      icon={event.hasNotes ? <NotebookIcon size={16} color={color.accent2} /> : event.meetingUrl ? <VideoCameraIcon size={16} color={color.muted} /> : null}
     />
   );
 }

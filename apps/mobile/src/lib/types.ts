@@ -3,9 +3,17 @@
 export type Me = {
   email: string;
   name: string | null;
+  /** Older servers omit the profile fields below. */
+  bio?: string | null;
+  /** Small data URL set on the website (Settings > Profile). */
+  avatarUrl?: string | null;
+  memberSince?: string;
+  stats?: { chats: number; notes: number; documents: number; memories: number };
   timezone: string;
   agentName: string;
   onboarded: boolean;
+  /** The server's answer; the app never decides this. Older servers omit it (no admin entry). */
+  isAdmin?: boolean;
   pendingApprovals: number;
   unreadNotifications: number;
 };

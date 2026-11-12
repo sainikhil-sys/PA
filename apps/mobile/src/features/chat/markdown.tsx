@@ -132,7 +132,7 @@ function InlineText({ nodes, base }: { nodes: Inline[]; base: TextStyle }): Reac
         return n.v;
       case "code":
         return (
-          <Text key={i} style={{ fontFamily: MONO, fontSize: (base.fontSize ?? 15) - 1, color: color.warm, backgroundColor: color.surface3 }}>
+          <Text key={i} style={{ fontFamily: MONO, fontSize: (base.fontSize ?? 15) - 1, color: color.text, backgroundColor: color.surface3 }}>
             {` ${n.v} `}
           </Text>
         );
@@ -150,13 +150,13 @@ function InlineText({ nodes, base }: { nodes: Inline[]; base: TextStyle }): Reac
         );
       case "link":
         return (
-          <Text key={i} accessibilityRole="link" onPress={() => openLink(n.url)} style={{ color: color.warm, textDecorationLine: "underline" }}>
+          <Text key={i} accessibilityRole="link" onPress={() => openLink(n.url)} style={{ color: color.accentText, textDecorationLine: "underline" }}>
             <InlineText nodes={n.c} base={base} />
           </Text>
         );
       case "cite":
         return (
-          <Text key={i} accessibilityLabel={`Source ${n.n}`} style={{ fontFamily: font.medium, fontSize: 11, color: color.warm }}>
+          <Text key={i} accessibilityLabel={`Source ${n.n}`} style={{ fontFamily: font.medium, fontSize: 11, color: color.accentText }}>
             {` [${n.n}]`}
           </Text>
         );

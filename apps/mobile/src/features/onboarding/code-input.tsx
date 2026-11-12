@@ -34,7 +34,7 @@ export function CodeInput({ value, onChange, disabled, error }: { value: string;
                 minHeight: 52,
                 borderRadius: radius.control,
                 borderWidth: 1,
-                borderColor: error ? color.danger : active ? color.orange : color.borderStrong,
+                borderColor: error ? color.danger : active ? color.accentText : color.borderStrong,
                 backgroundColor: color.surface,
                 alignItems: "center",
                 justifyContent: "center",

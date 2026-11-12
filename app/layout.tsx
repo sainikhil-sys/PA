@@ -25,16 +25,23 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#ffffff",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: dark)", color: "#111111" },
+  ],
   width: "device-width",
   initialScale: 1,
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   // The app's Reduce motion setting, mirrored in a cookie so it applies from first paint.
-  const reduceMotion = (await cookies()).get("pa_rm")?.value === "1";
+  const jar = await cookies();
+  const reduceMotion = jar.get("pa_rm")?.value === "1";
+  // Appearance: "light" or "dark" pins the theme; no cookie follows the system (globals.css).
+  const themeCookie = jar.get("pa_theme")?.value;
+  const theme = themeCookie === "light" || themeCookie === "dark" ? themeCookie : undefined;
   return (
-    <html lang="en" data-theme="light" data-reduce-motion={reduceMotion ? "true" : undefined} className={`${hanken.variable} ${newsreader.variable}`} suppressHydrationWarning>
+    <html lang="en" data-theme={theme} data-reduce-motion={reduceMotion ? "true" : undefined} className={`${hanken.variable} ${newsreader.variable}`} suppressHydrationWarning>
       <body className="min-h-dvh">
         <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-md focus:bg-primary focus:px-3 focus:py-2 focus:text-primary-foreground">
           Skip to content

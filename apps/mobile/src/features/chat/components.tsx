@@ -99,7 +99,7 @@ function Sources({ citations }: { citations: Citation[] }) {
       {citations.map((c) => {
         const body = (
           <View style={{ flexDirection: "row", gap: space.sm, alignItems: "center", minHeight: c.url ? TOUCH : 28 }}>
-            <Text style={{ fontFamily: font.medium, fontSize: 12, color: color.warm, minWidth: 18 }} maxFontSizeMultiplier={1.4}>
+            <Text style={{ fontFamily: font.medium, fontSize: 12, color: color.accentText, minWidth: 18 }} maxFontSizeMultiplier={1.4}>
               {c.n}
             </Text>
             <Txt variant="small" numberOfLines={1} style={{ flex: 1, color: c.url ? color.text : color.muted }}>
@@ -227,7 +227,7 @@ export function AssistantMessage({
     <View style={{ gap: space.sm, paddingRight: space.sm }}>
       {waiting ? (
         <View style={{ flexDirection: "row", alignItems: "center", gap: space.sm, minHeight: 28 }} accessibilityLiveRegion="polite">
-          <ActivityIndicator size="small" color={color.orange} />
+          <ActivityIndicator size="small" color={color.accentText} />
           <Txt variant="small">{item.status ?? "Thinking"}</Txt>
         </View>
       ) : null}
@@ -329,12 +329,12 @@ export function ReportSheet({ messageId, onClose }: { messageId: string | null; 
                     paddingHorizontal: space.md,
                     borderRadius: radius.control,
                     borderWidth: 1,
-                    borderColor: on ? color.orange : color.border,
+                    borderColor: on ? color.accentText : color.border,
                     backgroundColor: pressed ? color.surface2 : color.surface,
                   })}
                 >
-                  <View style={{ width: 18, height: 18, borderRadius: 9, borderWidth: 2, borderColor: on ? color.orange : color.borderStrong, alignItems: "center", justifyContent: "center" }}>
-                    {on ? <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: color.orange }} /> : null}
+                  <View style={{ width: 18, height: 18, borderRadius: 9, borderWidth: 2, borderColor: on ? color.accentText : color.borderStrong, alignItems: "center", justifyContent: "center" }}>
+                    {on ? <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: color.accentText }} /> : null}
                   </View>
                   <Txt variant="label">{r.label}</Txt>
                 </Pressable>
@@ -384,8 +384,8 @@ export function Composer({
         onChangeText={onChange}
         placeholder="Message your agent"
         placeholderTextColor={color.subtle}
-        selectionColor={color.orange}
-        cursorColor={color.orange}
+        selectionColor={color.accentText}
+        cursorColor={color.accentText}
         accessibilityLabel="Message"
         multiline
         maxLength={8000}

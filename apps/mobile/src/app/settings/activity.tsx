@@ -8,10 +8,11 @@ import { useActivity } from "@/lib/queries";
 import type { ActivityEntry } from "@/lib/types";
 import { color, space } from "@/theme/tokens";
 
-const OUTCOME: Record<string, { icon: Icon; label: string; tint: string }> = {
-  success: { icon: CheckCircleIcon, label: "Done", tint: color.success },
-  error: { icon: XCircleIcon, label: "Failed", tint: color.danger },
-  denied: { icon: ProhibitIcon, label: "Blocked", tint: color.warning },
+// Tints are palette keys, resolved at render time so they follow the active theme.
+const OUTCOME: Record<string, { icon: Icon; label: string; tint: "success" | "danger" | "warning" }> = {
+  success: { icon: CheckCircleIcon, label: "Done", tint: "success" },
+  error: { icon: XCircleIcon, label: "Failed", tint: "danger" },
+  denied: { icon: ProhibitIcon, label: "Blocked", tint: "warning" },
 };
 
 const ACTOR: Record<string, string> = { me: "You", agent: "Your agent", claude: "Claude", system: "Cowork" };
@@ -23,7 +24,8 @@ function toolLabel(tool: string) {
 }
 
 function Entry({ item, last }: { item: ActivityEntry; last: boolean }) {
-  const o = OUTCOME[item.outcome] ?? { icon: CheckCircleIcon, label: item.outcome, tint: color.muted };
+  const known = OUTCOME[item.outcome];
+  const o = known ? { ...known, tint: color[known.tint] } : { icon: CheckCircleIcon, label: item.outcome, tint: color.muted };
   const OIcon = o.icon;
   const who = ACTOR[item.actor] ?? item.actor;
   return (

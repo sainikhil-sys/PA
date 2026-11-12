@@ -70,7 +70,7 @@ export function StepIndicator({ step }: { step: (typeof STEPS)[number] }) {
     <View style={{ gap: space.sm }} accessible accessibilityLabel={`Step ${n} of ${STEPS.length}`}>
       <View style={{ flexDirection: "row", gap: space.xs }}>
         {STEPS.map((s, i) => (
-          <View key={s} style={{ flex: 1, height: 3, borderRadius: 2, backgroundColor: i < n ? color.orange : color.surface3 }} />
+          <View key={s} style={{ flex: 1, height: 3, borderRadius: 2, backgroundColor: i < n ? color.accentText : color.surface3 }} />
         ))}
       </View>
       <Txt variant="caption">
@@ -85,7 +85,7 @@ export function InfoItem({ icon: IconCmp, title, body, children }: { icon: Icon;
   return (
     <View style={{ flexDirection: "row", gap: space.md }}>
       <View importantForAccessibility="no-hide-descendants" accessibilityElementsHidden style={{ width: 40, height: 40, borderRadius: radius.control, backgroundColor: color.surface2, borderWidth: 1, borderColor: color.border, alignItems: "center", justifyContent: "center" }}>
-        <IconCmp size={20} color={color.warm} />
+        <IconCmp size={20} color={color.accent2} />
       </View>
       <View style={{ flex: 1, gap: space.xs }}>
         <Txt variant="label">{title}</Txt>
