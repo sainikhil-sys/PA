@@ -1,7 +1,7 @@
 import { GlassView, isLiquidGlassAvailable } from "expo-glass-effect";
 import { Image } from "expo-image";
 import type { Tabs } from "expo-router";
-import { BriefcaseIcon, ChatsCircleIcon, HouseSimpleIcon, SparkleIcon, type Icon } from "phosphor-react-native";
+import { ChatsCircleIcon, HouseSimpleIcon, SparkleIcon, UsersThreeIcon, type Icon } from "phosphor-react-native";
 import * as React from "react";
 import { AccessibilityInfo, Keyboard, Platform, Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import Animated, { useAnimatedStyle, withTiming } from "react-native-reanimated";
@@ -26,8 +26,8 @@ export function useTabBarSpace() {
   return BAR_HEIGHT + BAR_GAP + Math.max(insets.bottom, space.sm) + space.lg;
 }
 
-const ICONS: Record<string, Icon> = { index: HouseSimpleIcon, chats: ChatsCircleIcon, assistant: SparkleIcon, workspace: BriefcaseIcon };
-const LABELS: Record<string, string> = { index: "Home", chats: "Chats", assistant: "Assistant", workspace: "Workspace", settings: "Profile" };
+const ICONS: Record<string, Icon> = { index: HouseSimpleIcon, chats: ChatsCircleIcon, community: UsersThreeIcon, assistant: SparkleIcon };
+const LABELS: Record<string, string> = { index: "Home", chats: "Chats", community: "Community", assistant: "Assistant", settings: "Profile" };
 
 /** Item width: fills the bar on narrow phones (at least 56) and stops growing at 72. */
 function itemWidth(screen: number, count: number) {

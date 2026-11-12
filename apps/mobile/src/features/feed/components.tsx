@@ -1,6 +1,6 @@
 import { Image } from "expo-image";
 import { router } from "expo-router";
-import { BookmarkSimpleIcon, ChatCircleIcon, ClockIcon, DotsThreeIcon, EyeSlashIcon, FlagIcon, GlobeHemisphereWestIcon, HeartIcon, PencilSimpleIcon, TrashIcon, UsersIcon, UserIcon } from "phosphor-react-native";
+import { BookmarkSimpleIcon, ChatCircleIcon, CheckIcon, ClockIcon, MegaphoneIcon, PushPinIcon, DotsThreeIcon, EyeSlashIcon, FlagIcon, GlobeHemisphereWestIcon, HeartIcon, PencilSimpleIcon, TrashIcon, UsersIcon, UserIcon } from "phosphor-react-native";
 import * as React from "react";
 import { Pressable, Text, View } from "react-native";
 import { ConfirmSheet, Sheet } from "@/components/sheet";
@@ -10,8 +10,50 @@ import { ReportSheet } from "@/features/social/report-sheet";
 import { errorText } from "@/lib/api";
 import { feedback } from "@/lib/feedback";
 import { color, font, radius, space, TOUCH } from "@/theme/tokens";
+import { useVote } from "@/features/spaces/api";
 import { usePostActions } from "./api";
 import type { Post, PostMedia, Visibility } from "./types";
+
+/** Poll results with one-tap voting. Results show once you vote or the poll closes. */
+function PollView({ post }: { post: Post }) {
+  const vote = useVote();
+  const poll = post.poll;
+  if (!poll) return null;
+  const voted = poll.options.some((o) => o.mine);
+  const showResults = voted || poll.closed;
+  return (
+    <View accessibilityRole="radiogroup" accessibilityLabel="Poll" style={{ gap: space.sm }}>
+      {poll.options.map((o, i) => {
+        const pct = poll.total ? Math.round((o.votes / poll.total) * 100) : 0;
+        return (
+          <Pressable
+            key={i}
+            accessibilityRole="radio"
+            accessibilityState={{ selected: o.mine, disabled: poll.closed }}
+            accessibilityLabel={showResults ? `${o.text}, ${pct} percent${o.mine ? ", your vote" : ""}` : o.text}
+            disabled={poll.closed || vote.isPending}
+            onPress={() => {
+              feedback.selection();
+              vote.mutate({ postId: post.id, option: i });
+            }}
+            style={({ pressed }) => ({ minHeight: TOUCH - 4, justifyContent: "center", borderRadius: radius.control, borderWidth: 1, borderColor: o.mine ? color.accent : color.border, backgroundColor: pressed ? color.surface2 : color.surface, overflow: "hidden" })}
+          >
+            {showResults ? <View style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: `${pct}%`, backgroundColor: color.surface2 }} /> : null}
+            <View style={{ flexDirection: "row", alignItems: "center", gap: space.sm, paddingHorizontal: space.md }}>
+              {o.mine ? <CheckIcon size={16} color={color.accentText} weight="bold" /> : null}
+              <Txt variant="label" style={{ flex: 1 }}>
+                {o.text}
+              </Txt>
+              {showResults ? <Txt variant="small">{`${pct}%`}</Txt> : null}
+            </View>
+          </Pressable>
+        );
+      })}
+      <Txt variant="small">{`${poll.total} ${poll.total === 1 ? "vote" : "votes"}${poll.closed ? "  ·  Closed" : poll.multiple ? "  ·  Choose any" : ""}`}</Txt>
+      {vote.isError ? <Txt variant="small" style={{ color: color.danger }}>{errorText(vote.error)}</Txt> : null}
+    </View>
+  );
+}
 
 const VIS_ICON: Record<Visibility, typeof GlobeHemisphereWestIcon> = { public: GlobeHemisphereWestIcon, followers: UserIcon, friends: UsersIcon };
 const VIS_A11Y: Record<Visibility, string> = { public: "Visible to everyone", followers: "Visible to followers", friends: "Visible to friends" };
@@ -106,6 +148,28 @@ export function PostCard({ post, onOpen, showComments = true }: { post: Post; on
         </Pressable>
       </View>
 
+      {post.pinned || post.kind === "announcement" || post.space ? (
+        <View style={{ flexDirection: "row", alignItems: "center", gap: space.sm, flexWrap: "wrap" }}>
+          {post.pinned ? (
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+              <PushPinIcon size={14} color={color.accentText} weight="fill" />
+              <Txt variant="small" style={{ color: color.accentText }}>Pinned</Txt>
+            </View>
+          ) : null}
+          {post.kind === "announcement" ? (
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+              <MegaphoneIcon size={14} color={color.accentText} />
+              <Txt variant="small" style={{ color: color.accentText }}>Announcement</Txt>
+            </View>
+          ) : null}
+          {post.space ? (
+            <Pressable accessibilityRole="link" accessibilityLabel={`Open the Space ${post.space.name}`} onPress={() => router.push(`/space/${encodeURIComponent(post.space!.slug)}`)} hitSlop={6}>
+              <Txt variant="small">{`in ${post.space.name}`}</Txt>
+            </Pressable>
+          ) : null}
+        </View>
+      ) : null}
+
       {post.status === "held" ? (
         <View style={{ flexDirection: "row", gap: space.sm, alignItems: "center", padding: space.sm, borderRadius: radius.control, backgroundColor: color.surface }}>
           <ClockIcon size={16} color={color.muted} />
@@ -123,6 +187,7 @@ export function PostCard({ post, onOpen, showComments = true }: { post: Post; on
         ) : null}
         <MediaGrid media={post.media} />
       </Pressable>
+      <PollView post={post} />
 
       <View style={{ flexDirection: "row", alignItems: "center", gap: space.md, marginLeft: -space.xs }}>
         <Action icon={HeartIcon} label={liked ? "Unlike" : "Like"} count={post.reactionCount} active={liked} onPress={() => actions.react.mutate({ id: post.id, kind: "like" })} />

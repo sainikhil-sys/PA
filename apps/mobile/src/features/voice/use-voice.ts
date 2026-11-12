@@ -1,6 +1,7 @@
 import { getLocales } from "expo-localization";
-import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent, type ExpoSpeechRecognitionErrorCode } from "expo-speech-recognition";
+import type { ExpoSpeechRecognitionErrorCode } from "expo-speech-recognition";
 import * as React from "react";
+import { recognition, useRecognitionEvent } from "./recognition";
 
 export type VoiceState = "idle" | "starting" | "listening";
 
@@ -44,21 +45,21 @@ export function useVoice({ onFinal }: { onFinal: (text: string) => void }) {
     onFinalRef.current = onFinal;
   }, [onFinal]);
 
-  useSpeechRecognitionEvent("start", () => {
+  useRecognitionEvent("start", () => {
     if (active.current) setState("listening");
   });
-  useSpeechRecognitionEvent("result", (e) => {
+  useRecognitionEvent("result", (e) => {
     if (!active.current) return;
     const t = e.results[0]?.transcript ?? "";
     latest.current = t;
     setTranscript(t);
   });
-  useSpeechRecognitionEvent("error", (e) => {
+  useRecognitionEvent("error", (e) => {
     if (!active.current || e.error === "aborted") return;
     if (e.error === "not-allowed") setDenied(true);
     setError(ERRORS[e.error] ?? "Speech recognition stopped unexpectedly. Try again or type instead.");
   });
-  useSpeechRecognitionEvent("end", () => {
+  useRecognitionEvent("end", () => {
     if (!active.current) return;
     active.current = false;
     setState("idle");
@@ -71,7 +72,7 @@ export function useVoice({ onFinal }: { onFinal: (text: string) => void }) {
       if (active.current) {
         active.current = false;
         try {
-          ExpoSpeechRecognitionModule.abort();
+          recognition()?.abort();
         } catch {}
       }
     },
@@ -84,9 +85,15 @@ export function useVoice({ onFinal }: { onFinal: (text: string) => void }) {
     setTranscript("");
     latest.current = "";
     cancelled.current = false;
+    const mod = recognition();
+    if (!mod) {
+      setState("idle");
+      setError("Voice input isn't available in this version of Cowork. You can type instead.");
+      return;
+    }
     setState("starting");
     try {
-      const perm = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
+      const perm = await mod.requestPermissionsAsync();
       if (cancelled.current) {
         setState("idle");
         return;
@@ -98,13 +105,13 @@ export function useVoice({ onFinal }: { onFinal: (text: string) => void }) {
         return;
       }
       setDenied(false);
-      if (!ExpoSpeechRecognitionModule.isRecognitionAvailable()) {
+      if (!mod.isRecognitionAvailable()) {
         setState("idle");
         setError(ERRORS["service-not-allowed"]!);
         return;
       }
       active.current = true;
-      ExpoSpeechRecognitionModule.start({ lang: deviceLanguage(), interimResults: true, continuous: false });
+      mod.start({ lang: deviceLanguage(), interimResults: true, continuous: false });
     } catch {
       active.current = false;
       setState("idle");
@@ -115,7 +122,7 @@ export function useVoice({ onFinal }: { onFinal: (text: string) => void }) {
   /** Finish listening and keep what was heard. */
   const stop = React.useCallback(() => {
     try {
-      ExpoSpeechRecognitionModule.stop();
+      recognition()?.stop();
     } catch {
       active.current = false;
       setState("idle");
@@ -131,7 +138,7 @@ export function useVoice({ onFinal }: { onFinal: (text: string) => void }) {
       return;
     }
     try {
-      ExpoSpeechRecognitionModule.abort();
+      recognition()?.abort();
     } catch {
       active.current = false;
       setState("idle");

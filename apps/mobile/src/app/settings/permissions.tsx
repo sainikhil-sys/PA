@@ -1,10 +1,10 @@
 import * as Notifications from "expo-notifications";
-import { ExpoSpeechRecognitionModule } from "expo-speech-recognition";
 import { BellIcon, CheckCircleIcon, DeviceMobileIcon, GearSixIcon, MicrophoneIcon, type Icon } from "phosphor-react-native";
 import * as React from "react";
 import { AppState, Linking, Pressable, ScrollView, View } from "react-native";
 import { Row, Screen, Skeleton, Txt } from "@/components/ui";
 import { ListSection, SubHeader } from "@/features/settings/parts";
+import { recognition } from "@/features/voice/recognition";
 import PhoneLink from "@/lib/phone-link";
 import { color, space, TOUCH } from "@/theme/tokens";
 
@@ -20,7 +20,7 @@ function fromResponse(r: { granted: boolean; canAskAgain: boolean }): State {
 async function readAll(): Promise<Perm[]> {
   const [notif, mic] = await Promise.all([
     Notifications.getPermissionsAsync().catch(() => null),
-    ExpoSpeechRecognitionModule.getMicrophonePermissionsAsync().catch(() => null),
+    recognition()?.getMicrophonePermissionsAsync().catch(() => null) ?? null,
   ]);
   const perms: Perm[] = [
     {
@@ -37,7 +37,7 @@ async function readAll(): Promise<Perm[]> {
       title: "Microphone",
       why: "Talk to your agent; only while you hold the mic or tap to talk",
       state: mic ? fromResponse(mic) : "unavailable",
-      request: () => ExpoSpeechRecognitionModule.requestMicrophonePermissionsAsync(),
+      request: recognition() ? () => recognition()!.requestMicrophonePermissionsAsync() : undefined,
     },
   ];
   if (PhoneLink.isAvailable()) {

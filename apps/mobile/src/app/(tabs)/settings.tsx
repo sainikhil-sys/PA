@@ -3,6 +3,7 @@ import { Image } from "expo-image";
 import { router, type Href } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import {
+  BriefcaseIcon,
   BroadcastIcon,
   BellIcon,
   BrainIcon,
@@ -128,6 +129,7 @@ export default function ProfileTab() {
         </View>
 
         <ListSection title="My stuff">
+          <Row icon={BriefcaseIcon} title="Workspace" detail="Tasks, plans, approvals, notes and documents" onPress={go("/workspace")} right={chevron} />
           <Row icon={NotebookIcon} title="Notes and links" onPress={go("/notes")} right={chevron} />
           <Row icon={FileTextIcon} title="Documents" onPress={go("/settings/documents")} right={chevron} />
           <Row icon={BrainIcon} title="Memory" detail="What your agent knows about you" onPress={go("/settings/memory")} right={chevron} />

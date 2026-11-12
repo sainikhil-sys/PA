@@ -1,5 +1,5 @@
 import { router } from "expo-router";
-import { LockIcon, RadioIcon, UsersIcon, WifiSlashIcon } from "phosphor-react-native";
+import { KeyIcon, LockIcon, RadioIcon, UsersIcon, WifiSlashIcon } from "phosphor-react-native";
 import * as React from "react";
 import { ScrollView, Switch, View } from "react-native";
 import { ConfirmSheet, Sheet } from "@/components/sheet";
@@ -114,12 +114,56 @@ export default function WalkieScreen() {
   const [open, setOpen] = React.useState(false);
   const [codeFor, setCodeFor] = React.useState<Channel | null>(null);
   const [code, setCode] = React.useState("");
+  const [codeOnly, setCodeOnly] = React.useState(false);
+  const [codeNote, setCodeNote] = React.useState<string | null>(null);
+  const [trying, setTrying] = React.useState(false);
 
   React.useEffect(() => {
     void w.start();
     // start is stable and idempotent.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  /**
+   * Join with only a code: there is no server, so the code is tried against the private channels of
+   * people connected to you, one at a time, until a host accepts it. Each host checks its own code.
+   */
+  const joinByCode = async (input: string) => {
+    const candidates = Object.values(useWalkie.getState().channels).filter((c) => c.host !== useWalkie.getState().me && !c.open);
+    if (!candidates.length) {
+      setCodeNote("No private channels from people connected to you yet. Connect with the person who made the channel first, then enter the code.");
+      return;
+    }
+    setTrying(true);
+    setCodeNote(null);
+    try {
+      for (const c of candidates) {
+        await useWalkie.getState().join(c.id, input);
+        const outcome = await new Promise<"joined" | "no">((resolve) => {
+          const done = (r: "joined" | "no") => {
+            unsub();
+            clearTimeout(timer);
+            resolve(r);
+          };
+          const check = () => {
+            const st = useWalkie.getState();
+            if (st.joined === c.id) done("joined");
+            else if (st.joining !== c.id) done("no");
+          };
+          const unsub = useWalkie.subscribe(check);
+          const timer = setTimeout(() => done("no"), 12_000);
+          check();
+        });
+        if (outcome === "joined") {
+          setCodeOnly(false);
+          return;
+        }
+      }
+      setCodeNote("That code didn't open any channel near you. Check the code with the person who made the channel.");
+    } finally {
+      setTrying(false);
+    }
+  };
 
   const joinedChannel = w.joined ? w.channels[w.joined] : undefined;
   const listed = Object.values(w.channels).filter((c) => c.host !== w.me);
@@ -162,6 +206,16 @@ export default function WalkieScreen() {
             ) : null}
 
             <Button label="Make a channel" variant="primary" icon={RadioIcon} disabled={w.busy || Boolean(w.joining)} onPress={() => setCreateOpen(true)} />
+            <Button
+              label="Join with a code"
+              icon={KeyIcon}
+              disabled={w.busy || Boolean(w.joining)}
+              onPress={() => {
+                setCode("");
+                setCodeNote(null);
+                setCodeOnly(true);
+              }}
+            />
 
             <View>
               <SectionHeader title="Channels near you" />
@@ -219,6 +273,18 @@ export default function WalkieScreen() {
             setName("");
           }}
         />
+      </Sheet>
+
+      <Sheet open={codeOnly} onClose={() => !trying && setCodeOnly(false)} title="Join with a code">
+        <Input label="6-digit code" value={code} onChangeText={setCode} keyboardType="number-pad" maxLength={7} autoFocus placeholder="123 456" />
+        <Txt variant="small">Walkie works without internet, so the code reaches channels made by people you are connected to in Connect. Ask the person who made the channel for the code. Cowork asks for the microphone when you join.</Txt>
+        {codeNote ? (
+          <Txt variant="small" style={{ color: color.danger }} accessibilityLiveRegion="polite">
+            {codeNote}
+          </Txt>
+        ) : null}
+        <Button label={trying ? "Trying the code..." : "Join"} variant="primary" loading={trying} disabled={trying || code.replace(/\D/g, "").length !== 6} onPress={() => void joinByCode(code)} />
+        {codeNote && peerCount === 0 ? <Button label="Open Connect" icon={UsersIcon} onPress={() => { setCodeOnly(false); router.push("/connect"); }} /> : null}
       </Sheet>
 
       <Sheet open={codeFor !== null} onClose={() => setCodeFor(null)} title={codeFor ? `Join ${codeFor.name}` : "Join"}>
