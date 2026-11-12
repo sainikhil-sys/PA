@@ -98,7 +98,7 @@ export default function RootLayout() {
       {ready ? (
         // App lock sits over the mounted app; its lock screen follows the launch animation.
         <LockGate launched={launched} scheme={scheme}>
-          <App scheme={scheme} signedIn={signedIn} onboarded={onboarded} />
+          <App scheme={scheme} signedIn={signedIn} onboarded={onboarded} gate={gate} covered={covered} />
         </LockGate>
       ) : null}
       {launched ? null : <Launch ready={ready} onDone={onLaunched} />}
@@ -106,7 +106,7 @@ export default function RootLayout() {
   );
 }
 
-function App({ scheme, signedIn, onboarded }: { scheme: Scheme; signedIn: boolean; onboarded: boolean }) {
+function App({ scheme, signedIn, onboarded, gate, covered }: { scheme: Scheme; signedIn: boolean; onboarded: boolean; gate: ReturnType<typeof useGate>; covered: boolean }) {
   // Settings > Appearance > Reduce motion: every Reanimated animation follows it, on top of the phone's setting.
   const motion = useThemePreference((st) => st.motion);
   return (
