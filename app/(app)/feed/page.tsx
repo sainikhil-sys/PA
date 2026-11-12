@@ -4,11 +4,13 @@ import { Composer } from "@/components/feed/composer";
 import { FollowRequestActions } from "@/components/feed/follow-button";
 import { type FeedPost, PostCard } from "@/components/feed/post-card";
 import { FeedSetup } from "@/components/feed/setup";
+import { MomentsTray } from "@/components/moments/moments";
 import { PageHeader } from "@/components/ui/states";
 import { requireOwner } from "@/lib/auth/session";
 import { requireSocial } from "@/lib/feed/people";
 import { followingFeed, forYouFeed, savedFeed } from "@/lib/feed/posts";
 import { listFollowRequests } from "@/lib/feed/profiles";
+import { tray } from "@/lib/moments/service";
 import { suggestHandle } from "@/lib/social/rules";
 import { getProfile } from "@/lib/social/service";
 import { cn } from "@/lib/utils";
@@ -39,12 +41,13 @@ export default async function FeedPage({ searchParams }: { searchParams: Promise
   const me = await requireSocial(user);
   const tab: Tab = TABS.some((t) => t.id === sp.tab) ? (sp.tab as Tab) : "following";
   const load = tab === "foryou" ? forYouFeed : tab === "saved" ? savedFeed : followingFeed;
-  const [page, requests] = await Promise.all([load(user.id, sp.cursor), listFollowRequests(user.id)]);
+  const [page, requests, moments] = await Promise.all([load(user.id, sp.cursor), listFollowRequests(user.id), tray(user.id)]);
   const items = page.items as FeedPost[];
 
   return (
     <div className="mx-auto flex max-w-[640px] flex-col gap-3">
       <PageHeader title="Feed" description={`Signed in as @${me.handle}${me.privateAccount ? ", private account" : ""}.`} />
+      {!sp.cursor ? <MomentsTray items={moments} canPost /> : null}
       <nav aria-label="Feed" className="flex gap-1 border-b border-border">
         {TABS.map((t) => (
           <Link

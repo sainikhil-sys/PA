@@ -1877,6 +1877,83 @@ export type Space = typeof spaces.$inferSelect;
 export type SpaceMember = typeof spaceMembers.$inferSelect;
 export type SpaceEvent = typeof spaceEvents.$inferSelect;
 
+// ---------- Moments (B6): stories that last 24 hours ----------
+
+/**
+ * A Moment: a photo, a video, or text on a colour, for 24 hours. After `expiresAt` only its author
+ * can see it (their archive); the server stops issuing media links for it to anyone else.
+ * Audience: accepted followers, or only the author's close friends.
+ */
+export const moments = pgTable(
+  "moments",
+  {
+    id: id(),
+    authorId: uuid("author_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    mediaId: uuid("media_id").references(() => media.id, { onDelete: "set null" }),
+    /** Caption, or the text of a text-only Moment. */
+    body: text("body").notNull().default(""),
+    /** Text-only Moments: a design token name for the background (never a raw colour). */
+    background: text("background"),
+    audience: text("audience").$type<"followers" | "close_friends">().notNull().default("followers"),
+    status: text("status").$type<"published" | "held" | "removed">().notNull().default("published"),
+    createdAt: createdAt(),
+    expiresAt: ts("expires_at").notNull(),
+    deletedAt: ts("deleted_at"),
+  },
+  (t) => [index("moments_author_idx").on(t.authorId, t.createdAt), index("moments_expires_idx").on(t.expiresAt)],
+);
+
+/** Who saw a Moment (only its author can list them). */
+export const momentViews = pgTable(
+  "moment_views",
+  {
+    momentId: uuid("moment_id")
+      .notNull()
+      .references(() => moments.id, { onDelete: "cascade" }),
+    viewerId: uuid("viewer_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    viewedAt: createdAt(),
+  },
+  (t) => [primaryKey({ columns: [t.momentId, t.viewerId] })],
+);
+
+/** Replies and reactions to a Moment. Private: only the Moment's author and the sender see them. */
+export const momentReplies = pgTable(
+  "moment_replies",
+  {
+    id: id(),
+    momentId: uuid("moment_id")
+      .notNull()
+      .references(() => moments.id, { onDelete: "cascade" }),
+    senderId: uuid("sender_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    kind: text("kind").$type<"reply" | "reaction">().notNull(),
+    /** The text of a reply, or the reaction kind (the fixed, icon-drawn set). */
+    body: text("body").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [index("moment_replies_moment_idx").on(t.momentId, t.createdAt)],
+);
+
+/** Close friends: a private list; the people on it are never told. */
+export const closeFriends = pgTable(
+  "close_friends",
+  {
+    userId: userId(),
+    friendId: uuid("friend_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    createdAt: createdAt(),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.friendId] })],
+);
+
+export type Moment = typeof moments.$inferSelect;
+
 export type Media = typeof media.$inferSelect;
 export type Post = typeof posts.$inferSelect;
 export type Comment = typeof comments.$inferSelect;
