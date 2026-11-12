@@ -1,5 +1,6 @@
 import {
   Books,
+  Newspaper,
   ChartLineUp,
   SealCheck,
   ChatCircle,
@@ -32,6 +33,7 @@ export const PRIMARY_NAV: NavItem[] = [
 ];
 
 export const SECONDARY_NAV: NavItem[] = [
+  { href: "/feed", label: "Feed", icon: Newspaper, match: ["/p", "/u"] },
   { href: "/approvals", label: "Approvals", icon: SealCheck },
   { href: "/trackers", label: "Trackers", icon: ChartLineUp },
   { href: "/phone", label: "Phone", icon: DeviceMobile },
