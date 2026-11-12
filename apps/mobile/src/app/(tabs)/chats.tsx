@@ -1,5 +1,5 @@
 import { router } from "expo-router";
-import { ChatsCircleIcon, MagnifyingGlassIcon, UserPlusIcon, UsersThreeIcon, XIcon } from "phosphor-react-native";
+import { BroadcastIcon, CaretRightIcon, ChatsCircleIcon, MagnifyingGlassIcon, UserPlusIcon, UsersThreeIcon, XIcon } from "phosphor-react-native";
 import * as React from "react";
 import { FlatList, Pressable, RefreshControl, ScrollView, TextInput, View } from "react-native";
 import { Button, Divider, EmptyState, ErrorState, IconButton, Screen, SectionHeader, Skeleton, Txt } from "@/components/ui";
@@ -131,6 +131,21 @@ function ChatsHome() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={color.accentText} colors={[color.accentText]} progressBackgroundColor={color.surface2} />}
         ListHeaderComponent={
           <View style={{ gap: space.md, marginBottom: space.sm }}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="People nearby. Find and chat with Cowork users near you over Bluetooth and Wi-Fi, no internet needed"
+              onPress={() => router.push("/connect")}
+              style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: space.md, minHeight: TOUCH + 16, paddingHorizontal: space.lg, borderRadius: radius.card, borderWidth: 1, borderColor: color.border, backgroundColor: pressed ? color.surface2 : color.surface })}
+            >
+              <View style={{ width: 40, height: 40, borderRadius: radius.control, alignItems: "center", justifyContent: "center", backgroundColor: color.surface2 }}>
+                <BroadcastIcon size={22} color={color.accentText} />
+              </View>
+              <View style={{ flex: 1, paddingVertical: space.sm }}>
+                <Txt variant="label">People nearby</Txt>
+                <Txt variant="small">Bluetooth and Wi-Fi, no internet needed</Txt>
+              </View>
+              <CaretRightIcon size={18} color={color.subtle} />
+            </Pressable>
             <SearchBox value={q} onChange={setQ} />
             <Segments<Tab>
               value={tab}

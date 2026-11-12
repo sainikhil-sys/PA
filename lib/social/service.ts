@@ -54,7 +54,7 @@ async function requireProfile(userId: string) {
 
 export async function saveProfile(
   userId: string,
-  input: { handle?: string; displayName?: string; searchable?: boolean; showPresence?: boolean; readReceipts?: boolean; pushPreview?: boolean },
+  input: { handle?: string; displayName?: string; searchable?: boolean; showPresence?: boolean; readReceipts?: boolean; pushPreview?: boolean; privateAccount?: boolean },
 ) {
   const existing = await getProfile(userId);
   const handle = input.handle !== undefined ? normalizeHandle(input.handle) : existing?.handle;
@@ -70,6 +70,8 @@ export async function saveProfile(
     showPresence: input.showPresence ?? existing?.showPresence ?? true,
     readReceipts: input.readReceipts ?? existing?.readReceipts ?? true,
     pushPreview: input.pushPreview ?? existing?.pushPreview ?? false,
+    /** Posts only for approved followers. Teens are always treated as private by the feed (lib/safety). */
+    privateAccount: input.privateAccount ?? existing?.privateAccount ?? false,
   };
   try {
     const [row] = await db()

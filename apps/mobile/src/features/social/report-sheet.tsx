@@ -5,18 +5,24 @@ import { Sheet } from "@/components/sheet";
 import { Button, Input, Txt } from "@/components/ui";
 import { errorText } from "@/lib/api";
 import { color, radius, space, TOUCH } from "@/theme/tokens";
+import { useFeedReport } from "@/features/feed/api";
 import { useReport } from "./api";
 import { REPORT_REASONS, type ReportReason } from "./types";
 
 /** Report a person, message or group. Reports go to Cowork's moderators, never to the person. */
-export function ReportSheet({ target, onClose }: { target: { userId?: string; messageId?: string; threadId?: string; label: string } | null; onClose: () => void }) {
-  const report = useReport();
+/** Posts and comments go to the feed's report queue; people, messages and chats to Chats'. */
+export function ReportSheet({ target, onClose }: { target: { userId?: string; messageId?: string; threadId?: string; postId?: string; commentId?: string; label: string } | null; onClose: () => void }) {
+  const chatReport = useReport();
+  const feedReport = useFeedReport();
+  const isFeed = Boolean(target?.postId || target?.commentId);
+  const report = isFeed ? feedReport : chatReport;
   const [reason, setReason] = React.useState<ReportReason | null>(null);
   const [details, setDetails] = React.useState("");
   const close = () => {
     setReason(null);
     setDetails("");
-    report.reset();
+    chatReport.reset();
+    feedReport.reset();
     onClose();
   };
   return (
@@ -64,7 +70,12 @@ export function ReportSheet({ target, onClose }: { target: { userId?: string; me
             variant="primary"
             disabled={!reason}
             loading={report.isPending}
-            onPress={() => target && reason && report.mutate({ userId: target.userId, messageId: target.messageId, threadId: target.threadId, reason, details: details.trim() || undefined })}
+            onPress={() => {
+              if (!target || !reason) return;
+              const extra = details.trim() || undefined;
+              if (isFeed) feedReport.mutate({ postId: target.postId, commentId: target.commentId, reason, details: extra });
+              else chatReport.mutate({ userId: target.userId, messageId: target.messageId, threadId: target.threadId, reason, details: extra });
+            }}
           />
         </>
       )}

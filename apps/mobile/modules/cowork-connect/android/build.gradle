@@ -1,0 +1,20 @@
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'me.antropic.cowork'
+version = '1.0.0'
+
+android {
+  namespace "expo.modules.coworkconnect"
+  defaultConfig {
+    versionCode 1
+    versionName '1.0.0'
+  }
+}
+
+dependencies {
+  // Google Nearby Connections: offline peer-to-peer over Bluetooth, BLE and Wi-Fi.
+  implementation "com.google.android.gms:play-services-nearby:19.3.0"
+}

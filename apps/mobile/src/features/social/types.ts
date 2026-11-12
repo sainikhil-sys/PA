@@ -11,6 +11,8 @@ export type SocialProfile = {
   showPresence: boolean;
   readReceipts: boolean;
   pushPreview: boolean;
+  /** Posts only for approved followers. Older servers omit it. */
+  privateAccount?: boolean;
 };
 export type ProfileResponse = { profile: SocialProfile | null; suggestion?: { handle: string; displayName: string } };
 

@@ -1,0 +1,9 @@
+{
+  "platforms": ["android", "apple"],
+  "android": {
+    "modules": ["expo.modules.coworkbridge.CoworkBridgeModule"]
+  },
+  "apple": {
+    "modules": ["CoworkBridgeModule"]
+  }
+}

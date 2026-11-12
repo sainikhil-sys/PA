@@ -4,6 +4,7 @@ import * as React from "react";
 import { ScrollView, View } from "react-native";
 import { Button, EmptyState, ErrorState, IconButton, Input, Screen, SectionHeader, Skeleton, Txt } from "@/components/ui";
 import { useBlock, useBlocked, useSaveProfile, useSocialProfile } from "@/features/social/api";
+import { useMe } from "@/lib/queries";
 import { handleHint, SwitchRow } from "@/features/social/join";
 import { errorText } from "@/lib/api";
 import { color, radius, space } from "@/theme/tokens";
@@ -15,6 +16,8 @@ export default function ChatsSettings() {
   const blocked = useBlocked();
   const unblock = useBlock();
   const p = profile.data?.profile;
+  // Teens (13 to 17) always have a private account; the server enforces it.
+  const teen = useMe().data?.ageGroup === "teen";
 
   return (
     <Screen>
@@ -37,6 +40,13 @@ export default function ChatsSettings() {
 
           <View style={{ gap: space.xs }}>
             <SectionHeader title="Privacy" />
+            <SwitchRow
+              title="Private account"
+              detail={teen ? "On for everyone under 18. Only followers you approve see your posts." : "Only followers you approve see your posts. Off: anyone on Cowork can see posts you make public."}
+              value={teen || Boolean(p.privateAccount)}
+              disabled={teen || save.isPending}
+              onChange={(v) => save.mutate({ privateAccount: v })}
+            />
             <SwitchRow title="Let people find me by handle" detail="Off: only people you add, or who already know your handle through you, can find you." value={p.searchable} disabled={save.isPending} onChange={(v) => save.mutate({ searchable: v })} />
             <SwitchRow title="Show when I'm active" detail="Friends see Active now while Cowork is open. Off: they never see it." value={p.showPresence} disabled={save.isPending} onChange={(v) => save.mutate({ showPresence: v })} />
             <SwitchRow title="Read receipts" detail="Off: others don't see when you've read their messages, and you don't see theirs." value={p.readReceipts} disabled={save.isPending} onChange={(v) => save.mutate({ readReceipts: v })} />

@@ -6,7 +6,7 @@ import { getProfile, saveProfile } from "@/lib/social/service";
 export const dynamic = "force-dynamic";
 
 type Profile = NonNullable<Awaited<ReturnType<typeof getProfile>>>;
-const view = (p: Profile) => ({ handle: p.handle, displayName: p.displayName, searchable: p.searchable, showPresence: p.showPresence, readReceipts: p.readReceipts, pushPreview: p.pushPreview });
+const view = (p: Profile) => ({ handle: p.handle, displayName: p.displayName, searchable: p.searchable, showPresence: p.showPresence, readReceipts: p.readReceipts, pushPreview: p.pushPreview, privateAccount: p.privateAccount });
 
 /** The signed-in person's Chats profile, or a suggested handle when they haven't joined yet. */
 export async function GET(req: Request) {
@@ -24,6 +24,7 @@ const schema = z.object({
   showPresence: z.boolean().optional(),
   readReceipts: z.boolean().optional(),
   pushPreview: z.boolean().optional(),
+  privateAccount: z.boolean().optional(),
 });
 
 /** Joins Chats (first save) or changes the profile and privacy switches. */
