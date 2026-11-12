@@ -5,7 +5,7 @@ import { overviewStats, systemHealth } from "@/lib/admin/stats";
 import { timeAgo } from "@/lib/utils";
 
 export default async function ConsoleSystem() {
-  await requireAdmin();
+  await requireAdmin("infra.read");
   const [s, h] = await Promise.all([overviewStats(), systemHealth()]);
   return (
     <div className="flex flex-col gap-4">

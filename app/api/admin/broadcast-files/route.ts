@@ -1,6 +1,6 @@
 import { pruneUnsentFiles, saveBroadcastFile } from "@/lib/admin/broadcast-files";
 import { apiGuard } from "@/lib/auth/api";
-import { isAdmin } from "@/lib/auth/policy";
+import { hasPermission } from "@/lib/admin/roles";
 import { classifyUpload, MAX_ATTACHMENT_BYTES } from "@/lib/email/attachments";
 import { errorJson } from "@/lib/security/request";
 
@@ -16,7 +16,7 @@ const notFound = () => new Response("Not found", { status: 404 });
 export async function POST(req: Request) {
   const g = await apiGuard(req);
   if ("response" in g) return g.response.status === 429 ? g.response : notFound();
-  if (!isAdmin(g.user.email)) return notFound();
+  if (!(await hasPermission(g.user, "notifications.send"))) return notFound();
 
   if (Number(req.headers.get("content-length") ?? 0) > MAX_ATTACHMENT_BYTES + 64 * 1024) return errorJson(413, "That file is too large.");
   const form = await req.formData().catch(() => null);

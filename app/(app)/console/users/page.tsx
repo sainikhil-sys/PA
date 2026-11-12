@@ -2,11 +2,13 @@ import { Table } from "@/components/admin/parts";
 import { DisableToggle } from "@/components/admin/console-client";
 import { fmt } from "@/lib/admin/format";
 import { requireAdmin } from "@/lib/admin/guard";
+import { can } from "@/lib/admin/permissions";
 import { listUsersAdmin } from "@/lib/admin/stats";
 import { timeAgo } from "@/lib/utils";
 
 export default async function ConsoleUsers() {
-  const me = await requireAdmin();
+  const me = await requireAdmin("users.read");
+  const canSuspend = can(me.adminRole, "users.suspend");
   const users = await listUsersAdmin();
   return (
     <Table
@@ -24,7 +26,7 @@ export default async function ConsoleUsers() {
         <span key="i" className="tabular">{u.integrations}</span>,
         <span key="d" className="tabular">{u.devices}</span>,
         <span key="t" className="tabular">{fmt(u.tokens30)}</span>,
-        <DisableToggle key="x" userId={u.id} disabled={Boolean(u.disabledAt)} self={u.id === me.id} />,
+        canSuspend ? <DisableToggle key="x" userId={u.id} disabled={Boolean(u.disabledAt)} self={u.id === me.id} /> : <span key="x" />,
       ])}
     />
   );

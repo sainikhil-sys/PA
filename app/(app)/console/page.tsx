@@ -3,7 +3,7 @@ import { requireAdmin } from "@/lib/admin/guard";
 import { dailySeries, overviewStats } from "@/lib/admin/stats";
 
 export default async function ConsoleOverview() {
-  await requireAdmin();
+  await requireAdmin("overview.read");
   const [s, series] = await Promise.all([overviewStats(), dailySeries(30)]);
   return (
     <div className="flex flex-col gap-3">

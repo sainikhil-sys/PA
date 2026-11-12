@@ -5,10 +5,11 @@ import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { z } from "zod";
 import { processBroadcast } from "@/lib/admin/broadcast";
+import type { Permission } from "@/lib/admin/permissions";
+import { hasPermission } from "@/lib/admin/roles";
 import { deleteUnsentFile, linkFilesToBroadcast, mailParts, resolveBroadcastFiles, unsentFilesWithData } from "@/lib/admin/broadcast-files";
 import { generateObject, NoProviderError, testProvider } from "@/lib/ai/router";
 import { ownerAction, UserFacingError } from "@/lib/auth/action";
-import { isAdmin } from "@/lib/auth/policy";
 import { BRAND } from "@/lib/brand";
 import { db, schema } from "@/lib/db";
 import type { BroadcastEmailContent, User } from "@/lib/db/schema";
@@ -36,13 +37,13 @@ import { errMessage } from "@/lib/log";
 
 const uuid = z.string().uuid();
 
-/** Every admin action re-checks the role server-side; the console UI is not the guard. */
-function assertAdmin(user: User) {
-  if (!isAdmin(user.email)) throw new Error("Not found");
+/** Every admin action re-checks the role and permission server-side; the console UI is not the guard. */
+async function assertAdmin(user: User, permission: Permission) {
+  if (!(await hasPermission(user, permission))) throw new Error("Not found");
 }
 
 export const setUserDisabled = ownerAction(z.object({ userId: z.string().uuid(), disabled: z.boolean() }), async ({ userId, disabled }, user) => {
-  assertAdmin(user);
+  await assertAdmin(user, "users.suspend");
   if (userId === user.id) throw new Error("You can't disable your own account");
   await db().update(schema.users).set({ disabledAt: disabled ? new Date() : null }).where(eq(schema.users.id, userId));
   if (disabled) await db().update(schema.sessions).set({ revokedAt: new Date() }).where(and(eq(schema.sessions.userId, userId), isNull(schema.sessions.revokedAt)));
@@ -93,7 +94,7 @@ function draftSystem(style: BroadcastStyle): string {
 
 /** Turn a rough note into a notification (title + body) and a designed email. The admin edits both before sending. */
 export const draftBroadcast = ownerAction(z.object({ prompt: z.string().trim().min(5).max(4000), style: z.enum(BROADCAST_STYLE_IDS) }), async ({ prompt, style }, user) => {
-  assertAdmin(user);
+  await assertAdmin(user, "notifications.send");
   const { value } = await generateObject({
     kind: "admin.broadcast_draft",
     userId: user.id,
@@ -169,7 +170,7 @@ export const sendBroadcast = ownerAction(
     confirm: z.literal(true),
   }),
   async (input, user) => {
-    assertAdmin(user);
+    await assertAdmin(user, "notifications.send");
     const email = input.channels.includes("email") && input.email ? input.email : null;
     if (email) checkEmailLinks(email, appUrl());
     const files = await resolveBroadcastFiles(user.id, email, email ? input.attachmentIds : []);
@@ -201,7 +202,7 @@ export const sendBroadcast = ownerAction(
 
 /** Send the designed email, with its images and attachments, to the admin's own address only. */
 export const sendBroadcastTest = ownerAction(z.object({ email: emailSchema, attachmentIds: z.array(uuid).max(MAX_ATTACHMENTS).default([]) }), async (input, user) => {
-  assertAdmin(user);
+  await assertAdmin(user, "notifications.send");
   if (!mailConfigured()) throw new UserFacingError("Email isn't set up on the server yet (RESEND_API_KEY is missing).");
   const base = appUrl();
   checkEmailLinks(input.email, base);
@@ -227,17 +228,17 @@ export const sendBroadcastTest = ownerAction(z.object({ email: emailSchema, atta
 
 /** Remove an upload that hasn't been sent. */
 export const removeBroadcastFile = ownerAction(z.object({ id: uuid }), async ({ id }, user) => {
-  assertAdmin(user);
+  await assertAdmin(user, "notifications.send");
   await deleteUnsentFile(user.id, id);
 });
 
 export const retryDeadJob = ownerAction(z.object({ id: z.string().uuid() }), async ({ id }, user) => {
-  assertAdmin(user);
+  await assertAdmin(user, "infra.write");
   await db().update(schema.jobs).set({ status: "pending", attempts: 0, runAt: new Date(), lastError: null }).where(and(eq(schema.jobs.id, id), eq(schema.jobs.status, "failed")));
   revalidatePath("/console/system");
 });
 
 export const testServerAi = ownerAction(z.object({ name: z.string().max(40) }), async ({ name }, user) => {
-  assertAdmin(user);
+  await assertAdmin(user, "ai.write");
   return testProvider(name);
 });

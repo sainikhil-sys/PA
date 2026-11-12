@@ -12,7 +12,7 @@ const schema = z.object({
   ALLOWED_EMAIL: z.string().optional(),
   /** "open" (default): any email address, personal or organization, can sign up. "allowlist": only ALLOWED_EMAILS. */
   SIGNUP_MODE: z.enum(["open", "allowlist"]).default("open"),
-  /** Admins get Telegram alerts and system mail. Defaults to ALLOWED_EMAILS. */
+  /** Admins get Telegram alerts and system mail; also the owner bootstrap allowlist. Unset means nobody. */
   ADMIN_EMAILS: z.string().optional(),
   AUTH_SECRET: z.string().min(32).optional(),
   OTP_TEST_MODE: z.enum(["true", "false"]).optional(),
@@ -118,10 +118,12 @@ function emailList(raw: string | undefined): string[] {
     .filter(Boolean);
 }
 
-/** Admin accounts (Telegram alerts go only to these). Falls back to the allowlist. */
+/**
+ * Addresses in ADMIN_EMAILS. Telegram alerts go only to these, and the owner bootstrap script only
+ * accepts one of these. Unset means nobody: it never falls back to the sign-in allowlist.
+ */
 export function adminEmails(): string[] {
-  const e = env();
-  return e.ADMIN_EMAILS ? emailList(e.ADMIN_EMAILS) : allowedEmails();
+  return emailList(env().ADMIN_EMAILS);
 }
 
 export const isProd = () => env().NODE_ENV === "production";

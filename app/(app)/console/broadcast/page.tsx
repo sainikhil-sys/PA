@@ -7,7 +7,7 @@ import { appUrl } from "@/lib/env";
 import { timeAgo } from "@/lib/utils";
 
 export default async function ConsoleBroadcast() {
-  await requireAdmin();
+  await requireAdmin("notifications.send");
   const [audience, history] = await Promise.all([broadcastAudience(), listBroadcasts()]);
   const files = await fileCounts(history.map((b) => b.id));
   return (

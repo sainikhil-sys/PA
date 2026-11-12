@@ -110,6 +110,29 @@ export const sessions = pgTable(
   (t) => [index("sessions_user_idx").on(t.userId)],
 );
 
+// ---------- Admin console ----------
+/** Roles are fixed in code (lib/admin/permissions.ts); this enum only names them. */
+export const adminRole = pgEnum("admin_role", ["owner", "admin", "moderator", "support", "analyst"]);
+
+/**
+ * Who holds an admin role. Written only by scripts/admin-bootstrap.ts (the owner) and, later, by the
+ * owner through the console. One row per user; at most one owner (partial unique index).
+ */
+export const adminRoleAssignments = pgTable(
+  "admin_role_assignments",
+  {
+    userId: uuid("user_id")
+      .primaryKey()
+      .references(() => users.id, { onDelete: "cascade" }),
+    role: adminRole("role").notNull(),
+    grantedBy: uuid("granted_by").references(() => users.id, { onDelete: "set null" }),
+    /** How the role was granted: "bootstrap" (server script) or "console". */
+    source: text("source").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("admin_role_one_owner_idx").on(t.role).where(sql`role = 'owner'`)],
+);
+
 export type AgentSettings = {
   name: string;
   avatar: string;

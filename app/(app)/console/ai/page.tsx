@@ -6,7 +6,7 @@ import { dailySeries, overviewStats, tokenBreakdown } from "@/lib/admin/stats";
 import { configuredProviders } from "@/lib/ai/providers";
 
 export default async function ConsoleAi() {
-  await requireAdmin();
+  await requireAdmin("ai.read");
   const [s, series, t] = await Promise.all([overviewStats(), dailySeries(30), tokenBreakdown()]);
   const providers = configuredProviders();
   const ownTokens = t.byModel.filter((m) => m.keySource === "own").reduce((a, m) => a + m.input + m.output, 0);
