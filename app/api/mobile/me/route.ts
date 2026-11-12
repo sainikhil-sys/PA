@@ -1,3 +1,4 @@
+import { deleteAccountData } from "@/lib/auth/delete-account";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { pendingProposalCount } from "@/lib/agent/proposals";
@@ -70,6 +71,6 @@ export async function DELETE(req: Request) {
   if (!parsed.success) return fail(400, "Type DELETE to confirm.");
   await logActivity({ userId: g.user.id, actor: "me", tool: "account.deleted", inputSummary: "Android app", outcome: "success" });
   // Sessions, devices, tasks, mail, notes… all cascade from the user row.
-  await db().delete(schema.users).where(eq(schema.users.id, g.user.id));
+  await deleteAccountData(g.user.id);
   return Response.json({ ok: true }, { headers: noStore });
 }

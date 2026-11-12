@@ -5,6 +5,7 @@ import { AI_NO_RESPONSE, AI_UNAVAILABLE } from "@/lib/ai/messages";
 import { generateObject, NoProviderError, streamGenerate } from "@/lib/ai/router";
 import { MAX_ATTACHMENT_CHARS, TRANSFORM_LABEL, type AttachmentKind, type TransformKind, type TranslateLanguage } from "@/lib/chat/attachments";
 import { db, schema } from "@/lib/db";
+import { AI_RESTRICTED_MESSAGE, isRestricted } from "@/lib/admin/restrictions";
 import type { Citation, MessageMemory, MessageMeta, User } from "@/lib/db/schema";
 import { getSettings } from "@/lib/db/queries/settings";
 import { stripInvalidCitations } from "@/lib/knowledge/rank";
@@ -76,6 +77,10 @@ export async function* runChatTurn(opts: {
   signal?: AbortSignal;
 }): AsyncGenerator<ChatEvent> {
   const { user } = opts;
+  if (await isRestricted(user.id, "ai")) {
+    yield { type: "error", message: AI_RESTRICTED_MESSAGE };
+    return;
+  }
   const settings = await getSettings(user.id);
   let attachment = opts.attachment;
   const convo = await ensureConversation(user.id, opts.conversationId, attachment ? `${opts.message} (${attachment.name})` : opts.message);

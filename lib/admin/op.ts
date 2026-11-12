@@ -91,7 +91,14 @@ export async function runOp<S extends z.ZodType, R>(def: OpDef<S, R>, rawInput: 
 
   if (def.risk === "destructive") {
     if (!opts.confirmToken) {
-      const summary = await def.summary!(input, user);
+      let summary: string;
+      try {
+        summary = await def.summary!(input, user);
+      } catch (err) {
+        if (err instanceof UserFacingError) return fail(400, "rejected", err.message);
+        log.error("admin.op_summary_failed", { action: def.action, error: errMessage(err) });
+        return fail(500, "error", "Something went wrong. Nothing was changed. Try again.");
+      }
       const token = await issueConfirmation(user.id, def.action, input);
       return fail(409, "confirm_required", summary, { confirm: { summary, token } });
     }

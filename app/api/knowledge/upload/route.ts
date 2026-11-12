@@ -1,3 +1,4 @@
+import { restrictedResponse } from "@/lib/admin/restrictions";
 import { apiGuard } from "@/lib/auth/api";
 import { detectKind, extractText, MAX_UPLOAD_BYTES } from "@/lib/knowledge/extract";
 import { ensureSource, refreshSourceCount, upsertItem } from "@/lib/knowledge/ingest";
@@ -12,6 +13,8 @@ export const maxDuration = 120;
 export async function POST(req: Request) {
   const g = await apiGuard(req);
   if ("response" in g) return g.response;
+  const restricted = await restrictedResponse(g.user.id, "uploads");
+  if (restricted) return restricted;
   const form = await req.formData().catch(() => null);
   const file = form?.get("file");
   if (!(file instanceof File)) return errorJson(400, "No file received.");

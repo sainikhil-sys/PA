@@ -1,3 +1,4 @@
+import { restrictedResponse } from "@/lib/admin/restrictions";
 import { apiGuard } from "@/lib/auth/api";
 import { env } from "@/lib/env";
 import { errMessage, log } from "@/lib/log";
@@ -17,6 +18,8 @@ const MAX_AUDIO_BYTES = 3 * 1024 * 1024;
 export async function POST(req: Request) {
   const g = await apiGuard(req);
   if ("response" in g) return g.response;
+  const restricted = await restrictedResponse(g.user.id, "ai");
+  if (restricted) return restricted;
   const rl = await rateLimit("ai", `stt:${g.user.id}`);
   if (!rl.success) return rateLimitResponse(rl);
   const e = env();

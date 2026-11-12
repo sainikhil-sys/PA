@@ -1,3 +1,4 @@
+import { restrictedResponse } from "@/lib/admin/restrictions";
 import { apiGuard } from "@/lib/auth/api";
 import { detectChatKind, IMAGE_UNSUPPORTED, isImageFile, isSecretFile, MAX_ATTACHMENT_CHARS, MAX_TEXT_FILE_BYTES, SECRET_FILE_REFUSED, UNSUPPORTED_FILE } from "@/lib/chat/attachments";
 import { extractText, looksBinary, MAX_UPLOAD_BYTES } from "@/lib/knowledge/extract";
@@ -15,6 +16,8 @@ export const maxDuration = 30;
 export async function POST(req: Request) {
   const g = await apiGuard(req);
   if ("response" in g) return g.response;
+  const restricted = await restrictedResponse(g.user.id, "uploads");
+  if (restricted) return restricted;
   const len = Number(req.headers.get("content-length") ?? 0);
   if (len > MAX_UPLOAD_BYTES + 10_000) return errorJson(413, "File is too large (max 4 MB).");
   const form = await req.formData().catch(() => null);

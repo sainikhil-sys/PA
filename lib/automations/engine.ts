@@ -24,6 +24,7 @@ import { fillTemplate } from "./template-vars";
 export { fillTemplate };
 import { ACTION_LABEL } from "./templates";
 import { AI_UNAVAILABLE } from "@/lib/ai/messages";
+import { isRestricted, RESTRICTED_MESSAGE } from "@/lib/admin/restrictions";
 import { safeFetch } from "@/lib/security/safe-fetch";
 
 /** Thrown for failures that should not be retried (bad config, missing permission). */
@@ -179,6 +180,10 @@ export async function runAutomation(runId: string, attempt: number, maxAttempts:
     await db().update(schema.automations).set({ lastRunAt: new Date() }).where(eq(schema.automations.id, a.id));
   };
 
+  if (await isRestricted(user.id, "automations")) {
+    steps.push({ index: -1, action: "restricted", status: "skipped", message: RESTRICTED_MESSAGE, at: new Date().toISOString() });
+    return finish("failed", RESTRICTED_MESSAGE);
+  }
   if (s.automationsPaused && !run.dryRun) {
     steps.push({ index: -1, action: "pause", status: "skipped", message: "All automations are paused", at: new Date().toISOString() });
     return finish("failed", "Skipped: all automations are paused.");

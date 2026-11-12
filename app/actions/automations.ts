@@ -3,6 +3,7 @@
 import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { assertNotRestricted } from "@/lib/admin/restrictions";
 import { ownerAction, UserFacingError } from "@/lib/auth/action";
 import { queueRun } from "@/lib/automations/events";
 import { nextCronRun } from "@/lib/automations/schedule";
@@ -23,6 +24,7 @@ async function owned(userId: string, id: string) {
 
 /** Create or update. Webhook triggers get a secret shown ONCE (stored hashed). */
 export const saveAutomation = ownerAction(automationSchema, async (input, user) => {
+  await assertNotRestricted(user.id, "automations");
   const { timezone } = await getSettings(user.id);
   const nextRunAt = input.trigger.type === "schedule" ? nextCronRun(input.trigger.cron, timezone) : null;
   const values = {
@@ -80,6 +82,7 @@ export const deleteAutomation = ownerAction(z.object({ id: uuid }), async ({ id 
 
 /** Test run (real) or dry run (no side effects). Processes immediately for fast feedback. */
 export const runAutomationNow = ownerAction(z.object({ id: uuid, dryRun: z.boolean() }), async ({ id, dryRun }, user) => {
+  await assertNotRestricted(user.id, "automations");
   const a = await owned(user.id, id);
   const runId = await queueRun(a, `${dryRun ? "dry" : "test"}:${Date.now()}`, { type: "manual", source: dryRun ? "dry_run" : "test_run", title: "Test event", subject: "Test event", from: "test@example.com", category: "FYI", summary: "Test event" }, dryRun);
   if (!runId) throw new UserFacingError("Couldn't start the run. Try again.");
@@ -91,6 +94,7 @@ export const runAutomationNow = ownerAction(z.object({ id: uuid, dryRun: z.boole
 
 /** Manual re-run of a dead-lettered run: a fresh run with the same event. */
 export const rerunAutomationRun = ownerAction(z.object({ runId: uuid }), async ({ runId }, user) => {
+  await assertNotRestricted(user.id, "automations");
   const run = await db().query.automationRuns.findFirst({ where: and(eq(schema.automationRuns.id, runId), eq(schema.automationRuns.userId, user.id)) });
   if (!run) throw new UserFacingError("Run not found.");
   const a = await owned(user.id, run.automationId);

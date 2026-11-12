@@ -1,5 +1,6 @@
 "use server";
 
+import { deleteAccountData } from "@/lib/auth/delete-account";
 import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
@@ -123,6 +124,6 @@ export const deleteMemory = ownerAction(z.object({ id: z.string().uuid() }), asy
 
 /** Irreversible. UI requires typing DELETE. Removes the user row; everything cascades. */
 export const deleteAccount = ownerAction(z.object({ confirm: z.literal("DELETE") }), async (_i, user) => {
-  await db().delete(schema.users).where(eq(schema.users.id, user.id));
+  await deleteAccountData(user.id);
   await signOutCurrent();
 });
