@@ -11,8 +11,11 @@ import type { Conversation } from "@/lib/types";
 import { color, radius, space, TOUCH, type } from "@/theme/tokens";
 import { useTabBarSpace } from "@/features/navigation/tab-bar";
 
-/** Chat tab: every chat, newest first, with search across titles and message text. */
-export default function ChatTab() {
+/**
+ * Assistant tab: conversations with the AI, newest first, with search across titles and message
+ * text. Person-to-person messages live in the Chats tab and never appear here.
+ */
+export default function AssistantTab() {
   const bottom = useTabBarSpace();
   const [q, setQ] = React.useState("");
   const search = useDebounced(q.trim(), 300);
@@ -57,8 +60,9 @@ export default function ChatTab() {
     <Screen>
       <View style={{ paddingHorizontal: space.lg, paddingTop: space.md, paddingBottom: space.md }}>
         <Txt variant="display" accessibilityRole="header">
-          Chats
+          Assistant
         </Txt>
+        <Txt variant="small">Ask, plan or write. Only you see these conversations.</Txt>
       </View>
       <FlatList
         data={body ? [] : items}
@@ -69,7 +73,18 @@ export default function ChatTab() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={color.accentText} colors={[color.accentText]} progressBackgroundColor={color.surface2} />}
         ListHeaderComponent={
           <View style={{ gap: space.md, marginBottom: space.md }}>
-            <Button label="New chat" variant="primary" icon={PlusIcon} onPress={() => router.push("/chat/new")} />
+            <View style={{ flexDirection: "row", gap: space.sm }}>
+              <Button label="New chat" variant="primary" icon={PlusIcon} onPress={() => router.push("/chat/new")} style={{ flex: 1 }} />
+              <Button
+                label="Talk"
+                icon={MicrophoneIcon}
+                accessibilityLabel="Talk to your assistant"
+                onPress={() => {
+                  setChatIntent({ listen: true });
+                  router.push("/chat/new");
+                }}
+              />
+            </View>
             <SearchBox value={q} onChange={setQ} busy={typing || (list.isFetching && !refreshing)} />
             {list.isError && list.data ? (
               <Txt variant="small" accessibilityLiveRegion="polite">
@@ -93,11 +108,11 @@ function SearchBox({ value, onChange, busy }: { value: string; onChange: (t: str
       <TextInput
         value={value}
         onChangeText={onChange}
-        placeholder="Search chats"
+        placeholder="Search assistant chats"
         placeholderTextColor={color.subtle}
         selectionColor={color.accentText}
         cursorColor={color.accentText}
-        accessibilityLabel="Search chats"
+        accessibilityLabel="Search assistant chats"
         accessibilityHint={busy ? "Searching" : undefined}
         returnKeyType="search"
         autoCorrect={false}

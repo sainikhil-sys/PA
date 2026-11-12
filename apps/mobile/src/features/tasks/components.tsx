@@ -1,4 +1,3 @@
-import * as Haptics from "expo-haptics";
 import { ArrowsClockwiseIcon, CheckIcon, FlagIcon, PlusIcon } from "phosphor-react-native";
 import * as React from "react";
 import { Pressable, TextInput, View } from "react-native";
@@ -6,6 +5,7 @@ import { IconButton, Txt } from "@/components/ui";
 import type { TaskSummary } from "@/lib/types";
 import { color, font, radius, space, TOUCH } from "@/theme/tokens";
 import { PRIORITY_LABEL, whenLabel } from "./dates";
+import { feedback } from "@/lib/feedback";
 
 /** Rounded-square checkbox with a full 48dp touch target. */
 export function TaskCheckbox({ checked, title, onPress, disabled }: { checked: boolean; title: string; onPress: () => void; disabled?: boolean }) {
@@ -16,7 +16,7 @@ export function TaskCheckbox({ checked, title, onPress, disabled }: { checked: b
       accessibilityLabel={checked ? `Mark "${title}" as not done` : `Mark "${title}" as done`}
       disabled={disabled}
       onPress={() => {
-        void Haptics.selectionAsync().catch(() => {});
+        feedback.selection();
         onPress();
       }}
       style={{ width: TOUCH, height: TOUCH, alignItems: "center", justifyContent: "center" }}

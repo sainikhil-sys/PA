@@ -39,7 +39,10 @@ export function useVoice({ onFinal }: { onFinal: (text: string) => void }) {
   const cancelled = React.useRef(false);
   const latest = React.useRef("");
   const onFinalRef = React.useRef(onFinal);
-  onFinalRef.current = onFinal;
+  // Always call the latest handler, without restarting listeners when it changes.
+  React.useEffect(() => {
+    onFinalRef.current = onFinal;
+  }, [onFinal]);
 
   useSpeechRecognitionEvent("start", () => {
     if (active.current) setState("listening");

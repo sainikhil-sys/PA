@@ -92,6 +92,27 @@
       "when": 1794426300743,
       "tag": "0012_rate_limits",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1794481058349,
+      "tag": "0013_social_chats",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1794487620321,
+      "tag": "0014_birth_date",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1794487630137,
+      "tag": "0015_rls_everywhere_realtime",
+      "breakpoints": true
     }
   ]
 }

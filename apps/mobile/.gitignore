@@ -44,3 +44,7 @@ example
 
 # Release signing (never commit)
 credentials/
+
+# Gradle output inside the local native modules (never commit build files)
+modules/*/android/build/
+modules/*/android/.gradle/

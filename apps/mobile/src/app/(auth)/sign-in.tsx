@@ -19,20 +19,22 @@ export default function SignIn() {
 
   const inflight = React.useRef(false);
 
-  const submit = handleSubmit(async ({ email }) => {
-    if (inflight.current) return;
-    inflight.current = true;
-    setServerError(null);
-    try {
-      await api<{ ok: boolean; message: string }>("/api/mobile/auth/request", { body: { email } });
-      await pendingEmail.set(email);
-      router.push("/verify");
-    } catch (err) {
-      setServerError(errorText(err));
-    } finally {
-      inflight.current = false;
-    }
-  });
+  const submit = () =>
+    // handleSubmit runs in the press handler, not during render (React Compiler rule).
+    handleSubmit(async ({ email }) => {
+      if (inflight.current) return;
+      inflight.current = true;
+      setServerError(null);
+      try {
+        await api<{ ok: boolean; message: string }>("/api/mobile/auth/request", { body: { email } });
+        await pendingEmail.set(email);
+        router.push("/verify");
+      } catch (err) {
+        setServerError(errorText(err));
+      } finally {
+        inflight.current = false;
+      }
+    })();
 
   return (
     <AuthFrame

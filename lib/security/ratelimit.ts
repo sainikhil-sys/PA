@@ -3,12 +3,14 @@ import { Redis } from "@upstash/redis";
 import { sql } from "drizzle-orm";
 import { log } from "@/lib/log";
 
-export type LimitName = "mcp" | "api" | "auth" | "oauth" | "ai" | "otpEmail" | "otpIp" | "otpVerify" | "webhook" | "notifyEmail" | "phone";
+export type LimitName = "mcp" | "api" | "social" | "auth" | "oauth" | "ai" | "otpEmail" | "otpIp" | "otpVerify" | "webhook" | "notifyEmail" | "phone";
 
 /** Requests per window. Tuned for a single user plus Claude. */
 const LIMITS: Record<LimitName, { tokens: number; window: `${number} s` | `${number} m` }> = {
   mcp: { tokens: 120, window: "1 m" },
   api: { tokens: 300, window: "1 m" },
+  // Chats: sends, edits, reactions, friend requests and reports per person.
+  social: { tokens: 90, window: "1 m" },
   auth: { tokens: 20, window: "1 m" },
   oauth: { tokens: 30, window: "1 m" },
   ai: { tokens: 30, window: "1 m" },
