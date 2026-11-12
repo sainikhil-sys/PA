@@ -1,4 +1,4 @@
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { LinkSimpleIcon, NotePencilIcon, NotebookIcon, PushPinIcon } from "phosphor-react-native";
 import * as React from "react";
 import { FlatList, Pressable, RefreshControl, View } from "react-native";
@@ -28,7 +28,9 @@ export default function NotesScreen() {
   }, [query]);
   const notes = useNotes(kind, q);
   const [refreshing, setRefreshing] = React.useState(false);
-  const [linkOpen, setLinkOpen] = React.useState(false);
+  // Create > Save a link opens this screen with ?link=1 and the sheet already up.
+  const params = useLocalSearchParams<{ link?: string }>();
+  const [linkOpen, setLinkOpen] = React.useState(params.link === "1");
 
   const onRefresh = React.useCallback(async () => {
     setRefreshing(true);
@@ -60,7 +62,7 @@ export default function NotesScreen() {
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={{ paddingBottom: space.xxxl, flexGrow: 1 }}
           ItemSeparatorComponent={() => <Divider style={{ marginLeft: space.lg }} />}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={color.orange} colors={[color.orange]} progressBackgroundColor={color.surface2} />}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={color.accent} colors={[color.accent]} progressBackgroundColor={color.surface2} />}
           ListEmptyComponent={
             q ? (
               <EmptyState icon={NotebookIcon} title="No matches" body={`Nothing in your notes matches "${q}".`} />
@@ -92,7 +94,7 @@ function NoteItem({ note }: { note: NoteRow }) {
           <Txt variant="label" numberOfLines={1} style={{ flex: 1 }}>
             {note.title}
           </Txt>
-          {note.pinned ? <PushPinIcon size={14} color={color.warm} weight="fill" /> : null}
+          {note.pinned ? <PushPinIcon size={14} color={color.accent2} weight="fill" /> : null}
           <Txt variant="small">{when}</Txt>
         </View>
         {detail ? (

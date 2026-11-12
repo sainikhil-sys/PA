@@ -164,3 +164,82 @@ Working end to end against production (verified on a CPH2763 phone on 2026-11-12
 8. **Phases 8 to 10**: integrations UI, performance pass on device, security and regression tests, release build.
 
 Tests today: 21 Vitest files (about 220 cases) and 1 Playwright smoke file on the server; **none on mobile**. Each phase should add tests for what it touches.
+
+
+---
+
+# Addendum: master brief v3 (Connect, Community, 14 phases)
+
+Date: 2026-11-12. Production: `d483fb8` (Phase 1 live). Read-only for application code; this addendum and the new root `CLAUDE.md` are the only files written.
+
+The v3 brief adds Cowork Connect (offline peer-to-peer), Cowork Community (social), a "Connect" tab, 14 phases and 14 documents. Connect is audited in depth in `docs/COWORK_CONNECT_FEASIBILITY.md` (committed in `12deebe`); this addendum does not repeat it.
+
+## A. Where the project stands
+
+| Brief phase | Status |
+|---|---|
+| 0 Audit | Done (this document and the Connect feasibility audit) |
+| 1 Stabilization | Done and live (`ded1213` plus hotfix `d483fb8`): no model names, consent switches, memory safeguards, webhook SSRF, export, shared rate limits (migration `0012`) |
+| 2 Design system and navigation | In progress, uncommitted: V2 palette (light and dark, contrast checked) on app and website, theme engine, five tabs with Create and Workspace. Verified on the phone in dark mode; light mode and the website not yet looked at on screen |
+| 3 to 14 | Not started |
+
+## B. Skills, tools and project instructions found
+
+| Kind | Found | Use |
+|---|---|---|
+| Project instructions | `apps/mobile/AGENTS.md` (Expo: read versioned SDK 58 docs, use `npx expo install`, Expo Router, CNG). No root `CLAUDE.md` before this audit | Followed; root `CLAUDE.md` added |
+| Plugins | `expo@claude-plugins-official` is enabled in `apps/mobile/.claude/settings.json` only, so its skills load only in sessions started inside `apps/mobile`, not at the repo root | Start mobile-heavy sessions in `apps/mobile`, or enable it at the root |
+| Skills available at the root | Vercel (`nextjs`, `vercel-cli`, `env-vars`, `deployments-cicd`, `vercel-functions`, `ai-sdk`, `react-best-practices`, `runtime-cache` and others), `code-review`, `security-review`, `simplify`, `run`, `dataviz`, `artifact-design` | Used so far: Vercel CLI for deploys and env vars. Planned: `security-review` and `code-review` per phase and in Phase 14 |
+| Not available | No React Native, Expo (at the root), Supabase, PostgreSQL, accessibility or animation skill | Work from official docs instead (Expo SDK 58, React Native 0.88, Reanimated 4, Android Nearby Connections) |
+| MCP | Vercel MCP needs authorization (`/mcp`); no Supabase MCP | Vercel CLI used instead |
+| Hooks | None at the repo root | Proposed for Phase 14: typecheck and lint on changed files |
+
+## C. Conflicts with earlier decisions
+
+| # | v3 says | Current decision | Recommendation |
+|---|---|---|---|
+| C1 | "Retain Supabase as the primary database **and authentication** platform", plus RLS, Realtime, Storage | D1 (2026-11-12): keep Cowork's own sign-in and the Next.js API; Supabase hosts Postgres only | Keep D1. Supabase Realtime can still serve Community without moving sign-in (server-issued channel tokens), and RLS policies can be added as defence in depth |
+| C2 | Tabs: Home, Chat, Create, **Connect**, Profile | Phase 2 built Home, Chat, Create, **Workspace**, Profile | Keep Workspace until Connect has a working feature (no placeholder tab). When Connect ships, it takes the slot and Workspace becomes a Home section plus a Profile link |
+| C3 | 14 phases: orchestration in 4, memory in 5, agents in 6 | v2 order: chat 4, orchestration 5, memory 6, agents 7 | Adopt the v3 numbering from Phase 3 on; the contents are the same |
+| C4 | "Multipeer Connectivity" for iOS | Apple has deprecated it | Use Apple's Network framework (feasibility doc, section 3) |
+
+## D. The three architecture decisions the brief asks for
+
+**1. Offline networking** (detail in `COWORK_CONNECT_FEASIBILITY.md`)
+- Android to Android: Google Nearby Connections (Bluetooth, BLE, Wi-Fi; offline; files and streams). First target.
+- iPhone to iPhone: Network framework peer-to-peer Wi-Fi; Walkie and calls work only while Cowork is open.
+- Android to iPhone: no shared system framework. A local-only hotspot from the Android phone (high bandwidth), with Bluetooth LE for discovery and text as a fallback. Wi-Fi Aware on both is a research spike.
+- One transport interface in TypeScript (`connect`, `send`, `stream`, `onPeer`) with native modules per platform behind it. Encryption sits above the transport (a Noise or libsodium handshake from an audited library), so every link has the same security model.
+- **Proof first**: a two-device Android prototype (discovery, consent, encrypted text, one file) before any Community work. This needs a second Android phone; only the CPH2763 is available.
+
+**2. AI infrastructure**: already server-side (`lib/ai/router.ts`; providers and keys never reach the app). Phase 4 adds a capability registry and the five modes behind server routes; screens only send a mode name. No model or provider identifiers leave the server (enforced since Phase 1).
+
+**3. What lives where**
+
+| Area | Implementation |
+|---|---|
+| Nearby discovery, Wi-Fi peer links, Bluetooth LE, local hotspot, audio streaming for Walkie and calls, foreground service | **New native modules** (Kotlin first, Swift later), like the existing `modules/phone-link` |
+| Camera, media library, audio recording and playback, files, haptics, secure storage, notifications, blur | **Expo modules** (`expo-camera`, `expo-image-picker`, `expo-audio`, `expo-file-system`, `expo-haptics`, `expo-secure-store`, `expo-notifications`, `expo-blur`), each added only in the phase that needs it |
+| Connect's local messages and transfer history | On-device SQLite (`expo-sqlite`); the server only if the user opts into backup (feasibility decision D4) |
+| AI, memory, agents, Community data, moderation, push | **Server**: Next.js API on Vercel, Postgres on Supabase |
+| Long-running work: agent runs, reminders, automations | **Job queue** (`jobs` table) drained by a frequent scheduler; the daily cron must become every few minutes first |
+
+## E. Community (brief part 8)
+
+All of it is online and server-side, and none of it exists today. At minimum it needs public profiles (handle, avatar), friendships and blocks, circles with roles, rooms with expiry, events, reports with a moderation queue, and realtime delivery (Supabase Realtime or server-sent events). It also needs an **audience decision**: adults only, as the current store rating, or younger users, which changes the safety obligations (feasibility decision D7). Recommendation: a small first slice (friends, circles with shared notes and group chat, block and report) after Connect's first phase proves the nearby link.
+
+## F. Documentation plan
+
+The brief lists 14 documents. Writing them all now would describe features that don't exist, which the brief itself forbids. Plan:
+- Now: root `CLAUDE.md` (added), this audit, the Connect feasibility audit, `docs/mobile-app.md` (exists).
+- Phase 2: `DESIGN_SYSTEM.md` once the design system is committed.
+- Each later phase writes or updates the document for what it actually built (`AI_ARCHITECTURE.md` in Phase 4, `PEER_TO_PEER_ARCHITECTURE.md` in Phase 7, `DATABASE_SCHEMA.md` whenever the schema changes) and adds to `CHANGELOG.md`.
+- `V2_IMPLEMENTATION_PLAN.md`: the single progress document, started from section A and kept current.
+
+## G. Decisions needed
+
+1. **C1**: does D1 stand (own sign-in, Supabase as the Postgres host), despite v3's "Supabase authentication"?
+2. **C2**: keep Workspace in the tab bar until Connect has a working feature?
+3. **Hardware**: a second Android phone for the Connect prototype; a Mac (or paid Expo cloud builds plus an Apple Developer account) and iPhones before any iOS phase.
+4. **Connect decisions D1 to D7** in `COWORK_CONNECT_FEASIBILITY.md` section 10 (Android first, hotspot bridge, server backup of offline messages, social scope, audience).
+5. **Scheduler**: Supabase `pg_cron` or Vercel Pro for 5-minute dispatch (reminders and agent jobs).

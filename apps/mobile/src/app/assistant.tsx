@@ -9,6 +9,7 @@ import { errorText } from "@/lib/api";
 import { useConversations } from "@/lib/queries";
 import type { Conversation } from "@/lib/types";
 import { color, radius, space, TOUCH, type } from "@/theme/tokens";
+import { BackHeader } from "@/features/home/header";
 
 /** Assistant: every chat, newest first, with search across titles and message text. */
 export default function AssistantScreen() {
@@ -53,23 +54,21 @@ export default function AssistantScreen() {
 
   return (
     <Screen>
+      <BackHeader title="Chats" />
       <FlatList
         data={body ? [] : items}
         keyExtractor={(c) => c.id}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
-        contentContainerStyle={{ paddingHorizontal: space.lg, paddingTop: space.md, paddingBottom: space.xxxl }}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={color.orange} colors={[color.orange]} progressBackgroundColor={color.surface2} />}
+        contentContainerStyle={{ paddingHorizontal: space.lg, paddingTop: space.xs, paddingBottom: space.xxxl }}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={color.accent} colors={[color.accent]} progressBackgroundColor={color.surface2} />}
         ListHeaderComponent={
           <View style={{ gap: space.md, marginBottom: space.md }}>
-            <Txt variant="display" accessibilityRole="header">
-              Assistant
-            </Txt>
             <Button label="New chat" variant="primary" icon={PlusIcon} onPress={() => router.push("/chat/new")} />
             <SearchBox value={q} onChange={setQ} busy={typing || (list.isFetching && !refreshing)} />
             {list.isError && list.data ? (
               <Txt variant="small" accessibilityLiveRegion="polite">
-                Couldn't refresh. {errorText(list.error)}
+                {`Couldn't refresh. ${errorText(list.error)}`}
               </Txt>
             ) : null}
             {body}
@@ -91,8 +90,8 @@ function SearchBox({ value, onChange, busy }: { value: string; onChange: (t: str
         onChangeText={onChange}
         placeholder="Search chats"
         placeholderTextColor={color.subtle}
-        selectionColor={color.orange}
-        cursorColor={color.orange}
+        selectionColor={color.accent}
+        cursorColor={color.accent}
         accessibilityLabel="Search chats"
         accessibilityHint={busy ? "Searching" : undefined}
         returnKeyType="search"

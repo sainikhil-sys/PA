@@ -94,7 +94,7 @@ export function MemorySheet({
                         paddingHorizontal: space.lg,
                         borderRadius: radius.control,
                         borderWidth: 1,
-                        borderColor: on ? color.orange : color.borderStrong,
+                        borderColor: on ? color.accent : color.borderStrong,
                         backgroundColor: on ? color.surface3 : color.surface2,
                         justifyContent: "center",
                       }}

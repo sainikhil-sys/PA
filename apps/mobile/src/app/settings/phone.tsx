@@ -146,7 +146,7 @@ export default function PhoneScreen() {
       <ScrollView contentContainerStyle={{ padding: space.lg, paddingBottom: space.xxxl, gap: space.xxl }} refreshControl={refresh(phones.isRefetching, () => (check(), void phones.refetch()))}>
         <View style={{ backgroundColor: color.surface, borderRadius: radius.card, borderWidth: 1, borderColor: color.borderStrong, padding: space.lg, gap: space.md }}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: space.sm }}>
-            <ShieldCheckIcon size={22} color={color.warm} />
+            <ShieldCheckIcon size={22} color={color.accent2} />
             <Txt variant="heading" accessibilityRole="header">
               What Phone link sends
             </Txt>

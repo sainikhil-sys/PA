@@ -68,7 +68,7 @@ export default function ApprovalsScreen() {
           data={approvals.data}
           keyExtractor={(a) => a.id}
           contentContainerStyle={{ paddingHorizontal: space.lg, paddingBottom: space.xxxl, gap: space.md, flexGrow: 1 }}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={color.orange} colors={[color.orange]} progressBackgroundColor={color.surface2} />}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={color.accent} colors={[color.accent]} progressBackgroundColor={color.surface2} />}
           ListHeaderComponent={
             approvals.data?.length ? <Txt variant="small">Cowork prepared these. Nothing runs, sends or posts until you approve it.</Txt> : undefined
           }

@@ -1,21 +1,12 @@
-import { ArrowLeftIcon } from "phosphor-react-native";
 import * as React from "react";
-import { RefreshControl, View, type StyleProp, type ViewStyle } from "react-native";
-import { router } from "expo-router";
-import { IconButton, Txt } from "@/components/ui";
+import { RefreshControl, StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
+import { Txt } from "@/components/ui";
+import { BackHeader } from "@/features/home/header";
 import { color, radius, space } from "@/theme/tokens";
 
-/** Header for settings sub-screens: back button, title and an optional action on the right. */
+/** Header for settings sub-screens: the shared white header; back falls back to Profile. */
 export function SubHeader({ title, right }: { title: string; right?: React.ReactNode }) {
-  return (
-    <View style={{ flexDirection: "row", alignItems: "center", gap: space.sm, paddingHorizontal: space.lg, paddingVertical: space.sm }}>
-      <IconButton icon={ArrowLeftIcon} label="Back" tone="plain" onPress={() => (router.canGoBack() ? router.back() : router.replace("/settings"))} />
-      <Txt variant="title" accessibilityRole="header" style={{ flex: 1 }} numberOfLines={1}>
-        {title}
-      </Txt>
-      {right}
-    </View>
-  );
+  return <BackHeader title={title} action={right} fallback="/settings" />;
 }
 
 /** A bordered group of rows separated by hairlines. */
@@ -54,5 +45,25 @@ export function timeAgo(iso: string | null | undefined): string {
  * this element and wraps itself in it, which a wrapper component would swallow.
  */
 export function refresh(refreshing: boolean, onRefresh: () => void) {
-  return <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={color.orange} colors={[color.orange]} progressBackgroundColor={color.surface2} />;
+  return <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={color.accent} colors={[color.accent]} progressBackgroundColor={color.surface2} />;
+}
+
+/** A flat list section like the reference layout: a small grey heading, then rows split by hairlines. */
+export function ListSection({ title, children }: { title?: string; children: React.ReactNode }) {
+  const items = React.Children.toArray(children).filter(Boolean);
+  return (
+    <View>
+      {title ? (
+        <Txt variant="small" accessibilityRole="header" style={{ paddingHorizontal: space.lg, marginBottom: space.xs, color: color.muted }}>
+          {title}
+        </Txt>
+      ) : null}
+      {items.map((child, i) => (
+        <View key={i}>
+          {i > 0 ? <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: color.border, marginLeft: space.lg + 36, marginRight: space.lg }} /> : null}
+          {child}
+        </View>
+      ))}
+    </View>
+  );
 }

@@ -1,9 +1,10 @@
 @import "tailwindcss";
 
 /*
- * PA design tokens. Light mode only for v1, but EVERY color is a variable so a
- * dark theme can be added by redefining these under [data-theme="dark"].
- * Components must never hardcode colors — use the Tailwind names mapped below.
+ * Cowork V2 design tokens: light grey pages, white surfaces, near-black type, emerald accent,
+ * vermillion for small marks. Same values as the app (apps/mobile/src/theme/tokens.ts). Light by default;
+ * dark follows the system unless <html data-theme="light|dark"> pins one.
+ * Components must never hardcode colors: use the Tailwind names mapped below.
  */
 :root {
   /* Swap this one variable to change the UI typeface (e.g. a licensed font). */
@@ -11,31 +12,34 @@
   --font-display: var(--font-newsreader), ui-serif, Georgia, serif;
   --font-code: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
 
-  --background: #ffffff;
-  --foreground: #0a0a0a;
-  --muted: #52525b; /* secondary text, 7.4:1 on white */
-  --subtle: #71717a; /* tertiary text / placeholders, 4.8:1 on white */
-  --surface: #fafafa;
-  --surface-2: #f4f4f5;
-  --surface-hover: #f1f1f3;
-  --border: #e7e7ea;
-  --border-strong: #c9c9cf;
-  --primary: #0a0a0a;
+  color-scheme: light;
+  --background: #f2f2f4; /* light grey page */
+  --foreground: #111113; /* near-black, 16.9:1 */
+  --muted: #5c5c63; /* secondary text, 5.9:1 */
+  --subtle: #6e6e76; /* tertiary text / placeholders, 4.5:1 */
+  --surface: #ffffff; /* cards and bars */
+  --surface-2: #ededf0;
+  --surface-hover: #e8e8ec;
+  --border: #e4e4e7;
+  --border-strong: #cfcfd4;
+  --primary: #0f6b4f; /* emerald; white text on it 6.5:1 */
   --primary-foreground: #ffffff;
-  --primary-hover: #27272a;
-  --ring: #0a0a0a;
-  --overlay: rgb(10 10 10 / 0.32);
+  --primary-hover: #0a5039;
+  --accent: #c63b20; /* vermillion, small marks only */
+  --accent-foreground: #ffffff;
+  --ring: #0f6b4f;
+  --overlay: rgb(17 17 19 / 0.4);
 
   /* Tiny semantic states only (dots, small icons). */
-  --success: #15803d;
-  --danger: #b91c1c;
-  --warning: #a16207;
+  --success: #1d7a4c;
+  --danger: #b42318;
+  --warning: #9a6200;
   --info: #1d4ed8;
 
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 16px;
-  --shadow-pop: 0 8px 24px -12px rgb(10 10 10 / 0.18);
+  --shadow-pop: 0 8px 24px -12px rgb(17 17 19 / 0.18);
 
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --dur-fast: 150ms;
@@ -43,6 +47,58 @@
   --dur-slow: 250ms;
 
   --font-scale: 1;
+}
+
+/* Dark: the system setting unless the page is pinned to light, or pinned to dark. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --background: #0f0f11;
+    --foreground: #f4f4f5;
+    --muted: #a9a9b2;
+    --subtle: #8e8e97;
+    --surface: #18181b;
+    --surface-2: #212125;
+    --surface-hover: #2a2a2f;
+    --border: #2a2a2f;
+    --border-strong: #3d3d44;
+    --primary: #3fbf8f;
+    --primary-foreground: #0c1511;
+    --primary-hover: #5acca0;
+    --accent: #f0694b;
+    --accent-foreground: #1a0b06;
+    --ring: #3fbf8f;
+    --overlay: rgb(0 0 0 / 0.6);
+    --success: #4cc38a;
+    --danger: #f2735a;
+    --warning: #e3b341;
+    --info: #7aa7ff;
+    --shadow-pop: 0 8px 24px -12px rgb(0 0 0 / 0.6);
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --background: #0f0f11;
+  --foreground: #f4f4f5;
+  --muted: #a9a9b2;
+  --subtle: #8e8e97;
+  --surface: #18181b;
+  --surface-2: #212125;
+  --surface-hover: #2a2a2f;
+  --border: #2a2a2f;
+  --border-strong: #3d3d44;
+  --primary: #3fbf8f;
+  --primary-foreground: #0c1511;
+  --primary-hover: #5acca0;
+  --accent: #f0694b;
+  --accent-foreground: #1a0b06;
+  --ring: #3fbf8f;
+  --overlay: rgb(0 0 0 / 0.6);
+  --success: #4cc38a;
+  --danger: #f2735a;
+  --warning: #e3b341;
+  --info: #7aa7ff;
+  --shadow-pop: 0 8px 24px -12px rgb(0 0 0 / 0.6);
 }
 
 :root[data-font-scale="sm"] { --font-scale: 0.9375; }
@@ -65,6 +121,8 @@
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
   --color-primary-hover: var(--primary-hover);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
   --color-ring: var(--ring);
   --color-overlay: var(--overlay);
   --color-success: var(--success);
@@ -201,7 +259,7 @@
  * contrast; without backdrop-filter support the panel is solid white.
  */
 .lp-surface {
-  background: rgb(255 255 255 / var(--lp-alpha, 0.72));
+  background: color-mix(in srgb, var(--background) calc(var(--lp-alpha, 0.72) * 100%), transparent);
   border: 1px solid var(--border);
   box-shadow: 0 12px 32px -16px rgb(10 10 10 / 0.25);
 }
@@ -217,7 +275,7 @@
   }
 }
 .lp-text {
-  background: rgb(255 255 255 / var(--lp-text-alpha, 0.9));
+  background: color-mix(in srgb, var(--background) calc(var(--lp-text-alpha, 0.9) * 100%), transparent);
   border-radius: 10px;
 }
 @keyframes lp-shake {
@@ -234,22 +292,29 @@ html[data-room] body {
   background: transparent;
 }
 html[data-room="dark"] {
+  background: #0f0f11;
   color-scheme: dark;
-  background: #0e0f13;
-  --background: #0e0f13;
+  --background: #0f0f11;
   --foreground: #f4f4f5;
-  --muted: #a1a1aa;
-  --subtle: #8b8b94;
-  --surface: #17181d;
-  --surface-2: #1f2026;
-  --surface-hover: #26272e;
-  --border: #2a2b33;
-  --border-strong: #41424b;
-  --primary: #f4f4f5;
-  --primary-foreground: #0a0a0a;
-  --primary-hover: #e4e4e7;
-  --ring: #f4f4f5;
-  --overlay: rgb(0 0 0 / 0.5);
+  --muted: #a9a9b2;
+  --subtle: #8e8e97;
+  --surface: #18181b;
+  --surface-2: #212125;
+  --surface-hover: #2a2a2f;
+  --border: #2a2a2f;
+  --border-strong: #3d3d44;
+  --primary: #3fbf8f;
+  --primary-foreground: #0c1511;
+  --primary-hover: #5acca0;
+  --accent: #f0694b;
+  --accent-foreground: #1a0b06;
+  --ring: #3fbf8f;
+  --overlay: rgb(0 0 0 / 0.6);
+  --success: #4cc38a;
+  --danger: #f2735a;
+  --warning: #e3b341;
+  --info: #7aa7ff;
+  --shadow-pop: 0 8px 24px -12px rgb(0 0 0 / 0.6);
 }
 html[data-room] .card {
   background: color-mix(in srgb, var(--background) 78%, transparent);

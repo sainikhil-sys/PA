@@ -46,7 +46,7 @@ export default function Welcome() {
     >
       {expired ? (
         <Note style={{ flexDirection: "row", gap: space.md, alignItems: "flex-start" }}>
-          <InfoIcon size={20} color={color.warm} />
+          <InfoIcon size={20} color={color.accent2} />
           <Txt variant="small" style={{ flex: 1, color: color.text }} accessibilityLiveRegion="polite">
             Your session ended. Sign in again to pick up where you left off.
           </Txt>

@@ -139,7 +139,7 @@ export default function DocumentsScreen() {
           ) : upload.phase === "failed" ? (
             <WarningCircleIcon size={20} color={color.danger} />
           ) : (
-            <ActivityIndicator color={color.orange} />
+            <ActivityIndicator color={color.accent} />
           )}
           <Txt variant="label" numberOfLines={1} style={{ flex: 1 }}>
             {upload.name || "Upload"}
@@ -152,7 +152,7 @@ export default function DocumentsScreen() {
               accessibilityValue={{ min: 0, max: 100, now: Math.round(upload.progress * 100) }}
               style={{ height: 6, borderRadius: 3, backgroundColor: color.surface3, overflow: "hidden" }}
             >
-              <View style={{ width: `${Math.round(upload.progress * 100)}%`, height: 6, backgroundColor: color.orange }} />
+              <View style={{ width: `${Math.round(upload.progress * 100)}%`, height: 6, backgroundColor: color.accent }} />
             </View>
             <Txt variant="small">Uploading, {Math.round(upload.progress * 100)}%</Txt>
           </>

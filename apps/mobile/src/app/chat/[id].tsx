@@ -211,7 +211,7 @@ export default function ChatScreen() {
 
         {speaker.speaking ? (
           <View accessibilityLiveRegion="polite" style={{ flexDirection: "row", alignItems: "center", gap: space.sm, paddingLeft: space.lg, paddingRight: space.sm, backgroundColor: color.surface, borderBottomWidth: 1, borderBottomColor: color.border }}>
-            <SpeakerHighIcon size={16} color={color.warm} />
+            <SpeakerHighIcon size={16} color={color.accent2} />
             <Txt variant="small" style={{ flex: 1 }}>
               Reading the reply aloud
             </Txt>
@@ -225,7 +225,7 @@ export default function ChatScreen() {
           <View style={{ paddingBottom: keyboardOpen ? 0 : insets.bottom, backgroundColor: color.bg }}>
             {editing ? (
               <View style={{ flexDirection: "row", alignItems: "center", gap: space.sm, paddingLeft: space.lg, paddingRight: space.sm, borderTopWidth: 1, borderTopColor: color.border, backgroundColor: color.surface }}>
-                <PencilSimpleIcon size={16} color={color.warm} />
+                <PencilSimpleIcon size={16} color={color.accent2} />
                 <Txt variant="small" style={{ flex: 1 }}>
                   Editing your message. Sending replaces it and the answers after it.
                 </Txt>

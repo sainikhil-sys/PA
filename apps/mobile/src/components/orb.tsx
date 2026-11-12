@@ -41,8 +41,8 @@ export function Orb({ size = 168, state = "idle", onPress }: { size?: number; st
         <Svg width={size} height={size}>
           <Defs>
             <RadialGradient id="halo" cx="50%" cy="50%" r="50%">
-              <Stop offset="0.55" stopColor={color.orange} stopOpacity="0.55" />
-              <Stop offset="1" stopColor={color.orangeDeep} stopOpacity="0" />
+              <Stop offset="0.55" stopColor={color.accent} stopOpacity="0.55" />
+              <Stop offset="1" stopColor={color.accentDeep} stopOpacity="0" />
             </RadialGradient>
           </Defs>
           <Circle cx={size / 2} cy={size / 2} r={size / 2} fill="url(#halo)" />
@@ -52,15 +52,15 @@ export function Orb({ size = 168, state = "idle", onPress }: { size?: number; st
         <Svg width="100%" height="100%" viewBox="0 0 100 100">
           <Defs>
             <RadialGradient id="core" cx="38%" cy="32%" r="75%">
-              <Stop offset="0" stopColor={color.warm} />
-              <Stop offset="0.45" stopColor={color.orange} />
-              <Stop offset="1" stopColor={color.orangeDeep} />
+              <Stop offset="0" stopColor={color.accent} stopOpacity="0.85" />
+              <Stop offset="0.45" stopColor={color.accent} />
+              <Stop offset="1" stopColor={color.accentDeep} />
             </RadialGradient>
           </Defs>
           <Circle cx="50" cy="50" r="50" fill="url(#core)" />
         </Svg>
       </Animated.View>
-      <View pointerEvents="none" style={{ position: "absolute", width: size * 0.78, height: size * 0.78, borderRadius: size, borderWidth: 1, borderColor: "rgba(233,188,141,0.35)" }} />
+      <View pointerEvents="none" style={{ position: "absolute", width: size * 0.78, height: size * 0.78, borderRadius: size, borderWidth: 1, borderColor: "rgba(198,59,32,0.25)" }} />
     </Pressable>
   );
 }
