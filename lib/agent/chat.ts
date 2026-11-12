@@ -281,8 +281,9 @@ export async function getConversation(userId: string, id: string) {
         .from(schema.memories)
         .where(and(eq(schema.memories.userId, userId), inArray(schema.memories.id, memIds)))
     : [];
-  // Which model or run wrote an answer is internal (usage records keep it); it never leaves the server.
-  const messages = msgs.map(({ meta: { model: _model, runId: _runId, ...meta }, ...m }) => ({ ...m, meta }));
+  // Which model wrote an answer is internal (usage records keep it); it never leaves the server.
+  // runId stays: it only links to the owner's own step trace.
+  const messages = msgs.map(({ meta: { model: _model, ...meta }, ...m }) => ({ ...m, meta }));
   return { convo, messages, proposals: props, memoryIds: live.map((r) => r.id) };
 }
 
