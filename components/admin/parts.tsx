@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 const TABS = [
   { href: "/console", label: "Overview" },
   { href: "/console/users", label: "Users" },
+  { href: "/console/reports", label: "Reports" },
   { href: "/console/broadcast", label: "Broadcast" },
   { href: "/console/ai", label: "AI & tokens" },
   { href: "/console/system", label: "System" },

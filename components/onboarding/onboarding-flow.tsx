@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { useRouter } from "next/navigation";
 import * as React from "react";
 import { toast } from "sonner";
+import { saveBirthDate } from "@/app/actions/age";
 import { completeOnboarding, saveAgentSettings, saveProfile } from "@/app/actions/settings";
 import { BrandLogo } from "@/components/integrations/brand-logo";
 import { Logo } from "@/components/layout/logo";
@@ -21,7 +22,7 @@ export function OnboardingFlow({
   googleConnected,
   resumeAtConnect,
 }: {
-  initial: { name: string; timezone: string; personality: Personality; agentName: string };
+  initial: { name: string; timezone: string; personality: Personality; agentName: string; needsBirthDate: boolean };
   googleConnected: boolean;
   resumeAtConnect: boolean;
 }) {
@@ -30,6 +31,8 @@ export function OnboardingFlow({
   const [name, setName] = React.useState(initial.name);
   const [timezone, setTimezone] = React.useState(initial.timezone);
   const [personality, setPersonality] = React.useState<Personality>(initial.personality);
+  const [birthDate, setBirthDate] = React.useState("");
+  const [askBirthDate, setAskBirthDate] = React.useState(initial.needsBirthDate);
   const [error, setError] = React.useState<string | null>(null);
   const [pending, start] = React.useTransition();
 
@@ -80,6 +83,16 @@ export function OnboardingFlow({
                     setError(null);
                     const res = await saveProfile({ name, timezone });
                     if (!res.ok) return setError(res.error);
+                    if (askBirthDate) {
+                      const age = await saveBirthDate({ birthDate });
+                      if (!age.ok) return setError(age.error);
+                      if (age.data.underAge) {
+                        toast.error(age.data.message);
+                        router.replace("/home");
+                        return;
+                      }
+                      setAskBirthDate(false);
+                    }
                     setStep(1);
                   });
                 }}
@@ -97,7 +110,16 @@ export function OnboardingFlow({
                   <Label htmlFor="tz">Timezone</Label>
                   <TimezoneSelect id="tz" value={timezone} onChange={setTimezone} />
                 </div>
-                <Button type="submit" variant="primary" size="lg" disabled={pending || !name.trim()}>
+                {askBirthDate ? (
+                  <div className="flex flex-col gap-2">
+                    <Label htmlFor="dob">Date of birth</Label>
+                    <Input id="dob" type="date" required value={birthDate} onChange={(e) => setBirthDate(e.target.value)} autoComplete="bday" aria-describedby="dob-hint" />
+                    <p id="dob-hint" className="text-[13px] text-muted">
+                      You need to be 13 or older to use Cowork. Your date of birth is never shown to anyone.
+                    </p>
+                  </div>
+                ) : null}
+                <Button type="submit" variant="primary" size="lg" disabled={pending || !name.trim() || (askBirthDate && !birthDate)}>
                   Continue
                 </Button>
               </form>

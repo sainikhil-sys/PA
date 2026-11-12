@@ -14,7 +14,7 @@ export default async function OnboardingPage({ searchParams }: { searchParams: P
   return (
     <main id="main" className="grid min-h-dvh place-items-center bg-surface px-4 py-12">
       <OnboardingFlow
-        initial={{ name: user.name ?? "", timezone: settings.timezone, personality: settings.agent.personality, agentName: settings.agent.name }}
+        initial={{ name: user.name ?? "", timezone: settings.timezone, personality: settings.agent.personality, agentName: settings.agent.name, needsBirthDate: !user.birthDate }}
         googleConnected={google.connected}
         resumeAtConnect={sp.connected === "google"}
       />

@@ -178,6 +178,12 @@ Legend: **W** working, **P** partial, **B** broken, **M** missing, **X** needs e
 - **R4: existing AI provider plus Cloudflare.** Text and images are classified through `lib/ai/router.ts` (images need a vision-capable model configured); Cloudflare's CSAM Scanning Tool covers images served from R2 through a Cloudflare domain; anything flagged goes to the console review queue.
 - Still open: R3 (calls provider, decided at B9), R5 (modular monolith assumed unless you say otherwise), R7, R8, R9.
 
+**Progress (2026-11-12)**
+- B1 shipped (`6a835c9`, `923a9ed`): not-found, error and help pages, maintenance mode, CI. The reports queue (`/console/reports`) and social data in the export are built and wait for the Chats commit (they read its tables).
+- Production migrations applied with approval: `0014` (users.birth_date), `0015` (RLS on all 56 tables; the realtime channel policy). Verified: column present, RLS 56/56, policy created, live health check ok.
+- Age gate built: `PUT /api/mobile/me/birthdate`, `ageGroup` in `/api/mobile/me`, a date-of-birth step in web onboarding; under 13 deletes the account. Waits for the Chats commit (shared `schema.ts`).
+- B2 server side: `GET /api/realtime/token` and the publisher shipped (`9074b88`); every Chats write route sends its hint after the response (uncommitted with Chats). Off until the Supabase keys are set.
+
 ## 12. Migration plan (backend and web; mobile phases are the mobile session's)
 
 Each step is reversible, keeps every existing feature, and uses Drizzle migrations reviewed before `pnpm db:migrate` (production).
