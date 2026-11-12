@@ -59,7 +59,7 @@ export default function NotificationsScreen() {
           keyExtractor={(n) => n.id}
           contentContainerStyle={{ paddingBottom: space.xxxl, flexGrow: 1 }}
           ItemSeparatorComponent={() => <Divider style={{ marginLeft: space.lg }} />}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={color.accent} colors={[color.accent]} progressBackgroundColor={color.surface2} />}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={color.accentText} colors={[color.accentText]} progressBackgroundColor={color.surface2} />}
           ListEmptyComponent={
             <EmptyState
               icon={BellSimpleIcon}
@@ -83,7 +83,7 @@ function NotificationRow({ item, tz }: { item: AppNotification; tz?: string }) {
   const content = (
     <View style={{ flexDirection: "row", gap: space.md, paddingHorizontal: space.lg, paddingVertical: space.md, minHeight: TOUCH }}>
       <View style={{ width: 8, paddingTop: 8 }}>
-        {unread ? <View accessibilityElementsHidden importantForAccessibility="no" style={{ width: 8, height: 8, borderRadius: 2, backgroundColor: color.accent }} /> : null}
+        {unread ? <View accessibilityElementsHidden importantForAccessibility="no" style={{ width: 8, height: 8, borderRadius: 2, backgroundColor: color.accentText }} /> : null}
       </View>
       <View style={{ flex: 1, gap: 2 }}>
         <View style={{ flexDirection: "row", gap: space.sm, alignItems: "baseline" }}>

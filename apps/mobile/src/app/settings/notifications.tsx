@@ -84,8 +84,8 @@ export default function NotificationSettings() {
       value={value}
       disabled={disabled}
       onValueChange={onChange}
-      trackColor={{ false: color.surface3, true: color.accentDeep }}
-      thumbColor={value ? color.accent : color.muted}
+      trackColor={{ false: color.surface3, true: color.accent }}
+      thumbColor={value ? color.bg : color.muted}
     />
   );
   const toggle = (key: Toggle, label: string) => sw(Boolean(prefs.data?.[key]), (v) => save.mutate({ [key]: v }), label);

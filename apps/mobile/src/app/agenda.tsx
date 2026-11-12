@@ -85,7 +85,7 @@ export default function AgendaScreen() {
           stickySectionHeadersEnabled={false}
           ListHeaderComponent={banner ?? undefined}
           contentContainerStyle={{ paddingBottom: space.xxxl, flexGrow: 1 }}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={color.accent} colors={[color.accent]} progressBackgroundColor={color.surface2} />}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={color.accentText} colors={[color.accentText]} progressBackgroundColor={color.surface2} />}
           renderSectionHeader={({ section }) => (
             <View style={{ paddingHorizontal: space.lg, paddingTop: space.lg }}>
               <SectionHeader title={section.title} />

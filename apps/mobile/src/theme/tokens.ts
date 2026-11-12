@@ -1,6 +1,12 @@
 /**
- * Cowork V2 design tokens: light grey pages, white surfaces, near-black type, emerald as the
- * accent and vermillion for small marks. Same values as the website (app/globals.css).
+ * Cowork V2 design tokens (Phase 3): white and light grey surfaces, near-black type, orange for
+ * primary actions and active states. No green anywhere. Same values as the website (app/globals.css);
+ * tests/unit/design-tokens.test.ts checks that they match, that every text pair passes WCAG AA,
+ * and that no green hue appears.
+ *
+ * Orange rule: fills use `accent` (#F97316) with dark text (`onAccent`, 6.7:1). Orange text, links
+ * and icons on light surfaces use `accentText` (#C2410C, 5.2:1); white text on the bright orange
+ * would be 2.8:1 and fails.
  *
  * House rules: no purple, no gradients for decoration, no pill-shaped buttons (controls use
  * `radius.control`), no emoji icons, restrained motion that respects reduced-motion.
@@ -12,56 +18,70 @@
 export type Scheme = "light" | "dark";
 
 const light = {
-  /** Light grey page; white cards and bars sit on it. */
-  bg: "#F2F2F4",
-  surface: "#FFFFFF",
-  surface2: "#EDEDF0",
-  surface3: "#E4E4E8",
-  border: "#E4E4E7",
-  borderStrong: "#CFCFD4",
-  /** Near-black text: 16.9:1 on bg, 18.9:1 on white. */
-  text: "#111113",
-  /** Secondary text: 5.9:1 on bg, 6.6:1 on white. */
-  muted: "#5C5C63",
-  /** Tertiary text and placeholders: 4.5:1 on bg, 5.1:1 on white. */
-  subtle: "#6E6E76",
-  /** Emerald, Cowork's accent: 6.5:1 with white text on it. */
-  accent: "#0F6B4F",
-  accentDeep: "#0A5039",
-  onAccent: "#FFFFFF",
-  /** Vermillion for small marks (badges): 5.2:1 on white. */
-  accent2: "#C63B20",
-  /** Text on vermillion (badges). */
-  onAccent2: "#FFFFFF",
-  success: "#1D7A4C",
+  /** White page. */
+  bg: "#FFFFFF",
+  /** Light grey cards, inputs and rows. */
+  surface: "#F3F4F6",
+  surface2: "#E5E7EB",
+  surface3: "#D9DCE1",
+  border: "#E5E7EB",
+  borderStrong: "#D1D5DB",
+  /** Near-black text: 18.9:1 on bg, 17.0:1 on surface. */
+  text: "#111111",
+  /** Secondary text: 5.8:1 on bg, 5.3:1 on surface (the brief's #6B7280, darkened to pass on grey). */
+  muted: "#5F6673",
+  /** Tertiary text and placeholders: 5.0:1 on bg, 4.6:1 on surface. */
+  subtle: "#667080",
+  /** Orange fill for primary buttons and active marks. Always with `onAccent` text. */
+  accent: "#F97316",
+  /** Pressed fill. */
+  accentDeep: "#EA580C",
+  /** Text on orange: 6.7:1. */
+  onAccent: "#111111",
+  /** Orange text, links and icons on light surfaces: 5.2:1 on bg, 4.7:1 on surface. */
+  accentText: "#C2410C",
+  /** Secondary orange for small marks (badges). */
+  accent2: "#EA580C",
+  /** Text on the secondary orange: 5.3:1. */
+  onAccent2: "#111111",
+  /** Success is neutral (always paired with a check icon), because green is not part of Cowork. */
+  success: "#111111",
   danger: "#B42318",
   warning: "#9A6200",
-  overlay: "rgba(17,17,19,0.4)",
+  overlay: "rgba(17,17,17,0.4)",
+  /** Floating bar material: translucent page colour and a light top edge. */
+  glass: "rgba(255,255,255,0.96)",
+  glassEdge: "rgba(255,255,255,0.95)",
+  shadow: "#111111",
 };
 
 const dark: typeof light = {
-  bg: "#0F0F11",
-  surface: "#18181B",
-  surface2: "#212125",
-  surface3: "#2A2A2F",
-  border: "#2A2A2F",
-  borderStrong: "#3D3D44",
-  /** Text: 17.4:1 on bg. */
-  text: "#F4F4F5",
-  /** Secondary text: 8.2:1 on bg. */
-  muted: "#A9A9B2",
-  /** Tertiary text and placeholders: 5.9:1 on bg. */
-  subtle: "#8E8E97",
-  accent: "#3FBF8F",
-  accentDeep: "#2A9A71",
-  /** Text on the emerald accent: 8.0:1. */
-  onAccent: "#0C1511",
-  accent2: "#F0694B",
-  onAccent2: "#1A0B06",
-  success: "#4CC38A",
+  bg: "#111111",
+  surface: "#1F1F1F",
+  surface2: "#292929",
+  surface3: "#333333",
+  border: "#292929",
+  borderStrong: "#3A3A3A",
+  /** Text: 18.9:1 on bg. */
+  text: "#FFFFFF",
+  /** Secondary text: 7.4:1 on bg, 6.4:1 on surface. */
+  muted: "#A1A1AA",
+  /** Tertiary text and placeholders: 6.0:1 on bg, 5.2:1 on surface. */
+  subtle: "#909099",
+  accent: "#F97316",
+  accentDeep: "#FB923C",
+  onAccent: "#111111",
+  /** Orange text on dark: 6.7:1 on bg, 5.9:1 on surface. */
+  accentText: "#F97316",
+  accent2: "#EA580C",
+  onAccent2: "#111111",
+  success: "#FFFFFF",
   danger: "#F2735A",
   warning: "#E3B341",
   overlay: "rgba(0,0,0,0.6)",
+  glass: "rgba(31,31,31,0.96)",
+  glassEdge: "rgba(255,255,255,0.08)",
+  shadow: "#000000",
 };
 
 export type Palette = typeof light;
@@ -133,7 +153,7 @@ export const type = {
 /** Card and sheet elevation: a hairline border does most of the work; shadows stay faint. */
 export const elevation = {
   get card() {
-    return active === "light" ? { shadowColor: "#111113", shadowOpacity: 0.05, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 1 } : {};
+    return active === "light" ? { shadowColor: palettes.light.shadow, shadowOpacity: 0.05, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 1 } : {};
   },
   get sheet() {
     return { shadowColor: "#000", shadowOpacity: active === "light" ? 0.12 : 0.4, shadowRadius: 24, shadowOffset: { width: 0, height: -6 }, elevation: 8 };

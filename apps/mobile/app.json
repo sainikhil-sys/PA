@@ -7,7 +7,7 @@
     "icon": "./assets/images/icon.png",
     "scheme": "cowork",
     "userInterfaceStyle": "automatic",
-    "backgroundColor": "#F2F2F4",
+    "backgroundColor": "#FFFFFF",
     "android": {
       "package": "me.antropic.cowork",
       "versionCode": 1,
@@ -36,11 +36,11 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#F2F2F4",
+          "backgroundColor": "#FFFFFF",
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 96,
           "dark": {
-            "backgroundColor": "#0F0F11",
+            "backgroundColor": "#111111",
             "image": "./assets/images/splash-icon.png"
           }
         }
@@ -55,7 +55,7 @@
       [
         "expo-notifications",
         {
-          "color": "#0F6B4F"
+          "color": "#F97316"
         }
       ],
       [

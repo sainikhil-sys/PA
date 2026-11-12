@@ -116,8 +116,8 @@ export function Input({ label, error, style, ref, ...rest }: TextInputProps & { 
       <TextInput
         ref={ref}
         placeholderTextColor={color.subtle}
-        selectionColor={color.accent}
-        cursorColor={color.accent}
+        selectionColor={color.accentText}
+        cursorColor={color.accentText}
         accessibilityLabel={rest.accessibilityLabel ?? label}
         {...rest}
         style={[styles.input, error ? { borderColor: color.danger } : null, style]}

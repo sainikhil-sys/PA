@@ -79,7 +79,7 @@ export default function ProfileTab() {
     <Screen>
       <ScrollView
         contentContainerStyle={{ paddingBottom: bottom, gap: space.xxl }}
-        refreshControl={<RefreshControl refreshing={me.isRefetching} onRefresh={() => void me.refetch()} tintColor={color.accent} colors={[color.accent]} progressBackgroundColor={color.surface2} />}
+        refreshControl={<RefreshControl refreshing={me.isRefetching} onRefresh={() => void me.refetch()} tintColor={color.accentText} colors={[color.accentText]} progressBackgroundColor={color.surface2} />}
       >
         <View style={{ paddingHorizontal: space.lg, paddingTop: space.md, gap: space.lg }}>
           <Txt variant="title" accessibilityRole="header" style={{ fontSize: 26, lineHeight: 32 }}>
@@ -103,8 +103,8 @@ export default function ProfileTab() {
               <OutlineButton label="Edit profile" icon={PencilSimpleIcon} onPress={go("/settings/account")} />
               {d.stats ? (
                 <View style={{ flexDirection: "row", borderTopWidth: StyleSheet.hairlineWidth, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: color.border, paddingVertical: space.lg }}>
-                  <Stat value={d.stats.chats} label="Chats" tint={color.accent} onPress={go("/assistant")} />
-                  <Stat value={d.stats.notes} label="Notes" tint={color.accent} onPress={go("/notes")} />
+                  <Stat value={d.stats.chats} label="Chats" tint={color.accentText} onPress={go("/assistant")} />
+                  <Stat value={d.stats.notes} label="Notes" tint={color.accentText} onPress={go("/notes")} />
                   <Stat value={d.stats.documents} label="Documents" tint={color.text} onPress={go("/settings/documents")} />
                 </View>
               ) : null}
@@ -114,8 +114,8 @@ export default function ProfileTab() {
                 onPress={go("/settings/account")}
                 style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: space.md, minHeight: TOUCH, opacity: pressed ? 0.6 : 1 })}
               >
-                <UserCircleIcon size={22} color={d.bio ? color.muted : color.accent} />
-                <Txt variant="body" style={{ flex: 1, color: d.bio ? color.text : color.accent }} numberOfLines={3}>
+                <UserCircleIcon size={22} color={d.bio ? color.muted : color.accentText} />
+                <Txt variant="body" style={{ flex: 1, color: d.bio ? color.text : color.accentText }} numberOfLines={3}>
                   {d.bio || "Write a short bio"}
                 </Txt>
               </Pressable>

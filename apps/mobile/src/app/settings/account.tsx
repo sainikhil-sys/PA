@@ -56,7 +56,7 @@ export default function AccountScreen() {
           </ListSection>
 
           <ListSection title="Sign-in methods">
-            <Row icon={EnvelopeSimpleIcon} title={d.email} detail="Email code: Cowork sends a one-time code to this address" right={<View accessible accessibilityLabel="Verified"><CheckCircleIcon size={22} color={color.accent} weight="fill" /></View>} />
+            <Row icon={EnvelopeSimpleIcon} title={d.email} detail="Email code: Cowork sends a one-time code to this address" right={<View accessible accessibilityLabel="Verified"><CheckCircleIcon size={22} color={color.accentText} weight="fill" /></View>} />
           </ListSection>
 
           <View>

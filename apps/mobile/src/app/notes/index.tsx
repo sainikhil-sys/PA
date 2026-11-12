@@ -62,7 +62,7 @@ export default function NotesScreen() {
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={{ paddingBottom: space.xxxl, flexGrow: 1 }}
           ItemSeparatorComponent={() => <Divider style={{ marginLeft: space.lg }} />}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={color.accent} colors={[color.accent]} progressBackgroundColor={color.surface2} />}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={color.accentText} colors={[color.accentText]} progressBackgroundColor={color.surface2} />}
           ListEmptyComponent={
             q ? (
               <EmptyState icon={NotebookIcon} title="No matches" body={`Nothing in your notes matches "${q}".`} />

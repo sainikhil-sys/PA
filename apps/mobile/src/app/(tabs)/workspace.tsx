@@ -3,6 +3,7 @@ import { CalendarDotsIcon, CaretRightIcon, CheckSquareIcon, FileTextIcon, Notebo
 import * as React from "react";
 import { RefreshControl, ScrollView, View } from "react-native";
 import { CountBadge, Divider, Row, Screen, SectionHeader, Txt } from "@/components/ui";
+import { useTabBarSpace } from "@/features/navigation/tab-bar";
 import { useMe, useTasks } from "@/lib/queries";
 import { color, radius, space } from "@/theme/tokens";
 
@@ -10,6 +11,7 @@ type Place = { key: string; icon: Icon; title: string; detail: string; href: Hre
 
 /** Workspace: everything you keep and plan, in one place. Counts come from your real data. */
 export default function WorkspaceTab() {
+  const bottom = useTabBarSpace();
   const tasks = useTasks();
   const me = useMe();
   const [refreshing, setRefreshing] = React.useState(false);
@@ -42,8 +44,8 @@ export default function WorkspaceTab() {
   return (
     <Screen>
       <ScrollView
-        contentContainerStyle={{ paddingHorizontal: space.lg, paddingTop: space.md, paddingBottom: space.xxxl, gap: space.xl }}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={color.accent} colors={[color.accent]} progressBackgroundColor={color.surface2} />}
+        contentContainerStyle={{ paddingHorizontal: space.lg, paddingTop: space.md, paddingBottom: bottom, gap: space.xl }}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={color.accentText} colors={[color.accentText]} progressBackgroundColor={color.surface2} />}
       >
         <View style={{ gap: space.xs }}>
           <Txt variant="display" accessibilityRole="header">

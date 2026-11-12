@@ -22,7 +22,7 @@ void SplashScreen.preventAutoHideAsync();
 /** Navigation colours for the active scheme (read after setScheme). */
 function navTheme(scheme: Scheme) {
   const base = scheme === "dark" ? DarkTheme : DefaultTheme;
-  return { ...base, colors: { ...base.colors, background: color.bg, card: color.bg, primary: color.accent, text: color.text, border: color.border } };
+  return { ...base, colors: { ...base.colors, background: color.bg, card: color.bg, primary: color.accentText, text: color.text, border: color.border } };
 }
 
 /**
@@ -96,8 +96,6 @@ export default function RootLayout() {
               <Stack.Protected guard={signedIn && onboarded}>
                 <Stack.Screen name="(tabs)" />
                 <Stack.Screen name="tasks" />
-                <Stack.Screen name="assistant" />
-                <Stack.Screen name="create" />
                 <Stack.Screen name="chat/[id]" />
                 <Stack.Screen name="task/[id]" options={{ presentation: "modal" }} />
                 <Stack.Screen name="approvals" />

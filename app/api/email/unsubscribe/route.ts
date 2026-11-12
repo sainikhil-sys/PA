@@ -11,10 +11,10 @@ const LABEL: Record<EmailTopic, string> = { updates: "email updates", digest: "d
 
 function page(title: string, body: string, status = 200) {
   const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>${esc(title)} · ${esc(BRAND.name)}</title>
-<style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#faf7f0;font:15px/24px -apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;color:#1f1d1a;padding:16px}
-main{max-width:420px;width:100%;background:#f3eee3;border:1px solid #e1d9c9;border-radius:16px;padding:32px 28px}h1{font-size:22px;line-height:30px;margin:0 0 8px;font-weight:600}p{margin:0 0 20px;color:#55504a}
-button,a.b{display:inline-block;background:#0f6b4f;color:#faf7f0;border:0;border-radius:10px;padding:12px 20px;font:600 14px/20px inherit;cursor:pointer;text-decoration:none}a{color:#1f1d1a}</style></head>
-<body><main><p style="margin:0 0 20px;font-weight:600;color:#1f1d1a">${esc(BRAND.name)}</p>${body}</main></body></html>`;
+<style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#ffffff;font:15px/24px -apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;color:#111111;padding:16px}
+main{max-width:420px;width:100%;background:#f3f4f6;border:1px solid #e5e7eb;border-radius:16px;padding:32px 28px}h1{font-size:22px;line-height:30px;margin:0 0 8px;font-weight:600}p{margin:0 0 20px;color:#5f6673}
+button,a.b{display:inline-block;background:#f97316;color:#111111;border:0;border-radius:10px;padding:12px 20px;font:600 14px/20px inherit;cursor:pointer;text-decoration:none}a{color:#111111}</style></head>
+<body><main><p style="margin:0 0 20px;font-weight:600;color:#111111">${esc(BRAND.name)}</p>${body}</main></body></html>`;
   return new Response(html, { status, headers: {
       "content-type": "text/html; charset=utf-8",
       "cache-control": "no-store",

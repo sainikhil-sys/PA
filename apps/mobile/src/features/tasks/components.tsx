@@ -59,7 +59,7 @@ export function TaskRow({ task, onToggle, onOpen }: { task: TaskSummary; onToggl
   const tags: React.ReactNode[] = [];
   if (when) tags.push(<Tag key="when" label={when} />);
   if (task.priority >= 2)
-    tags.push(<Tag key="p" label={PRIORITY_LABEL[task.priority] ?? "High"} strong={task.priority === 3} icon={<FlagIcon size={13} color={task.priority === 3 ? color.accent : color.muted} weight={task.priority === 3 ? "fill" : "regular"} />} />);
+    tags.push(<Tag key="p" label={PRIORITY_LABEL[task.priority] ?? "High"} strong={task.priority === 3} icon={<FlagIcon size={13} color={task.priority === 3 ? color.accentText : color.muted} weight={task.priority === 3 ? "fill" : "regular"} />} />);
   if (task.recurring) tags.push(<Tag key="r" label="Recurring" icon={<ArrowsClockwiseIcon size={13} color={color.muted} />} />);
   if (task.status === "needs_review") tags.push(<Tag key="s" label="Needs review" strong />);
   else if (task.status === "in_progress") tags.push(<Tag key="s" label="In progress" />);
@@ -99,8 +99,8 @@ export function QuickAddBar({ value, onChangeText, onSubmit, busy, inputRef }: {
         onSubmitEditing={() => canSend && onSubmit()}
         placeholder="Add a task, like call mom tomorrow 6pm"
         placeholderTextColor={color.subtle}
-        selectionColor={color.accent}
-        cursorColor={color.accent}
+        selectionColor={color.accentText}
+        cursorColor={color.accentText}
         accessibilityLabel="New task"
         accessibilityHint="Type a task with an optional date, time, #tag or !high"
         returnKeyType="done"
@@ -146,7 +146,7 @@ export function Segmented<T extends string | number | null>({ label, options, va
               paddingHorizontal: space.md,
               borderRadius: radius.control,
               borderWidth: 1,
-              borderColor: on ? color.accent : color.borderStrong,
+              borderColor: on ? color.accentText : color.borderStrong,
               backgroundColor: on ? color.surface3 : color.surface2,
               alignItems: "center",
               justifyContent: "center",

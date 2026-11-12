@@ -17,7 +17,7 @@ export type PushResult = { ok: true } | { ok: false; reason: "denied" | "not_con
 export async function enablePush(): Promise<PushResult> {
   if (!Device.isDevice) return { ok: false, reason: "emulator", message: "Notifications need a real phone." };
   if (Platform.OS === "android") {
-    await Notifications.setNotificationChannelAsync("default", { name: "Cowork", importance: AndroidImportance.HIGH, lightColor: "#0F6B4F" });
+    await Notifications.setNotificationChannelAsync("default", { name: "Cowork", importance: AndroidImportance.HIGH, lightColor: "#F97316" });
   }
   const current = await Notifications.getPermissionsAsync();
   const granted = current.granted || (await Notifications.requestPermissionsAsync()).granted;

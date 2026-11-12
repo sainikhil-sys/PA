@@ -6,7 +6,7 @@ import { Pressable, ScrollView, View } from "react-native";
 import { Screen, SectionHeader, Txt } from "@/components/ui";
 import { setChatIntent } from "@/lib/intent";
 import { color, elevation, radius, space, TOUCH } from "@/theme/tokens";
-import { BackHeader } from "@/features/home/header";
+import { useTabBarSpace } from "@/features/navigation/tab-bar";
 
 type Action = { key: string; icon: Icon; title: string; detail: string; go: () => void };
 
@@ -14,8 +14,9 @@ function open(href: Href) {
   router.push(href);
 }
 
-/** Create (from Home): start something new. Every entry opens a working flow; agents and automations join here later. */
+/** Create tab: start something new. Every entry opens a working flow; agents and automations join here later. */
 export default function CreateTab() {
+  const bottom = useTabBarSpace();
   const actions: { section: string; items: Action[] }[] = [
     {
       section: "Ask",
@@ -46,9 +47,13 @@ export default function CreateTab() {
 
   return (
     <Screen>
-      <BackHeader title="Create" />
-      <ScrollView contentContainerStyle={{ paddingHorizontal: space.lg, paddingTop: space.xs, paddingBottom: space.xxxl, gap: space.xl }}>
-        <Txt variant="small">Start a chat, or capture something for later.</Txt>
+      <ScrollView contentContainerStyle={{ paddingHorizontal: space.lg, paddingTop: space.md, paddingBottom: bottom, gap: space.xl }}>
+        <View style={{ gap: space.xs }}>
+          <Txt variant="display" accessibilityRole="header">
+            Create
+          </Txt>
+          <Txt variant="small">Start a chat, or capture something for later.</Txt>
+        </View>
         {actions.map((group) => (
           <View key={group.section}>
             <SectionHeader title={group.section} />
@@ -88,7 +93,7 @@ function ActionTile({ action }: { action: Action }) {
       })}
     >
       <View style={{ width: 36, height: 36, borderRadius: radius.control, alignItems: "center", justifyContent: "center", backgroundColor: color.surface2 }}>
-        <IconCmp size={20} color={color.accent} />
+        <IconCmp size={20} color={color.accentText} />
       </View>
       <Txt variant="label">{action.title}</Txt>
       <Txt variant="small" numberOfLines={2}>

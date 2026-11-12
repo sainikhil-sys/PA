@@ -65,7 +65,7 @@ export default function HomeScreen() {
     <Screen>
       <ScrollView
         contentContainerStyle={{ paddingHorizontal: space.lg, paddingTop: space.sm, paddingBottom: bottom, gap: space.xl }}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={color.accent} colors={[color.accent]} progressBackgroundColor={color.surface2} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={color.accentText} colors={[color.accentText]} progressBackgroundColor={color.surface2} />}
       >
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
           <Text accessibilityRole="header" accessibilityLabel="Cowork" style={{ fontFamily: font.semibold, fontSize: 26, letterSpacing: -0.6, color: color.text }} maxFontSizeMultiplier={1.3}>
@@ -141,7 +141,7 @@ export default function HomeScreen() {
               style={({ pressed }) => ({ alignItems: "center", gap: space.sm, width: 64, opacity: pressed ? 0.7 : 1 })}
             >
               <View style={{ width: 56, height: 56, borderRadius: radius.card, alignItems: "center", justifyContent: "center", backgroundColor: color.surface, borderWidth: StyleSheet.hairlineWidth, borderColor: color.border }}>
-                <q.icon size={24} color={q.key === "chat" ? color.accent : color.text} />
+                <q.icon size={24} color={q.key === "chat" ? color.accentText : color.text} />
               </View>
               <Txt variant="small" numberOfLines={1} style={{ color: color.text, fontSize: 12 }}>
                 {q.label}
@@ -168,7 +168,7 @@ export default function HomeScreen() {
                 style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: space.md, minHeight: 64, paddingVertical: space.sm, borderTopWidth: i ? StyleSheet.hairlineWidth : 0, borderTopColor: color.border, opacity: pressed ? 0.7 : 1 })}
               >
                 <View style={{ width: 44, height: 44, borderRadius: radius.control, alignItems: "center", justifyContent: "center", backgroundColor: color.surface }}>
-                  <ChatCircleIcon size={22} color={color.accent} />
+                  <ChatCircleIcon size={22} color={color.accentText} />
                 </View>
                 <View style={{ flex: 1, gap: 2 }}>
                   <Txt variant="label" numberOfLines={1}>

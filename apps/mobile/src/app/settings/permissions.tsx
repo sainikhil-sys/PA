@@ -99,7 +99,7 @@ export default function PermissionsScreen() {
                   right={
                     p.state === "unavailable" ? undefined : (
                       <Pressable accessibilityRole="button" accessibilityLabel={`${p.state === "ask" ? "Allow" : "Open settings for"} ${p.title}`} onPress={() => void act(p)} style={({ pressed }) => ({ minHeight: TOUCH, justifyContent: "center", paddingHorizontal: space.sm, opacity: pressed ? 0.6 : 1 })}>
-                        <Txt variant="label" style={{ color: color.accent }}>
+                        <Txt variant="label" style={{ color: color.accentText }}>
                           {p.state === "ask" ? "Allow" : "Settings"}
                         </Txt>
                       </Pressable>
@@ -112,7 +112,7 @@ export default function PermissionsScreen() {
           {allowed.length ? (
             <ListSection title="Allowed">
               {allowed.map((p) => (
-                <Row key={p.key} icon={p.icon} title={p.title} detail={p.why} right={<View accessible accessibilityLabel="Allowed"><CheckCircleIcon size={24} color={color.accent} weight="fill" /></View>} />
+                <Row key={p.key} icon={p.icon} title={p.title} detail={p.why} right={<View accessible accessibilityLabel="Allowed"><CheckCircleIcon size={24} color={color.accentText} weight="fill" /></View>} />
               ))}
             </ListSection>
           ) : null}

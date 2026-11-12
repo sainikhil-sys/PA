@@ -45,7 +45,7 @@ export function timeAgo(iso: string | null | undefined): string {
  * this element and wraps itself in it, which a wrapper component would swallow.
  */
 export function refresh(refreshing: boolean, onRefresh: () => void) {
-  return <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={color.accent} colors={[color.accent]} progressBackgroundColor={color.surface2} />;
+  return <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={color.accentText} colors={[color.accentText]} progressBackgroundColor={color.surface2} />;
 }
 
 /** A flat list section like the reference layout: a small grey heading, then rows split by hairlines. */

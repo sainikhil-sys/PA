@@ -9,10 +9,11 @@ import { errorText } from "@/lib/api";
 import { useConversations } from "@/lib/queries";
 import type { Conversation } from "@/lib/types";
 import { color, radius, space, TOUCH, type } from "@/theme/tokens";
-import { BackHeader } from "@/features/home/header";
+import { useTabBarSpace } from "@/features/navigation/tab-bar";
 
-/** Assistant: every chat, newest first, with search across titles and message text. */
-export default function AssistantScreen() {
+/** Chat tab: every chat, newest first, with search across titles and message text. */
+export default function ChatTab() {
+  const bottom = useTabBarSpace();
   const [q, setQ] = React.useState("");
   const search = useDebounced(q.trim(), 300);
   const list = useConversations(search);
@@ -54,14 +55,18 @@ export default function AssistantScreen() {
 
   return (
     <Screen>
-      <BackHeader title="Chats" />
+      <View style={{ paddingHorizontal: space.lg, paddingTop: space.md, paddingBottom: space.md }}>
+        <Txt variant="display" accessibilityRole="header">
+          Chats
+        </Txt>
+      </View>
       <FlatList
         data={body ? [] : items}
         keyExtractor={(c) => c.id}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
-        contentContainerStyle={{ paddingHorizontal: space.lg, paddingTop: space.xs, paddingBottom: space.xxxl }}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={color.accent} colors={[color.accent]} progressBackgroundColor={color.surface2} />}
+        contentContainerStyle={{ paddingHorizontal: space.lg, paddingTop: space.xs, paddingBottom: bottom }}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={color.accentText} colors={[color.accentText]} progressBackgroundColor={color.surface2} />}
         ListHeaderComponent={
           <View style={{ gap: space.md, marginBottom: space.md }}>
             <Button label="New chat" variant="primary" icon={PlusIcon} onPress={() => router.push("/chat/new")} />
@@ -90,8 +95,8 @@ function SearchBox({ value, onChange, busy }: { value: string; onChange: (t: str
         onChangeText={onChange}
         placeholder="Search chats"
         placeholderTextColor={color.subtle}
-        selectionColor={color.accent}
-        cursorColor={color.accent}
+        selectionColor={color.accentText}
+        cursorColor={color.accentText}
         accessibilityLabel="Search chats"
         accessibilityHint={busy ? "Searching" : undefined}
         returnKeyType="search"

@@ -45,7 +45,7 @@ export default function AppearanceScreen() {
                     <Txt variant="label">{o.label}</Txt>
                     <Txt variant="small">{o.detail}</Txt>
                   </View>
-                  {selected ? <CheckIcon size={20} color={color.accent} weight="bold" /> : null}
+                  {selected ? <CheckIcon size={20} color={color.accentText} weight="bold" /> : null}
                 </Pressable>
               );
             })}

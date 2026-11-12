@@ -1,8 +1,10 @@
 @import "tailwindcss";
 
 /*
- * Cowork V2 design tokens: light grey pages, white surfaces, near-black type, emerald accent,
- * vermillion for small marks. Same values as the app (apps/mobile/src/theme/tokens.ts). Light by default;
+ * Cowork V2 design tokens (Phase 3): white pages, light grey surfaces, near-black type, orange for
+ * primary actions and active states, no green. Same values as the app (apps/mobile/src/theme/tokens.ts);
+ * tests/unit/design-tokens.test.ts checks they match and pass WCAG AA. Orange fills take dark text
+ * (--primary-foreground); orange text and links use --primary-text. Light by default;
  * dark follows the system unless <html data-theme="light|dark"> pins one.
  * Components must never hardcode colors: use the Tailwind names mapped below.
  */
@@ -13,25 +15,26 @@
   --font-code: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
 
   color-scheme: light;
-  --background: #f2f2f4; /* light grey page */
-  --foreground: #111113; /* near-black, 16.9:1 */
-  --muted: #5c5c63; /* secondary text, 5.9:1 */
-  --subtle: #6e6e76; /* tertiary text / placeholders, 4.5:1 */
-  --surface: #ffffff; /* cards and bars */
-  --surface-2: #ededf0;
-  --surface-hover: #e8e8ec;
-  --border: #e4e4e7;
-  --border-strong: #cfcfd4;
-  --primary: #0f6b4f; /* emerald; white text on it 6.5:1 */
-  --primary-foreground: #ffffff;
-  --primary-hover: #0a5039;
-  --accent: #c63b20; /* vermillion, small marks only */
-  --accent-foreground: #ffffff;
-  --ring: #0f6b4f;
-  --overlay: rgb(17 17 19 / 0.4);
+  --background: #ffffff; /* white page */
+  --foreground: #111111; /* near-black, 18.9:1 */
+  --muted: #5f6673; /* secondary text, 5.8:1 (5.3:1 on surface) */
+  --subtle: #667080; /* tertiary text / placeholders, 5.0:1 (4.6:1 on surface) */
+  --surface: #f3f4f6; /* cards, inputs, bars */
+  --surface-2: #e5e7eb;
+  --surface-hover: #d9dce1;
+  --border: #e5e7eb;
+  --border-strong: #d1d5db;
+  --primary: #f97316; /* orange fill; dark text on it 6.7:1 */
+  --primary-foreground: #111111;
+  --primary-hover: #ea580c;
+  --primary-text: #c2410c; /* orange text and links, 5.2:1 */
+  --accent: #ea580c; /* secondary orange, small marks only */
+  --accent-foreground: #111111;
+  --ring: #c2410c;
+  --overlay: rgb(17 17 17 / 0.4);
 
-  /* Tiny semantic states only (dots, small icons). */
-  --success: #1d7a4c;
+  /* Tiny semantic states only (dots, small icons). Success is neutral: no green in Cowork. */
+  --success: #111111;
   --danger: #b42318;
   --warning: #9a6200;
   --info: #1d4ed8;
@@ -53,23 +56,24 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     color-scheme: dark;
-    --background: #0f0f11;
-    --foreground: #f4f4f5;
-    --muted: #a9a9b2;
-    --subtle: #8e8e97;
-    --surface: #18181b;
-    --surface-2: #212125;
-    --surface-hover: #2a2a2f;
-    --border: #2a2a2f;
-    --border-strong: #3d3d44;
-    --primary: #3fbf8f;
-    --primary-foreground: #0c1511;
-    --primary-hover: #5acca0;
-    --accent: #f0694b;
-    --accent-foreground: #1a0b06;
-    --ring: #3fbf8f;
+    --background: #111111;
+    --foreground: #ffffff;
+    --muted: #a1a1aa;
+    --subtle: #909099;
+    --surface: #1f1f1f;
+    --surface-2: #292929;
+    --surface-hover: #333333;
+    --border: #292929;
+    --border-strong: #3a3a3a;
+    --primary: #f97316;
+    --primary-foreground: #111111;
+    --primary-hover: #fb923c;
+    --primary-text: #f97316;
+    --accent: #ea580c;
+    --accent-foreground: #111111;
+    --ring: #f97316;
     --overlay: rgb(0 0 0 / 0.6);
-    --success: #4cc38a;
+    --success: #ffffff;
     --danger: #f2735a;
     --warning: #e3b341;
     --info: #7aa7ff;
@@ -78,23 +82,24 @@
 }
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --background: #0f0f11;
-  --foreground: #f4f4f5;
-  --muted: #a9a9b2;
-  --subtle: #8e8e97;
-  --surface: #18181b;
-  --surface-2: #212125;
-  --surface-hover: #2a2a2f;
-  --border: #2a2a2f;
-  --border-strong: #3d3d44;
-  --primary: #3fbf8f;
-  --primary-foreground: #0c1511;
-  --primary-hover: #5acca0;
-  --accent: #f0694b;
-  --accent-foreground: #1a0b06;
-  --ring: #3fbf8f;
+  --background: #111111;
+  --foreground: #ffffff;
+  --muted: #a1a1aa;
+  --subtle: #909099;
+  --surface: #1f1f1f;
+  --surface-2: #292929;
+  --surface-hover: #333333;
+  --border: #292929;
+  --border-strong: #3a3a3a;
+  --primary: #f97316;
+  --primary-foreground: #111111;
+  --primary-hover: #fb923c;
+  --primary-text: #f97316;
+  --accent: #ea580c;
+  --accent-foreground: #111111;
+  --ring: #f97316;
   --overlay: rgb(0 0 0 / 0.6);
-  --success: #4cc38a;
+  --success: #ffffff;
   --danger: #f2735a;
   --warning: #e3b341;
   --info: #7aa7ff;
@@ -121,6 +126,7 @@
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
   --color-primary-hover: var(--primary-hover);
+  --color-primary-text: var(--primary-text);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-ring: var(--ring);
@@ -292,25 +298,26 @@ html[data-room] body {
   background: transparent;
 }
 html[data-room="dark"] {
-  background: #0f0f11;
+  background: #111111;
   color-scheme: dark;
-  --background: #0f0f11;
-  --foreground: #f4f4f5;
-  --muted: #a9a9b2;
-  --subtle: #8e8e97;
-  --surface: #18181b;
-  --surface-2: #212125;
-  --surface-hover: #2a2a2f;
-  --border: #2a2a2f;
-  --border-strong: #3d3d44;
-  --primary: #3fbf8f;
-  --primary-foreground: #0c1511;
-  --primary-hover: #5acca0;
-  --accent: #f0694b;
-  --accent-foreground: #1a0b06;
-  --ring: #3fbf8f;
+  --background: #111111;
+  --foreground: #ffffff;
+  --muted: #a1a1aa;
+  --subtle: #909099;
+  --surface: #1f1f1f;
+  --surface-2: #292929;
+  --surface-hover: #333333;
+  --border: #292929;
+  --border-strong: #3a3a3a;
+  --primary: #f97316;
+  --primary-foreground: #111111;
+  --primary-hover: #fb923c;
+  --primary-text: #f97316;
+  --accent: #ea580c;
+  --accent-foreground: #111111;
+  --ring: #f97316;
   --overlay: rgb(0 0 0 / 0.6);
-  --success: #4cc38a;
+  --success: #ffffff;
   --danger: #f2735a;
   --warning: #e3b341;
   --info: #7aa7ff;

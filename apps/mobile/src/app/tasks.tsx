@@ -113,7 +113,7 @@ export default function TasksScreen() {
           )}
           renderItem={({ item }) => <TaskRow task={item} onToggle={() => complete(item.id)} onOpen={() => router.push(`/task/${item.id}`)} />}
           ItemSeparatorComponent={() => <Divider style={{ marginLeft: 52 }} />}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={color.accent} colors={[color.accent]} progressBackgroundColor={color.surface2} />}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={color.accentText} colors={[color.accentText]} progressBackgroundColor={color.surface2} />}
         />
       </KeyboardAvoidingView>
     </Screen>

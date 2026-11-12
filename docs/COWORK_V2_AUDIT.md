@@ -243,3 +243,18 @@ The brief lists 14 documents. Writing them all now would describe features that 
 3. **Hardware**: a second Android phone for the Connect prototype; a Mac (or paid Expo cloud builds plus an Apple Developer account) and iPhones before any iOS phase.
 4. **Connect decisions D1 to D7** in `COWORK_CONNECT_FEASIBILITY.md` section 10 (Android first, hotspot bridge, server backup of offline messages, social scope, audience).
 5. **Scheduler**: Supabase `pg_cron` or Vercel Pro for 5-minute dispatch (reminders and agent jobs).
+
+---
+
+# Phase 3: updated brief palette and five-tab navigation (2026-11-12)
+
+The user pasted an updated V2 master brief (orange palette, "green must not appear", tabs Home, Chat, Create, Connect, Profile, a Liquid Glass style bar) and moved V2 work to session `local_830ddf3a`. The pasted text stops at section 14.2; the rest has not been received.
+
+Decisions (user, 2026-11-12):
+- **D2 replaced**: orange `#F97316` primary and `#EA580C` secondary on white and light grey; no green. Orange fills take dark text (`#111111`, 6.7:1); orange text and links on light surfaces use `#C2410C` (5.2:1), because white on the bright orange is 2.8:1.
+- **C2 confirmed**: five tabs Home, Chat, Create, Workspace, Profile now; Connect takes Workspace's slot when it has a working feature.
+- D1 (own backend, Supabase hosts Postgres only) stands.
+
+Built: tokens on app and web (`apps/mobile/src/theme/tokens.ts`, `app/globals.css`), `accentText` / `--primary-text` for orange text, Chat and Create moved into `(tabs)`, the floating translucent tab bar (system glass on iOS 26, translucent material without blur on Android), browser and native colours (`app/layout.tsx`, `app/manifest.ts`, `apps/mobile/app.json`, the unsubscribe page, the Android notification channel), `tests/unit/design-tokens.test.ts`. Details: `docs/DESIGN_SYSTEM.md`.
+
+Next phase (proposed, needs approval): the dashboard layout inspired by the Nixtio reference (inspiration only).
