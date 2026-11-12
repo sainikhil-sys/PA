@@ -1,22 +1,19 @@
 import { pruneUnsentFiles, saveBroadcastFile } from "@/lib/admin/broadcast-files";
-import { apiGuard } from "@/lib/auth/api";
-import { isAdmin } from "@/lib/auth/policy";
+import { adminRequestWith } from "@/lib/admin/route-guard";
 import { classifyUpload, MAX_ATTACHMENT_BYTES } from "@/lib/email/attachments";
 import { errorJson } from "@/lib/security/request";
 
 export const dynamic = "force-dynamic";
 
-const notFound = () => new Response("Not found", { status: 404 });
-
 /**
  * Upload one image (role "inline") or document (role "attachment") for a broadcast email.
- * Admins only; everyone else gets the same 404 as a missing route. The file's type is
- * decided by its bytes (lib/email/attachments.ts), never by what the browser claims.
+ * Role holders with notifications.send and an unlocked console only; everyone else gets the same 404
+ * as a missing route. The file's type is decided by its bytes (lib/email/attachments.ts), never by
+ * what the browser claims.
  */
 export async function POST(req: Request) {
-  const g = await apiGuard(req);
-  if ("response" in g) return g.response.status === 429 ? g.response : notFound();
-  if (!isAdmin(g.user.email)) return notFound();
+  const g = await adminRequestWith(req, "notifications.send");
+  if (g instanceof Response) return g;
 
   if (Number(req.headers.get("content-length") ?? 0) > MAX_ATTACHMENT_BYTES + 64 * 1024) return errorJson(413, "That file is too large.");
   const form = await req.formData().catch(() => null);

@@ -1,5 +1,6 @@
 import "server-only";
 import { and, desc, eq, gt, isNull, sql } from "drizzle-orm";
+import { newAccountNotificationDefaults } from "@/lib/config/store";
 import { db, schema } from "@/lib/db";
 import { logActivity } from "@/lib/db/queries/activity";
 import { isTestMode, requireEnv } from "@/lib/env";
@@ -34,7 +35,9 @@ export async function requestOtp(rawEmail: string, ip: string): Promise<{ ok: bo
   const [byEmail, byIp] = await Promise.all([rateLimit("otpEmail", emailHash), rateLimit("otpIp", ip)]);
   if (!byEmail.success || !byIp.success) return { ok: false, message: RATE_LIMITED };
 
-  if (!mayUseApp(email)) {
+  // Looked up first so closed registration still lets existing accounts sign in.
+  const existing = await db().query.users.findFirst({ where: eq(schema.users.email, email), columns: { disabledAt: true } });
+  if (!(await mayUseApp(email, { hasAccount: Boolean(existing) }))) {
     // Do comparable work so timing doesn't reveal the allowlist.
     hashOtp(email, generateOtpCode(), secret);
     log.info("otp.requested", { allowed: false });
@@ -42,7 +45,6 @@ export async function requestOtp(rawEmail: string, ip: string): Promise<{ ok: bo
   }
 
   // A disabled account gets a clear answer instead of a code that can never work.
-  const existing = await db().query.users.findFirst({ where: eq(schema.users.email, email), columns: { disabledAt: true } });
   if (existing?.disabledAt) return { ok: false, message: ACCOUNT_DISABLED };
 
   const code = isTestMode() ? TEST_OTP_CODE : generateOtpCode();
@@ -88,7 +90,8 @@ export async function verifyOtp(
     .orderBy(desc(schema.otpCodes.createdAt))
     .limit(1);
 
-  if (!row || row.attempts >= OTP_MAX_ATTEMPTS || !mayUseApp(email)) {
+  const existing = row ? await db().query.users.findFirst({ where: eq(schema.users.email, email), columns: { id: true } }) : undefined;
+  if (!row || row.attempts >= OTP_MAX_ATTEMPTS || !(await mayUseApp(email, { hasAccount: Boolean(existing) }))) {
     return { ok: false, message: GENERIC_INVALID };
   }
 
@@ -115,7 +118,11 @@ export async function verifyOtp(
     .onConflictDoUpdate({ target: schema.users.email, set: { email } })
     .returning({ id: schema.users.id, onboardedAt: schema.users.onboardedAt, disabledAt: schema.users.disabledAt, created: sql<boolean>`(xmax = 0)` });
   if (user!.disabledAt) return { ok: false, message: ACCOUNT_DISABLED };
-  await db().insert(schema.userSettings).values({ userId: user!.id }).onConflictDoNothing();
+  // A new account starts with the console's notification defaults; an existing row is left alone.
+  await db()
+    .insert(schema.userSettings)
+    .values({ userId: user!.id, ...(await newAccountNotificationDefaults()) })
+    .onConflictDoNothing();
   const token = await createSession(user!.id, { cookie: opts.cookie });
   await logActivity({ userId: user!.id, actor: "me", tool: "auth.sign_in", inputSummary: opts.cookie === false ? "email code (Android app)" : "email code", outcome: "success" });
   // xmax = 0 means this row was inserted, not updated: a brand-new account. Send after the response.

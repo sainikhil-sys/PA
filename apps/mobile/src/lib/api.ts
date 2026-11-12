@@ -1,10 +1,14 @@
+import * as Application from "expo-application";
+import { buildClientHeaders } from "./client-headers";
 import { API_URL } from "./config";
 
-/** An HTTP failure with the server's own message when it sent one. */
+/** An HTTP failure with the server's own message when it sent one, plus its machine `code` and body. */
 export class ApiError extends Error {
   constructor(
     readonly status: number,
     message: string,
+    readonly code: string | null = null,
+    readonly data: unknown = null,
   ) {
     super(message);
     this.name = "ApiError";
@@ -27,9 +31,39 @@ export function reportUnauthorized() {
   if (auth.token()) auth.onUnauthorized();
 }
 
+/**
+ * Full-screen states the server can put the app in: 426 update_required and 503 maintenance
+ * (docs/ADMIN_CONSOLE_PROPOSAL.md 4.4). Wired once by the config store, like configureAuth.
+ */
+export type GateBody = { message: string | null; storeUrl?: string | null; endsAt?: string | null };
+type GateSink = { updateRequired: (b: GateBody) => void; maintenance: (b: GateBody) => void };
+let gate: GateSink = { updateRequired: () => {}, maintenance: () => {} };
+export function configureGate(sink: GateSink) {
+  gate = sink;
+}
+
+/** The machine `code` of an error body, if any. */
+export function codeOf(body: unknown): string | null {
+  const c = body && typeof body === "object" ? (body as { code?: unknown }).code : null;
+  return typeof c === "string" ? c : null;
+}
+
+/** For every transport: report a 426 or a maintenance 503 so the app shows its full-screen state. */
+export function reportGate(status: number, body: unknown) {
+  const code = codeOf(body);
+  const b = (body && typeof body === "object" ? body : {}) as { message?: unknown; storeUrl?: unknown; endsAt?: unknown };
+  const str = (v: unknown) => (typeof v === "string" && v ? v : null);
+  if (status === 426 && code === "update_required") gate.updateRequired({ message: str(b.message), storeUrl: str(b.storeUrl) });
+  else if (status === 503 && code === "maintenance") gate.maintenance({ message: str(b.message), endsAt: str(b.endsAt) });
+}
+
+/** Version and platform headers, the same for the life of the install. */
+const CLIENT_HEADERS = buildClientHeaders(Application.nativeApplicationVersion, Application.nativeBuildVersion);
+
+/** Headers every request to the Cowork API carries: the version headers, then the session. */
 export function authHeaders(): Record<string, string> {
   const t = auth.token();
-  return t ? { Authorization: `Bearer ${t}` } : {};
+  return t ? { ...CLIENT_HEADERS, Authorization: `Bearer ${t}` } : { ...CLIENT_HEADERS };
 }
 
 const OFFLINE = "You're offline. Check your connection and try again.";
@@ -61,12 +95,12 @@ export function messageFrom(body: unknown, status: number): string {
 }
 
 /** JSON request to the Cowork API. 401 signs the app out (expired or revoked session). */
-export async function api<T>(path: string, init: { method?: string; body?: unknown; signal?: AbortSignal; form?: FormData } = {}): Promise<T> {
+export async function api<T>(path: string, init: { method?: string; body?: unknown; signal?: AbortSignal; form?: FormData; headers?: Record<string, string> } = {}): Promise<T> {
   let res: Response;
   try {
     res = await fetch(`${API_URL}${path}`, {
       method: init.method ?? (init.body !== undefined || init.form ? "POST" : "GET"),
-      headers: { Accept: "application/json", ...(init.form ? {} : init.body !== undefined ? { "Content-Type": "application/json" } : {}), ...authHeaders() },
+      headers: { Accept: "application/json", ...(init.form ? {} : init.body !== undefined ? { "Content-Type": "application/json" } : {}), ...authHeaders(), ...init.headers },
       body: init.form ?? (init.body !== undefined ? JSON.stringify(init.body) : undefined),
       signal: init.signal,
     });
@@ -75,8 +109,13 @@ export async function api<T>(path: string, init: { method?: string; body?: unkno
     throw new ApiError(0, OFFLINE);
   }
   const body: unknown = await res.json().catch(() => null);
-  if (res.status === 401 && auth.token()) auth.onUnauthorized();
-  if (!res.ok) throw new ApiError(res.status, messageFrom(body, res.status));
+  const code = codeOf(body);
+  // Admin routes also answer 401 for an ended admin session or a wrong admin code; the person is still
+  // signed in then, so only "unauthorized" (no session) from those routes signs the app out.
+  const sessionEnded = !path.startsWith("/api/admin/") || code === "unauthorized";
+  if (res.status === 401 && auth.token() && sessionEnded) auth.onUnauthorized();
+  reportGate(res.status, body);
+  if (!res.ok) throw new ApiError(res.status, messageFrom(body, res.status), code, body);
   return body as T;
 }
 

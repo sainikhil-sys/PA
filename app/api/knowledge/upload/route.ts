@@ -1,5 +1,9 @@
+import { restrictedResponse } from "@/lib/admin/restrictions";
+import { capabilityOffResponse } from "@/lib/ai/gate";
 import { apiGuard } from "@/lib/auth/api";
-import { detectKind, extractText, MAX_UPLOAD_BYTES } from "@/lib/knowledge/extract";
+import { getConfigValue } from "@/lib/config/store";
+import { fileTooLargeMessage, uploadLimitBytes } from "@/lib/config/uploads";
+import { detectKind, extractText } from "@/lib/knowledge/extract";
 import { ensureSource, refreshSourceCount, upsertItem } from "@/lib/knowledge/ingest";
 import { errMessage, log } from "@/lib/log";
 import { sha256 } from "@/lib/security/crypto";
@@ -12,10 +16,16 @@ export const maxDuration = 120;
 export async function POST(req: Request) {
   const g = await apiGuard(req);
   if ("response" in g) return g.response;
+  const restricted = await restrictedResponse(g.user.id, "uploads");
+  if (restricted) return restricted;
+  const off = await capabilityOffResponse("documents");
+  if (off) return off;
+  const maxBytes = uploadLimitBytes(await getConfigValue("uploads.maxMb"));
+  if (Number(req.headers.get("content-length") ?? 0) > maxBytes + 10_000) return errorJson(413, fileTooLargeMessage(maxBytes));
   const form = await req.formData().catch(() => null);
   const file = form?.get("file");
   if (!(file instanceof File)) return errorJson(400, "No file received.");
-  if (file.size > MAX_UPLOAD_BYTES) return errorJson(413, "Files up to 4 MB, please.");
+  if (file.size > maxBytes) return errorJson(413, fileTooLargeMessage(maxBytes));
   const kind = detectKind(file.name, file.type);
   if (!kind) return errorJson(415, "Use a PDF, DOCX, TXT or Markdown file.");
   try {

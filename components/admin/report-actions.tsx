@@ -5,6 +5,7 @@ import * as React from "react";
 import { toast } from "sonner";
 import { resolveReport } from "@/app/actions/moderation";
 import { Button } from "@/components/ui/button";
+import { useConfirm } from "./confirm";
 
 type Outcome = "dismiss" | "remove_message" | "remove_content" | "disable_account";
 
@@ -25,9 +26,10 @@ const DONE: Record<Outcome, string> = {
 export function ReportActions({ reportId, canRemoveMessage, canRemoveContent = false, canDisable }: { reportId: string; canRemoveMessage: boolean; canRemoveContent?: boolean; canDisable: boolean }) {
   const router = useRouter();
   const [pending, start] = React.useTransition();
+  const confirm = useConfirm();
   const act = (outcome: Outcome) =>
     start(async () => {
-      if (outcome !== "dismiss" && !window.confirm(CONFIRM[outcome])) return;
+      if (outcome !== "dismiss" && !(await confirm({ title: "Check before you continue", message: CONFIRM[outcome], danger: true, confirmLabel: "Confirm" }))) return;
       const r = await resolveReport({ reportId, outcome });
       if (!r.ok) return void toast.error(r.error);
       toast.success(DONE[outcome]);

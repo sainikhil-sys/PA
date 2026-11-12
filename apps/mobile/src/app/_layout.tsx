@@ -2,7 +2,7 @@ import { HankenGrotesk_400Regular, HankenGrotesk_500Medium, HankenGrotesk_600Sem
 import { Newsreader_400Regular } from "@expo-google-fonts/newsreader";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import { useFonts } from "expo-font";
-import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from "expo-router";
+import { DarkTheme, DefaultTheme, Stack, ThemeProvider, usePathname } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import * as SystemUI from "expo-system-ui";
 import { StatusBar } from "expo-status-bar";
@@ -12,6 +12,9 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { ReducedMotionConfig, ReduceMotion } from "react-native-reanimated";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { Launch } from "@/components/launch";
+import { useAdminLifecycle } from "@/features/admin/lifecycle";
+import { GateOverlay, gateCovers } from "@/features/config/gate-overlay";
+import { useClientConfigSync, useGate } from "@/features/config/use-client-config";
 import { LockGate } from "@/features/lock/gate";
 import { PushRouter } from "@/features/notifications/push-router";
 import { cachePersister, persistOptions } from "@/lib/persist";
@@ -44,6 +47,13 @@ export default function RootLayout() {
   const [launched, setLaunched] = React.useState(false);
   // Before anything renders: every `color.x` read below uses this scheme.
   setScheme(scheme);
+  // Client configuration (cached copy first, then the server) and the update or maintenance screen.
+  useClientConfigSync();
+  const gate = useGate();
+  const pathname = usePathname();
+  const covered = gateCovers(gate, pathname);
+  // The admin session ends with the user session; the biometric gate tracks time in the background.
+  useAdminLifecycle();
 
   React.useEffect(() => {
     void loadTheme();
@@ -88,7 +98,7 @@ export default function RootLayout() {
       {ready ? (
         // App lock sits over the mounted app; its lock screen follows the launch animation.
         <LockGate launched={launched} scheme={scheme}>
-          <App scheme={scheme} signedIn={signedIn} onboarded={onboarded} />
+          <App scheme={scheme} signedIn={signedIn} onboarded={onboarded} gate={gate} covered={covered} />
         </LockGate>
       ) : null}
       {launched ? null : <Launch ready={ready} onDone={onLaunched} />}
@@ -96,7 +106,7 @@ export default function RootLayout() {
   );
 }
 
-function App({ scheme, signedIn, onboarded }: { scheme: Scheme; signedIn: boolean; onboarded: boolean }) {
+function App({ scheme, signedIn, onboarded, gate, covered }: { scheme: Scheme; signedIn: boolean; onboarded: boolean; gate: ReturnType<typeof useGate>; covered: boolean }) {
   // Settings > Appearance > Reduce motion: every Reanimated animation follows it, on top of the phone's setting.
   const motion = useThemePreference((st) => st.motion);
   return (
@@ -108,34 +118,38 @@ function App({ scheme, signedIn, onboarded }: { scheme: Scheme; signedIn: boolea
         <PersistQueryClientProvider client={queryClient} persistOptions={persistOptions}>
           <ThemeProvider value={navTheme(scheme)}>
             <StatusBar style={scheme === "dark" ? "light" : "dark"} />
-            <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: color.bg }, animation: "fade_from_bottom" }}>
-              <Stack.Protected guard={!signedIn}>
-                <Stack.Screen name="(auth)" />
-              </Stack.Protected>
-              <Stack.Protected guard={signedIn && !onboarded}>
-                <Stack.Screen name="onboarding" />
-              </Stack.Protected>
-              <Stack.Protected guard={signedIn && onboarded}>
-                <Stack.Screen name="(tabs)" />
-                <Stack.Screen name="tasks" />
-                <Stack.Screen name="chat/[id]" />
-                <Stack.Screen name="task/[id]" options={{ presentation: "modal" }} />
-                <Stack.Screen name="approvals" />
-                <Stack.Screen name="notifications" />
-                <Stack.Screen name="settings" />
-                <Stack.Screen name="search" />
-                <Stack.Screen name="agenda" />
-                <Stack.Screen name="meeting/[id]" />
-                <Stack.Screen name="notes" />
-                <Stack.Screen name="dm" />
-                <Stack.Screen name="people" />
-                <Stack.Screen name="post/new" options={{ presentation: "modal" }} />
-                <Stack.Screen name="post/[id]" />
-                <Stack.Screen name="u/[handle]" />
-                <Stack.Screen name="follows" />
-                <Stack.Screen name="connect" />
-              </Stack.Protected>
-            </Stack>
+            <View style={{ flex: 1 }} importantForAccessibility={covered ? "no-hide-descendants" : "auto"}>
+              <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: color.bg }, animation: "fade_from_bottom" }}>
+                <Stack.Protected guard={!signedIn}>
+                  <Stack.Screen name="(auth)" />
+                </Stack.Protected>
+                <Stack.Protected guard={signedIn && !onboarded}>
+                  <Stack.Screen name="onboarding" />
+                </Stack.Protected>
+                <Stack.Protected guard={signedIn && onboarded}>
+                  <Stack.Screen name="(tabs)" />
+                  <Stack.Screen name="tasks" />
+                  <Stack.Screen name="chat/[id]" />
+                  <Stack.Screen name="task/[id]" options={{ presentation: "modal" }} />
+                  <Stack.Screen name="approvals" />
+                  <Stack.Screen name="notifications" />
+                  <Stack.Screen name="settings" />
+                  <Stack.Screen name="search" />
+                  <Stack.Screen name="agenda" />
+                  <Stack.Screen name="meeting/[id]" />
+                  <Stack.Screen name="notes" />
+                  <Stack.Screen name="dm" />
+                  <Stack.Screen name="people" />
+                  <Stack.Screen name="post/new" options={{ presentation: "modal" }} />
+                  <Stack.Screen name="post/[id]" />
+                  <Stack.Screen name="u/[handle]" />
+                  <Stack.Screen name="follows" />
+                  <Stack.Screen name="connect" />
+                  <Stack.Screen name="admin" />
+                </Stack.Protected>
+              </Stack>
+            </View>
+            <GateOverlay gate={gate} />
             {/* After the Stack, so the navigator is mounted before a cold-start tap navigates. */}
             {signedIn && onboarded ? <PushRouter /> : null}
           </ThemeProvider>

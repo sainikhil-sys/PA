@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ReportActions } from "@/components/admin/report-actions";
 import { requireAdmin } from "@/lib/admin/guard";
+import { can } from "@/lib/admin/permissions";
 import { listReports, REASON_LABELS, REPORT_STATUSES, reportCounts, type ReportRow, type ReportStatus } from "@/lib/admin/reports";
 import { cn, timeAgo } from "@/lib/utils";
 
@@ -8,7 +9,9 @@ const STATUS_LABEL: Record<ReportStatus, string> = { open: "Open", actioned: "Ac
 
 /** Reports people filed in the app, oldest open report first. */
 export default async function ConsoleReports({ searchParams }: { searchParams: Promise<{ status?: string }> }) {
-  await requireAdmin();
+  const me = await requireAdmin("community.moderate");
+  // Moderators remove content; disabling accounts also needs users.suspend (checked again by the op).
+  const mayDisable = can(me.adminRole, "users.suspend");
   const q = (await searchParams).status;
   const status: ReportStatus = REPORT_STATUSES.includes(q as ReportStatus) ? (q as ReportStatus) : "open";
   const [reports, counts] = await Promise.all([listReports(status), reportCounts()]);
@@ -30,7 +33,7 @@ export default async function ConsoleReports({ searchParams }: { searchParams: P
       {reports.length ? (
         <ul className="flex flex-col gap-2">
           {reports.map((r) => (
-            <ReportCard key={r.id} r={r} />
+            <ReportCard key={r.id} r={r} mayDisable={mayDisable} />
           ))}
         </ul>
       ) : (
@@ -40,7 +43,7 @@ export default async function ConsoleReports({ searchParams }: { searchParams: P
   );
 }
 
-function ReportCard({ r }: { r: ReportRow }) {
+function ReportCard({ r, mayDisable }: { r: ReportRow; mayDisable: boolean }) {
   const who = r.targetHandle ? `@${r.targetHandle}` : (r.targetEmail ?? "Deleted account");
   return (
     <li className="card rounded-[14px] border border-border bg-background p-3.5">
@@ -98,7 +101,7 @@ function ReportCard({ r }: { r: ReportRow }) {
             reportId={r.id}
             canRemoveMessage={Boolean(r.messageId && !r.messageDeleted)}
             canRemoveContent={Boolean((r.postId || r.commentId) && !r.contentRemoved)}
-            canDisable={Boolean(r.targetId && !r.targetDisabled)}
+            canDisable={mayDisable && Boolean(r.targetId && !r.targetDisabled)}
           />
         </div>
       ) : null}

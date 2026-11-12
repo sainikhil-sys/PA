@@ -1,6 +1,7 @@
 import "server-only";
 import { cache } from "react";
 import { and, eq } from "drizzle-orm";
+import { newAccountNotificationDefaults } from "@/lib/config/store";
 import { db, schema } from "@/lib/db";
 import { DEFAULT_AGENT, type AgentSettings, type UserSettings } from "@/lib/db/schema";
 
@@ -10,7 +11,11 @@ export const getSettings = cache(loadSettings);
 async function loadSettings(userId: string): Promise<UserSettings> {
   const s = await db().query.userSettings.findFirst({ where: eq(schema.userSettings.userId, userId) });
   if (s) return { ...s, agent: { ...DEFAULT_AGENT, ...s.agent, capabilities: { ...DEFAULT_AGENT.capabilities, ...s.agent?.capabilities } } };
-  const [created] = await db().insert(schema.userSettings).values({ userId }).onConflictDoNothing().returning();
+  const [created] = await db()
+    .insert(schema.userSettings)
+    .values({ userId, ...(await newAccountNotificationDefaults()) })
+    .onConflictDoNothing()
+    .returning();
   return created ?? (await db().query.userSettings.findFirst({ where: eq(schema.userSettings.userId, userId) }))!;
 }
 

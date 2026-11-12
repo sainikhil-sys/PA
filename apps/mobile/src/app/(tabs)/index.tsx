@@ -7,6 +7,7 @@ import { Button, Divider, EmptyState, ErrorState, IconButton, Row, Screen, Skele
 import { useFeed } from "@/features/feed/api";
 import { PostCard } from "@/features/feed/components";
 import type { FeedTab } from "@/features/feed/types";
+import { AnnouncementBanners, HomeNoticeCards } from "@/features/config/notices";
 import { ApprovalsWaitingCard, BriefingCard, MailCard, ScheduleCard, TasksCard } from "@/features/home/cards";
 import { useTabBarSpace } from "@/features/navigation/tab-bar";
 import { Segments } from "@/features/social/components";
@@ -93,6 +94,8 @@ export default function HomeScreen() {
         </View>
       </View>
 
+      <AnnouncementBanners />
+
       <View style={{ flexDirection: "row", gap: space.md }}>
         <Pressable
           accessibilityRole="search"
@@ -138,6 +141,7 @@ export default function HomeScreen() {
       </View>
 
       <View style={{ gap: space.md }}>
+        <HomeNoticeCards />
         <Pressable
           accessibilityRole="button"
           accessibilityState={{ expanded: showToday }}

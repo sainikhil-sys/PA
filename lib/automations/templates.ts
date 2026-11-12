@@ -131,6 +131,24 @@ export const ACTION_LABEL: Record<AutomationAction["type"], string> = {
   create_youtube_package: "Create a YouTube video package",
 };
 
+/** Actions that call Cowork's assistant: refused while the ai.automations switch is off. */
+export const AI_ACTION_TYPES: Record<AutomationAction["type"], boolean> = {
+  create_task: false,
+  create_draft: true,
+  generate_briefing: true,
+  create_linkedin_draft: true,
+  add_note: false,
+  notify: false,
+  call_agent: true,
+  call_webhook: false,
+  write_email: true,
+  create_youtube_package: true,
+};
+
+export function usesAi(actions: readonly Pick<AutomationAction, "type">[]): boolean {
+  return actions.some((a) => AI_ACTION_TYPES[a.type]);
+}
+
 export const TRIGGER_LABEL: Record<AutomationTrigger["type"], string> = {
   schedule: "On a schedule",
   email: "New email matching rules",

@@ -120,6 +120,13 @@
       "when": 1794492205203,
       "tag": "0016_media_posts_follows",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1794493799700,
+      "tag": "0017_admin_console",
+      "breakpoints": true
     }
   ]
 }

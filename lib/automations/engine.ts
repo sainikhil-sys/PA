@@ -22,8 +22,10 @@ import { Trace } from "@/lib/trace";
 import { checkConditions } from "./match";
 import { fillTemplate } from "./template-vars";
 export { fillTemplate };
-import { ACTION_LABEL } from "./templates";
-import { AI_UNAVAILABLE } from "@/lib/ai/messages";
+import { ACTION_LABEL, usesAi } from "./templates";
+import { AiLimitError, capabilityOn } from "@/lib/ai/gate";
+import { AI_FEATURE_OFF, AI_UNAVAILABLE } from "@/lib/ai/messages";
+import { isRestricted, RESTRICTED_MESSAGE } from "@/lib/admin/restrictions";
 import { safeFetch } from "@/lib/security/safe-fetch";
 
 /** Thrown for failures that should not be retried (bad config, missing permission). */
@@ -179,6 +181,15 @@ export async function runAutomation(runId: string, attempt: number, maxAttempts:
     await db().update(schema.automations).set({ lastRunAt: new Date() }).where(eq(schema.automations.id, a.id));
   };
 
+  if (await isRestricted(user.id, "automations")) {
+    steps.push({ index: -1, action: "restricted", status: "skipped", message: RESTRICTED_MESSAGE, at: new Date().toISOString() });
+    return finish("failed", RESTRICTED_MESSAGE);
+  }
+  // The ai.automations switch: automations that use the assistant don't run while it is off.
+  if (!run.dryRun && usesAi(a.actions) && !(await capabilityOn("automations"))) {
+    steps.push({ index: -1, action: "feature_off", status: "skipped", message: AI_FEATURE_OFF.automations, at: new Date().toISOString() });
+    return finish("failed", AI_FEATURE_OFF.automations);
+  }
   if (s.automationsPaused && !run.dryRun) {
     steps.push({ index: -1, action: "pause", status: "skipped", message: "All automations are paused", at: new Date().toISOString() });
     return finish("failed", "Skipped: all automations are paused.");
@@ -216,7 +227,8 @@ export async function runAutomation(runId: string, attempt: number, maxAttempts:
     await finish("succeeded");
     await logActivity({ userId: user.id, actor: "agent", tool: run.dryRun ? "automation.dry_run" : "automation.run", inputSummary: a.name, outcome: "success" });
   } catch (err) {
-    const permanent = err instanceof PermanentError || err instanceof NoProviderError;
+    // The daily allowance resets at midnight UTC: retrying within the backoff window would only fail again.
+    const permanent = err instanceof PermanentError || err instanceof NoProviderError || err instanceof AiLimitError;
     const message = humanize(err);
     steps.push({ index: steps.length, action: "error", status: "error", message, at: new Date().toISOString() });
     if (permanent || attempt >= maxAttempts) {
@@ -234,6 +246,7 @@ export async function runAutomation(runId: string, attempt: number, maxAttempts:
 export function humanize(err: unknown): string {
   const m = errMessage(err);
   if (/not connected|reconnect|expired/i.test(m)) return "An integration needs reconnecting. Check the Integrations page.";
+  if (err instanceof AiLimitError) return err.message;
   if (/No AI provider/i.test(m)) return AI_UNAVAILABLE;
   if (/Timed out/i.test(m)) return `${m}. Try a longer timeout or fewer actions.`;
   if (/Webhook returned/i.test(m)) return `${m}. Check the webhook URL.`;

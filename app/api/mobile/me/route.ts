@@ -1,8 +1,9 @@
+import { deleteAccountData } from "@/lib/auth/delete-account";
 import { and, count, eq } from "drizzle-orm";
 import { z } from "zod";
 import { pendingProposalCount } from "@/lib/agent/proposals";
 import { apiGuard } from "@/lib/auth/api";
-import { isAdmin } from "@/lib/auth/policy";
+import { getAdminRole } from "@/lib/admin/roles";
 import { db, schema } from "@/lib/db";
 import { logActivity } from "@/lib/db/queries/activity";
 import { listNotifications } from "@/lib/db/queries/notifications";
@@ -57,8 +58,8 @@ export async function GET(req: Request) {
       birthDateSet: Boolean(u.birthDate),
       /** "teen" (13 to 17) gets protective defaults; null until a date of birth is on file. The date itself is never sent. */
       ageGroup: ageGroup(u.birthDate, todayIn(s.timezone)),
-      /** Decided here from ADMIN_EMAILS; the app only shows the console entry. The console itself re-checks on every request. */
-      isAdmin: isAdmin(u.email),
+      /** True when the account holds an active admin role. The app only shows the console entry; the console re-checks on every request. */
+      isAdmin: Boolean(await getAdminRole(u)),
       pendingApprovals: pending,
       unreadNotifications: notes.unread,
     },
@@ -111,6 +112,6 @@ export async function DELETE(req: Request) {
   if (!parsed.success) return fail(400, "Type DELETE to confirm.");
   await logActivity({ userId: g.user.id, actor: "me", tool: "account.deleted", inputSummary: "Android app", outcome: "success" });
   // Sessions, devices, tasks, mail, notes… all cascade from the user row.
-  await db().delete(schema.users).where(eq(schema.users.id, g.user.id));
+  await deleteAccountData(g.user.id);
   return Response.json({ ok: true }, { headers: noStore });
 }

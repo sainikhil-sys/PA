@@ -1,5 +1,6 @@
 import { z } from "zod";
-import { runChatTurn, type ChatEvent } from "@/lib/agent/chat";
+import { runChatTurn, turnCapabilities, type ChatEvent } from "@/lib/agent/chat";
+import { capabilityOffResponse } from "@/lib/ai/gate";
 import { apiGuard } from "@/lib/auth/api";
 import { ATTACHMENT_KINDS, MAX_ATTACHMENT_CHARS, MAX_MESSAGE_CHARS, TRANSFORM_KINDS, TRANSLATE_LANGUAGES } from "@/lib/chat/attachments";
 import { errMessage, log } from "@/lib/log";
@@ -32,6 +33,11 @@ export async function POST(req: Request) {
   if (!rl.success) return rateLimitResponse(rl);
   const parsed = bodySchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return errorJson(400, "invalid_request");
+  // Capability switches (chat, voice, documents): refused here as 403 feature_off, and again inside the turn.
+  for (const cap of turnCapabilities(parsed.data)) {
+    const off = await capabilityOffResponse(cap);
+    if (off) return off;
+  }
 
   const enc = new TextEncoder();
   // Stop on the client closes the connection. The turn then ends early but still saves what was written

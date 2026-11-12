@@ -3,6 +3,7 @@ import { cache } from "react";
 import { and, desc, eq, gt, isNull } from "drizzle-orm";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { readClientHeaders, type ClientInfo } from "@/lib/config/version";
 import { db, schema } from "@/lib/db";
 import type { User } from "@/lib/db/schema";
 import { isProd } from "@/lib/env";
@@ -33,9 +34,10 @@ export async function createSession(userId: string, opts: { cookie?: boolean } =
   const h = await headers();
   const ip = h.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null;
   const expiresAt = new Date(Date.now() + SESSION_TTL_MS);
+  const client = clientColumns(readClientHeaders(h), opts.cookie === false ? "bearer" : "cookie");
   await db()
     .insert(schema.sessions)
-    .values({ userId, tokenHash: sha256(token), userAgent: h.get("user-agent")?.slice(0, 300) ?? null, ipPrefix: ipPrefix(ip), expiresAt });
+    .values({ userId, tokenHash: sha256(token), userAgent: h.get("user-agent")?.slice(0, 300) ?? null, ipPrefix: ipPrefix(ip), expiresAt, ...client });
   if (opts.cookie !== false) {
     (await cookies()).set(sessionCookieName(), token, {
       httpOnly: true,
@@ -50,16 +52,42 @@ export async function createSession(userId: string, opts: { cookie?: boolean } =
 
 /** The session cookie, or the Android app's bearer token. Browsers never attach bearer tokens on their own, so CSRF doesn't apply to them. */
 async function currentToken(): Promise<string | null> {
+  return (await currentCredential())?.token ?? null;
+}
+
+async function currentCredential(): Promise<{ token: string; via: "cookie" | "bearer" } | null> {
   const cookie = (await cookies()).get(sessionCookieName())?.value;
-  if (cookie) return cookie;
+  if (cookie) return { token: cookie, via: "cookie" };
   const auth = (await headers()).get("authorization") ?? "";
-  return /^Bearer ([A-Za-z0-9_-]{32,200})$/.exec(auth)?.[1] ?? null;
+  const bearer = /^Bearer ([A-Za-z0-9_-]{32,200})$/.exec(auth)?.[1];
+  return bearer ? { token: bearer, via: "bearer" } : null;
+}
+
+type ClientColumns = { platform: string | null; appVersion: string | null; appBuild: number | null; runtimeVersion: string | null; updateId: string | null };
+
+/**
+ * The client details stored on the session (X-Cowork-* headers). Bearer tokens are only issued to the
+ * Android app, so a Bearer request without the platform header is the app (builds before the headers).
+ */
+function clientColumns(c: ClientInfo, via: "cookie" | "bearer"): ClientColumns {
+  return {
+    platform: c.platform ?? (via === "bearer" ? "android" : "web"),
+    appVersion: c.appVersion,
+    appBuild: c.build,
+    runtimeVersion: c.runtimeVersion,
+    updateId: c.updateId,
+  };
+}
+
+function sameClient(a: ClientColumns, b: ClientColumns): boolean {
+  return a.platform === b.platform && a.appVersion === b.appVersion && a.appBuild === b.appBuild && a.runtimeVersion === b.runtimeVersion && a.updateId === b.updateId;
 }
 
 /** Validates the session cookie against the DB and re-checks the sign-in policy every time. */
 async function loadSession(): Promise<{ user: User; sessionId: string } | null> {
-  const token = await currentToken();
-  if (!token || token.length < 32) return null;
+  const cred = await currentCredential();
+  const token = cred?.token;
+  if (!cred || !token || token.length < 32) return null;
   const now = new Date();
   const [row] = await db()
     .select({ session: schema.sessions, user: schema.users })
@@ -68,10 +96,16 @@ async function loadSession(): Promise<{ user: User; sessionId: string } | null> 
     .where(and(eq(schema.sessions.tokenHash, sha256(token)), isNull(schema.sessions.revokedAt), gt(schema.sessions.expiresAt, now)))
     .limit(1);
   if (!row) return null;
-  if (!mayUseApp(row.user.email) || row.user.disabledAt) return null;
-  if (now.getTime() - row.session.lastSeenAt.getTime() > TOUCH_INTERVAL_MS) {
+  if (row.user.disabledAt || !(await mayUseApp(row.user.email, { hasAccount: true }))) return null;
+  const client = clientColumns(readClientHeaders(await headers()), cred.via);
+  // The touch also records the latest client details (version adoption); a new app version is written at once.
+  if (now.getTime() - row.session.lastSeenAt.getTime() > TOUCH_INTERVAL_MS || (cred.via === "bearer" && !sameClient(client, row.session))) {
     // Fire-and-forget: never make a page wait on a bookkeeping write.
-    void db().update(schema.sessions).set({ lastSeenAt: now }).where(eq(schema.sessions.id, row.session.id)).catch(() => {});
+    void db()
+      .update(schema.sessions)
+      .set({ lastSeenAt: now, ...client })
+      .where(eq(schema.sessions.id, row.session.id))
+      .catch(() => {});
   }
   return { user: row.user, sessionId: row.session.id };
 }
@@ -93,7 +127,8 @@ export async function requireOwner(): Promise<User> {
 /** Every account that may still use the app, for cron jobs and background work (no session). */
 export async function listUsersForSystem(limit = 1000): Promise<User[]> {
   const users = await db().select().from(schema.users).orderBy(schema.users.createdAt).limit(limit);
-  return users.filter((u) => mayUseApp(u.email) && !u.disabledAt);
+  const allowed = await Promise.all(users.map((u) => (u.disabledAt ? false : mayUseApp(u.email, { hasAccount: true }))));
+  return users.filter((_, i) => allowed[i]);
 }
 
 export async function signOutCurrent() {

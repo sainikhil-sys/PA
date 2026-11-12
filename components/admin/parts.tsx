@@ -5,21 +5,13 @@ import { usePathname } from "next/navigation";
 import { fmt } from "@/lib/admin/format";
 import { cn } from "@/lib/utils";
 
-const TABS = [
-  { href: "/console", label: "Overview" },
-  { href: "/console/users", label: "Users" },
-  { href: "/console/reports", label: "Reports" },
-  { href: "/console/broadcast", label: "Broadcast" },
-  { href: "/console/ai", label: "AI & tokens" },
-  { href: "/console/system", label: "System" },
-];
-
-export function ConsoleNav() {
+/** `tabs`: the pages this account's role may open, decided on the server (lib/admin/nav.ts). */
+export function ConsoleNav({ tabs }: { tabs: readonly { href: string; label: string }[] }) {
   const path = usePathname();
-  const active = TABS.slice().reverse().find((t) => path === t.href || (t.href !== "/console" && path.startsWith(t.href)))?.href ?? "/console";
+  const active = tabs.slice().reverse().find((t) => path === t.href || (t.href !== "/console" && path.startsWith(t.href)))?.href ?? "/console";
   return (
     <nav aria-label="Console" className="no-scrollbar -mx-3 mb-4 flex gap-1 overflow-x-auto border-b border-border px-3 sm:mx-0 sm:px-0">
-      {TABS.map((t) => (
+      {tabs.map((t) => (
         <Link
           key={t.href}
           href={t.href}
