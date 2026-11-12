@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { pendingProposalCount } from "@/lib/agent/proposals";
 import { apiGuard } from "@/lib/auth/api";
+import { isAdmin } from "@/lib/auth/policy";
 import { db, schema } from "@/lib/db";
 import { logActivity } from "@/lib/db/queries/activity";
 import { listNotifications } from "@/lib/db/queries/notifications";
@@ -23,6 +24,8 @@ export async function GET(req: Request) {
       timezone: s.timezone,
       agentName: s.agent.name,
       onboarded: Boolean(u.onboardedAt),
+      /** Decided here from ADMIN_EMAILS; the app only shows the console entry. The console itself re-checks on every request. */
+      isAdmin: isAdmin(u.email),
       pendingApprovals: pending,
       unreadNotifications: notes.unread,
     },
