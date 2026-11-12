@@ -1,3 +1,4 @@
+import { getMaintenance, invalidateConfigCache } from "@/lib/config/store";
 import { processJobs } from "@/lib/jobs/handlers";
 import { forEachUser } from "@/lib/jobs/each-user";
 import { scheduleDueWork } from "@/lib/jobs/scheduler";
@@ -14,6 +15,9 @@ export const maxDuration = 300;
  */
 export async function GET(req: Request) {
   if (!verifyCron(req)) return unauthorizedCron();
+  // Maintenance can pause background work (console: maintenance.pauseJobs). Read fresh, not from the cache.
+  invalidateConfigCache();
+  if ((await getMaintenance()).pauseJobs) return Response.json({ paused: true, scheduled: 0 });
   const scheduled = await forEachUser("dispatch", scheduleDueWork);
   // Phone notifications are kept 3 days (the privacy policy promises it), even for phones that stopped sending.
   await pruneAllPhoneEvents().catch(() => {});
