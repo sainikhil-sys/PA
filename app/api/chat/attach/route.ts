@@ -1,7 +1,10 @@
 import { restrictedResponse } from "@/lib/admin/restrictions";
+import { capabilityOffResponse } from "@/lib/ai/gate";
 import { apiGuard } from "@/lib/auth/api";
 import { detectChatKind, IMAGE_UNSUPPORTED, isImageFile, isSecretFile, MAX_ATTACHMENT_CHARS, MAX_TEXT_FILE_BYTES, SECRET_FILE_REFUSED, UNSUPPORTED_FILE } from "@/lib/chat/attachments";
-import { extractText, looksBinary, MAX_UPLOAD_BYTES } from "@/lib/knowledge/extract";
+import { getConfigValue } from "@/lib/config/store";
+import { cappedLimit, fileTooLargeMessage, formatLimit, uploadLimitBytes } from "@/lib/config/uploads";
+import { extractText, looksBinary } from "@/lib/knowledge/extract";
 import { errMessage, log } from "@/lib/log";
 import { errorJson } from "@/lib/security/request";
 
@@ -18,8 +21,13 @@ export async function POST(req: Request) {
   if ("response" in g) return g.response;
   const restricted = await restrictedResponse(g.user.id, "uploads");
   if (restricted) return restricted;
+  const off = await capabilityOffResponse("documents");
+  if (off) return off;
+  const maxMb = await getConfigValue("uploads.maxMb");
+  const maxBytes = uploadLimitBytes(maxMb);
+  const textMax = cappedLimit(MAX_TEXT_FILE_BYTES, maxMb);
   const len = Number(req.headers.get("content-length") ?? 0);
-  if (len > MAX_UPLOAD_BYTES + 10_000) return errorJson(413, "File is too large (max 4 MB).");
+  if (len > maxBytes + 10_000) return errorJson(413, fileTooLargeMessage(maxBytes));
   const form = await req.formData().catch(() => null);
   const file = form?.get("file");
   if (!(file instanceof File)) return errorJson(400, "No file received.");
@@ -28,7 +36,7 @@ export async function POST(req: Request) {
   const kind = detectChatKind(file.name, file.type);
   if (!kind) return errorJson(415, UNSUPPORTED_FILE);
   const isText = kind === "txt" || kind === "md" || kind === "code";
-  if (file.size > (isText ? MAX_TEXT_FILE_BYTES : MAX_UPLOAD_BYTES)) return errorJson(413, isText ? "Text and code files up to 1 MB, please." : "File is too large (max 4 MB).");
+  if (file.size > (isText ? textMax : maxBytes)) return errorJson(413, isText ? `Text and code files up to ${formatLimit(textMax)}, please.` : fileTooLargeMessage(maxBytes));
   try {
     const buf = await file.arrayBuffer();
     if (isText && looksBinary(buf)) return errorJson(415, "That file isn't plain text.");

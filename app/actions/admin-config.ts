@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { adminAction } from "@/lib/admin/adapters";
-import { appearanceUpdateOp, configHistoryOp, configRollbackOp, configUpdateOp, maintenanceSetOp, type ConfigUpdateInput } from "@/lib/admin/ops/config";
+import { aiConfigUpdateOp, appearanceUpdateOp, configHistoryOp, configRollbackOp, configUpdateOp, maintenanceSetOp, type ConfigUpdateInput } from "@/lib/admin/ops/config";
 import { configEntry } from "@/lib/config/registry";
 
 /**
@@ -12,15 +12,20 @@ import { configEntry } from "@/lib/config/registry";
 
 const update = adminAction(configUpdateOp);
 const updateAppearance = adminAction(appearanceUpdateOp);
+const updateAi = adminAction(aiConfigUpdateOp);
 
-/** Appearance keys need appearance.write; everything else in the editor needs config.write. */
+/** Appearance keys need appearance.write, AI keys ai.write; everything else in the editor needs config.write. */
 function updateFor(input: ConfigUpdateInput) {
-  return configEntry(input.key)?.permission === "appearance.write" ? updateAppearance : update;
+  const permission = configEntry(input.key)?.permission;
+  return permission === "appearance.write" ? updateAppearance : permission === "ai.write" ? updateAi : update;
 }
 
 export async function updateConfig(input: ConfigUpdateInput) {
   const r = await updateFor(input)(input);
-  if (r.ok) revalidatePath("/console/config");
+  if (r.ok) {
+    revalidatePath("/console/config");
+    revalidatePath("/console/ai");
+  }
   return r;
 }
 

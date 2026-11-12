@@ -139,13 +139,13 @@ export const CONFIG_ENTRIES: readonly ConfigEntry[] = [
     key: "registration.open",
     group: "access",
     label: "New sign-ups",
-    description: "Whether new people can create an account. Follow server setting uses SIGNUP_MODE.",
+    description: "Whether new people can create an account. Closed stops new accounts only: existing accounts still sign in. Follow server setting uses SIGNUP_MODE.",
     schema: z.boolean().nullable(),
     default: null,
     scope: "public",
     permission: "config.write",
     risk: "normal",
-    readBy: null,
+    readBy: "Sign-in (email code requests and checks)",
     field: { kind: "tristate", nullLabel: "Follow server setting", on: "Open", off: "Closed" },
   }),
 
@@ -160,7 +160,7 @@ export const CONFIG_ENTRIES: readonly ConfigEntry[] = [
     scope: "public",
     permission: "config.write",
     risk: "normal",
-    readBy: null,
+    readBy: "Chat attachments, Knowledge uploads and voice recordings",
     field: { kind: "integer", min: 1, max: 4, unit: "MB" },
   }),
 
@@ -270,27 +270,27 @@ export const CONFIG_ENTRIES: readonly ConfigEntry[] = [
     field: { kind: "text", max: 200, nullable: true },
   }),
 
-  // AI capability switches and limits (read by the AI phase)
+  // AI capability switches and limits (edited on the AI page; ai.write). Product switches: admins are not exempt.
   ...(
     [
-      ["chat", "Chat", "The assistant chat."],
-      ["voice", "Voice", "Speaking to the assistant and hearing replies."],
-      ["research", "Research", "Web research in chat."],
-      ["documents", "Document analysis", "Reading attached documents and Knowledge files."],
-      ["automations", "Automations", "Scheduled automations that use AI."],
+      ["chat", "Chat", 'The assistant chat. Off answers with a plain "not available right now" message.', "Chat API and every chat turn"],
+      ["voice", "Voice", 'Speaking to the assistant and hearing replies. Off answers with a plain "not available right now" message.', "Voice transcription and speech APIs, spoken chat turns"],
+      ["research", "Research", "Web research in chat. Off: chat still answers, without the web, and says so.", "Chat turns that plan a web search"],
+      ["documents", "Document analysis", 'Reading attached documents and Knowledge files. Off answers with a plain "not available right now" message.', "Chat attachments, Knowledge uploads, chat turns with a document"],
+      ["automations", "Automations", "Automations that use AI don't run while this is off, and say why. Automations without AI steps keep running.", "Automation runs, test runs and re-runs"],
     ] as const
-  ).map(([k, label, description]) =>
+  ).map(([k, label, description, readBy]) =>
     entry<boolean>({
       key: `ai.${k}`,
       group: "ai",
       label,
-      description: `${description} Off answers with a plain "not available right now" message.`,
+      description,
       schema: z.boolean(),
       default: true,
       scope: "public",
-      permission: "config.write",
+      permission: "ai.write",
       risk: "normal",
-      readBy: null,
+      readBy,
       field: boolField,
     }),
   ),
@@ -298,13 +298,13 @@ export const CONFIG_ENTRIES: readonly ConfigEntry[] = [
     key: "ai.dailyTokenLimitPerUser",
     group: "ai",
     label: "Daily AI limit per person",
-    description: "Tokens one person can use per day on the server's AI. Empty means no limit.",
+    description: "Tokens one person can use per day (UTC) on the server's AI. Calls on their own key don't count. Empty means no limit.",
     schema: z.number().int().min(1000).max(100_000_000).nullable(),
     default: null,
     scope: "server",
-    permission: "config.write",
+    permission: "ai.write",
     risk: "normal",
-    readBy: null,
+    readBy: "AI router, before every call on the server's AI",
     field: { kind: "integer", min: 1000, max: 100_000_000, unit: "tokens", nullable: true, nullLabel: "No limit" },
   }),
   entry<z.infer<typeof priceTableSchema>>({
@@ -315,9 +315,9 @@ export const CONFIG_ENTRIES: readonly ConfigEntry[] = [
     schema: priceTableSchema,
     default: {},
     scope: "server",
-    permission: "config.write",
+    permission: "ai.write",
     risk: "normal",
-    readBy: null,
+    readBy: "Cost estimates on the AI console page",
     field: { kind: "json", hint: '{ "model-id": { "inputPerMillion": 0.5, "outputPerMillion": 1.5 } }' },
   }),
 
@@ -391,7 +391,7 @@ export const CONFIG_ENTRIES: readonly ConfigEntry[] = [
       scope: "server",
       permission: "config.write",
       risk: "normal",
-      readBy: null,
+      readBy: "New account settings",
       field: boolField,
     }),
   ),
@@ -485,6 +485,12 @@ export function publicSettings(values: ReadonlyMap<string, unknown>): Record<str
 /** Audit copy of a value: secret or personal keys are never stored in the audit log. */
 export function auditValue(entry: ConfigEntry, value: unknown): unknown {
   return entry.secret || entry.personal ? "[redacted]" : value;
+}
+
+/** Notification settings a new account starts with (notifications.default.*). Existing accounts keep theirs. */
+export function notificationDefaultsFrom(values: ReadonlyMap<string, unknown>) {
+  const on = (k: string) => values.get(`notifications.default.${k}`) !== false;
+  return { notifyInApp: on("inApp"), notifyPush: on("push"), notifyEmail: on("email"), notifyEmailDigest: on("emailDigest") };
 }
 
 export type Maintenance = { active: boolean; message: string | null; endsAt: string | null; pauseJobs: boolean };

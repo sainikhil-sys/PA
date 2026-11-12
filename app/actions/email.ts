@@ -10,6 +10,7 @@ import { createTask } from "@/lib/db/queries/tasks";
 import { GoogleNotConnectedError } from "@/lib/integrations/google";
 import { processJobs } from "@/lib/jobs/handlers";
 import { enqueue } from "@/lib/jobs/queue";
+import { AI_UNAVAILABLE } from "@/lib/ai/messages";
 import { NoProviderError } from "@/lib/ai/router";
 import { Trace } from "@/lib/trace";
 
@@ -27,7 +28,9 @@ export const generateDraftAction = ownerAction(z.object({ id: uuid, instructions
     revalidatePath("/");
     return { draftId: res.draftId };
   } catch (err) {
-    if (err instanceof GoogleNotConnectedError || err instanceof NoProviderError) throw new UserFacingError(err.message);
+    if (err instanceof GoogleNotConnectedError) throw new UserFacingError(err.message);
+    // Never the internal setup message: the plain copy from lib/ai/messages.ts.
+    if (err instanceof NoProviderError) throw new UserFacingError(AI_UNAVAILABLE);
     throw err;
   }
 });

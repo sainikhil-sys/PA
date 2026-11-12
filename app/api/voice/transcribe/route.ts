@@ -1,5 +1,8 @@
 import { restrictedResponse } from "@/lib/admin/restrictions";
+import { capabilityOffResponse } from "@/lib/ai/gate";
 import { apiGuard } from "@/lib/auth/api";
+import { getConfigValue } from "@/lib/config/store";
+import { cappedLimit } from "@/lib/config/uploads";
 import { env } from "@/lib/env";
 import { errMessage, log } from "@/lib/log";
 import { rateLimit, rateLimitResponse } from "@/lib/security/ratelimit";
@@ -8,7 +11,7 @@ import { errorJson } from "@/lib/security/request";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-/** Short recordings only: stays well under Vercel's request body limit. */
+/** Short recordings only: stays well under Vercel's request body limit (and under uploads.maxMb). */
 const MAX_AUDIO_BYTES = 3 * 1024 * 1024;
 
 /**
@@ -20,6 +23,8 @@ export async function POST(req: Request) {
   if ("response" in g) return g.response;
   const restricted = await restrictedResponse(g.user.id, "ai");
   if (restricted) return restricted;
+  const off = await capabilityOffResponse("voice");
+  if (off) return off;
   const rl = await rateLimit("ai", `stt:${g.user.id}`);
   if (!rl.success) return rateLimitResponse(rl);
   const e = env();
@@ -27,7 +32,7 @@ export async function POST(req: Request) {
   const form = await req.formData().catch(() => null);
   const audio = form?.get("audio");
   if (!(audio instanceof File)) return errorJson(400, "No audio received.");
-  if (audio.size > MAX_AUDIO_BYTES) return errorJson(413, "Recording is too long. Keep it under a minute.");
+  if (audio.size > cappedLimit(MAX_AUDIO_BYTES, await getConfigValue("uploads.maxMb"))) return errorJson(413, "Recording is too long. Keep it under a minute.");
   if (!/^audio\//.test(audio.type)) return errorJson(415, "Unsupported audio format.");
 
   const upstream = new FormData();

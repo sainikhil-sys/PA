@@ -41,3 +41,16 @@ export function canSignIn(email: string, policy: { open: boolean; allowed: strin
   if (policy.open) return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizeEmail(email));
   return isEmailAllowed(email, policy.allowed);
 }
+
+/**
+ * Sign-in with the console's registration setting (registration.open). Null follows the server
+ * setting (SIGNUP_MODE). Open admits any well-formed address. Closed stops new accounts only: new
+ * addresses then need the allowlist, and an existing account the server setting admits keeps signing in.
+ */
+export function signInAllowed(
+  email: string,
+  p: { hasAccount: boolean; envOpen: boolean; registrationOpen: boolean | null; allowed: string[] },
+): boolean {
+  if (canSignIn(email, { open: p.registrationOpen ?? p.envOpen, allowed: p.allowed })) return true;
+  return p.hasAccount && canSignIn(email, { open: p.envOpen, allowed: p.allowed });
+}

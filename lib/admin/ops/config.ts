@@ -55,6 +55,8 @@ function makeUpdateOp(action: string, permission: Permission) {
 
 export const configUpdateOp = makeUpdateOp("config.update", "config.write");
 export const appearanceUpdateOp = makeUpdateOp("config.update_appearance", "appearance.write");
+/** AI switches, the daily limit and the price table (the AI page): ai.write. */
+export const aiConfigUpdateOp = makeUpdateOp("config.update_ai", "ai.write");
 
 // ---------- Maintenance (owner only, confirmation every time) ----------
 

@@ -28,7 +28,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ token: s
     .returning({ userId: schema.pairTokens.userId });
   if (!row) return fail();
   const user = await db().query.users.findFirst({ where: eq(schema.users.id, row.userId) });
-  if (!user || user.disabledAt || !mayUseApp(user.email)) return fail();
+  if (!user || user.disabledAt || !(await mayUseApp(user.email, { hasAccount: true }))) return fail();
 
   await createSession(user.id);
   await logActivity({ userId: user.id, actor: "me", tool: "devices.paired", inputSummary: "QR code", outcome: "success" });

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { AiLimitError } from "@/lib/ai/gate";
 import { NoProviderError } from "@/lib/ai/router";
 import { StructuredOutputError } from "@/lib/ai/structured";
 import { apiGuard } from "@/lib/auth/api";
@@ -26,6 +27,7 @@ export async function POST(req: Request) {
   } catch (err) {
     if (err instanceof MeetingError) return fail(422, err.message);
     if (err instanceof NoProviderError) return fail(422, AI_UNAVAILABLE);
+    if (err instanceof AiLimitError) return fail(429, err.message);
     if (err instanceof StructuredOutputError) return fail(502, "Cowork couldn't summarize these notes. Try again.");
     throw err;
   }

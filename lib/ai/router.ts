@@ -5,6 +5,7 @@ import { env } from "@/lib/env";
 import { errMessage, log } from "@/lib/log";
 import { db, schema } from "@/lib/db";
 import { EMBEDDING_DIMENSIONS } from "@/lib/db/schema";
+import { AiLimitError, dailyLimitReached } from "./gate";
 import { configuredProviders, modelFor, providerClient, type ModelTier, type ProviderConfig } from "./providers";
 import { generateStructured, type ChatMessage } from "./structured";
 import { userProvider } from "./user-provider";
@@ -18,10 +19,19 @@ export class NoProviderError extends Error {
 type RunMeta = { kind: string; userId?: string | null };
 type Usage = { inputTokens?: number; outputTokens?: number } | undefined;
 
-/** The user's own key first (if they added one), then Cowork's server providers. */
+/**
+ * The user's own key first (if they added one), then Cowork's server providers. Once the person has
+ * used today's allowance (ai.dailyTokenLimitPerUser), only their own key is left; with no own key the
+ * call is refused with AiLimitError. Calls without a person are never limited.
+ */
 async function providersFor(meta: RunMeta): Promise<ProviderConfig[]> {
   const own = await userProvider(meta.userId).catch(() => null);
-  return own ? [own, ...configuredProviders()] : configuredProviders();
+  const server = configuredProviders();
+  if (server.length && (await dailyLimitReached(meta.userId))) {
+    if (!own) throw new AiLimitError();
+    return [own];
+  }
+  return own ? [own, ...server] : server;
 }
 
 async function recordRun(meta: RunMeta, p: ProviderConfig, model: string, ok: boolean, attempts: number, started: number, errorCode?: string, usage?: Usage) {
@@ -162,6 +172,8 @@ export async function* streamGenerate(
 export async function embedText(text: string, meta: RunMeta): Promise<number[] | null> {
   const p = configuredProviders().find((x) => x.embeddingModel);
   if (!p?.embeddingModel) return null;
+  // Over the daily limit: callers already handle "no embedding" (keyword search instead).
+  if (await dailyLimitReached(meta.userId)) return null;
   const started = Date.now();
   try {
     const { embedding, usage } = await embed({

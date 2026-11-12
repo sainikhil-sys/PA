@@ -96,7 +96,7 @@ async function loadSession(): Promise<{ user: User; sessionId: string } | null> 
     .where(and(eq(schema.sessions.tokenHash, sha256(token)), isNull(schema.sessions.revokedAt), gt(schema.sessions.expiresAt, now)))
     .limit(1);
   if (!row) return null;
-  if (!mayUseApp(row.user.email) || row.user.disabledAt) return null;
+  if (row.user.disabledAt || !(await mayUseApp(row.user.email, { hasAccount: true }))) return null;
   const client = clientColumns(readClientHeaders(await headers()), cred.via);
   // The touch also records the latest client details (version adoption); a new app version is written at once.
   if (now.getTime() - row.session.lastSeenAt.getTime() > TOUCH_INTERVAL_MS || (cred.via === "bearer" && !sameClient(client, row.session))) {
@@ -127,7 +127,8 @@ export async function requireOwner(): Promise<User> {
 /** Every account that may still use the app, for cron jobs and background work (no session). */
 export async function listUsersForSystem(limit = 1000): Promise<User[]> {
   const users = await db().select().from(schema.users).orderBy(schema.users.createdAt).limit(limit);
-  return users.filter((u) => mayUseApp(u.email) && !u.disabledAt);
+  const allowed = await Promise.all(users.map((u) => (u.disabledAt ? false : mayUseApp(u.email, { hasAccount: true }))));
+  return users.filter((_, i) => allowed[i]);
 }
 
 export async function signOutCurrent() {

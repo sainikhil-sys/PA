@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { capabilityOffResponse } from "@/lib/ai/gate";
 import { apiGuard } from "@/lib/auth/api";
 import { env } from "@/lib/env";
 import { errMessage, log } from "@/lib/log";
@@ -14,6 +15,8 @@ const schema = z.object({ text: z.string().trim().min(1).max(1200), voice: z.str
 export async function POST(req: Request) {
   const g = await apiGuard(req);
   if ("response" in g) return g.response;
+  const off = await capabilityOffResponse("voice");
+  if (off) return off;
   const rl = await rateLimit("ai", `tts:${g.user.id}`);
   if (!rl.success) return rateLimitResponse(rl);
   const e = env();

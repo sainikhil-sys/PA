@@ -2,7 +2,7 @@ import "server-only";
 import { desc, eq, sql } from "drizzle-orm";
 import { db, schema, type DB } from "@/lib/db";
 import { errMessage, log } from "@/lib/log";
-import { DEFAULT_UPDATE_POLICY, maintenanceFrom, resolveValues, updatePolicySchema, validateWrite, type Maintenance, type UpdatePolicy } from "./registry";
+import { DEFAULT_UPDATE_POLICY, maintenanceFrom, notificationDefaultsFrom, resolveValues, updatePolicySchema, validateWrite, type Maintenance, type UpdatePolicy } from "./registry";
 
 /**
  * Configuration reads and writes. Reads go through a per-instance cache of 30 seconds, so a change
@@ -67,6 +67,11 @@ export async function getUpdatePolicy(): Promise<UpdatePolicy> {
   const v = (await getConfigSnapshot()).values.get("updates.android");
   const r = updatePolicySchema.safeParse(v);
   return r.success ? r.data : DEFAULT_UPDATE_POLICY;
+}
+
+/** Settings columns for a brand-new account's settings row. */
+export async function newAccountNotificationDefaults() {
+  return notificationDefaultsFrom((await getConfigSnapshot()).values);
 }
 
 type Executor = Pick<DB, "select" | "insert" | "update" | "execute">;

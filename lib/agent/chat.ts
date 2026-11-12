@@ -1,8 +1,10 @@
 import "server-only";
 import { and, asc, desc, eq, exists, gte, ilike, inArray, ne, or, sql } from "drizzle-orm";
 import { UNTRUSTED_CONTENT_RULES } from "@/lib/ai/prompts";
-import { AI_NO_RESPONSE, AI_UNAVAILABLE } from "@/lib/ai/messages";
+import { AiLimitError, capabilityOn, dailyLimitReached } from "@/lib/ai/gate";
+import { AI_DAILY_LIMIT, AI_FEATURE_OFF, AI_NO_RESPONSE, AI_UNAVAILABLE, type AiCapability } from "@/lib/ai/messages";
 import { generateObject, NoProviderError, streamGenerate } from "@/lib/ai/router";
+import { userProvider } from "@/lib/ai/user-provider";
 import { MAX_ATTACHMENT_CHARS, TRANSFORM_LABEL, type AttachmentKind, type TransformKind, type TranslateLanguage } from "@/lib/chat/attachments";
 import { db, schema } from "@/lib/db";
 import { AI_RESTRICTED_MESSAGE, isRestricted } from "@/lib/admin/restrictions";
@@ -54,7 +56,7 @@ async function plan(user: User, message: string, hasAttachment: boolean): Promis
     const { value } = await generateObject({ kind: "chat_plan", userId: user.id, tier: "fast", system: "You route requests. Output only JSON.", prompt: PLAN_PROMPT(message, hasAttachment), schema: planSchema });
     return value;
   } catch (err) {
-    if (!(err instanceof NoProviderError)) log.warn("chat.plan_fallback", { error: errMessage(err) });
+    if (!(err instanceof NoProviderError) && !(err instanceof AiLimitError)) log.warn("chat.plan_fallback", { error: errMessage(err) });
     return heuristicPlan(message);
   }
 }
@@ -63,6 +65,24 @@ async function plan(user: User, message: string, hasAttachment: boolean): Promis
  * One chat turn. Yields events for the streaming UI. Steps are traced so the
  * same data can power the Flow page / Live Link panel later.
  */
+/** Capability switches a turn needs: chat always, voice for spoken turns, documents when a file is attached. */
+export function turnCapabilities(opts: { trigger: "text" | "voice"; attachment?: unknown; transform?: unknown }): AiCapability[] {
+  const caps: AiCapability[] = ["chat"];
+  if (opts.trigger === "voice") caps.push("voice");
+  if (opts.attachment || opts.transform) caps.push("documents");
+  return caps;
+}
+
+/**
+ * Why this turn can't start, or null: a capability switched off, or the person's daily allowance used
+ * up on the server's AI (their own key, if they added one, still works).
+ */
+export async function turnRefusal(user: Pick<User, "id">, opts: Parameters<typeof turnCapabilities>[0]): Promise<string | null> {
+  for (const cap of turnCapabilities(opts)) if (!(await capabilityOn(cap))) return AI_FEATURE_OFF[cap];
+  if ((await dailyLimitReached(user.id)) && !(await userProvider(user.id).catch(() => null))) return AI_DAILY_LIMIT;
+  return null;
+}
+
 export async function* runChatTurn(opts: {
   user: User;
   conversationId?: string;
@@ -81,6 +101,13 @@ export async function* runChatTurn(opts: {
     yield { type: "error", message: AI_RESTRICTED_MESSAGE };
     return;
   }
+  const refusal = await turnRefusal(user, opts);
+  if (refusal) {
+    yield { type: "error", message: refusal };
+    return;
+  }
+  // Documents switched off: earlier attachments in the conversation are not read either.
+  const documentsOn = await capabilityOn("documents");
   const settings = await getSettings(user.id);
   let attachment = opts.attachment;
   const convo = await ensureConversation(user.id, opts.conversationId, attachment ? `${opts.message} (${attachment.name})` : opts.message);
@@ -89,7 +116,7 @@ export async function* runChatTurn(opts: {
   if (opts.replaceFromMessageId) {
     const from = await db().query.messages.findFirst({ where: and(eq(schema.messages.id, opts.replaceFromMessageId), eq(schema.messages.conversationId, convo.id)) });
     // Edit / regenerate keep the document that came with the replaced message (its row is deleted with it).
-    if (from && !attachment && from.role === "user") {
+    if (from && !attachment && documentsOn && from.role === "user") {
       const [kept] = await db()
         .select({ name: schema.chatAttachments.name, text: schema.chatAttachments.text, kind: schema.chatAttachments.kind })
         .from(schema.chatAttachments)
@@ -111,7 +138,9 @@ export async function* runChatTurn(opts: {
   yield { type: "meta", conversationId: convo.id, runId: trace.runId, userMessageId: userMsg!.id };
   await trace.event(opts.trigger === "voice" ? "input:voice" : "input:text", opts.trigger === "voice" ? "You spoke to the agent" : "You sent a message");
 
-  const earlier = await db()
+  const earlier = !documentsOn
+    ? []
+    : await db()
     .select({ name: schema.chatAttachments.name, text: schema.chatAttachments.text, chars: schema.chatAttachments.chars })
     .from(schema.chatAttachments)
     .where(and(eq(schema.chatAttachments.conversationId, convo.id), eq(schema.chatAttachments.userId, user.id), ne(schema.chatAttachments.messageId, userMsg!.id)))
@@ -126,6 +155,12 @@ export async function* runChatTurn(opts: {
     await trace.event("agent", `Quick action: ${TRANSFORM_LABEL[opts.transform.kind]}`);
   } else {
     p = applyCapabilities(await trace.span("agent", "Planning the answer", () => plan(user, opts.message, Boolean(attachment) || earlier.length > 0), (r) => ({ label: `Planned: ${r.sources.join(", ") || "no sources"}`, meta: { sources: r.sources.length, actions: r.actions.length } })), settings.agent.capabilities);
+  }
+  // Research switched off: answer without the web and say so.
+  let researchOff = false;
+  if (p.sources.includes("web") && !(await capabilityOn("research"))) {
+    p = { ...p, sources: p.sources.filter((s) => s !== "web") };
+    researchOff = true;
   }
 
   // 2) Memory: only from the owner's own message (quick actions never save; their plan is empty and the cue gate runs on the typed text only).
@@ -150,6 +185,7 @@ export async function* runChatTurn(opts: {
   for (const t of ctx.toolLabels) yield { type: "tool", ...t };
   if (ctx.citations.length) yield { type: "citations", citations: ctx.citations };
   for (const n of ctx.notices) yield { type: "notice", text: n };
+  if (researchOff) yield { type: "notice", text: AI_FEATURE_OFF.research };
 
   // 4) Stream the answer.
   const history = await db()
@@ -199,7 +235,7 @@ export async function* runChatTurn(opts: {
     await trace.end(answerSpan, "ok", "Answer written", { chars: text.length });
   } catch (err) {
     await trace.end(answerSpan, "error", "Model unavailable");
-    const msg = err instanceof NoProviderError ? AI_UNAVAILABLE : AI_NO_RESPONSE;
+    const msg = err instanceof NoProviderError ? AI_UNAVAILABLE : err instanceof AiLimitError ? AI_DAILY_LIMIT : AI_NO_RESPONSE;
     if (!text) {
       text = msg;
       failed = true;
