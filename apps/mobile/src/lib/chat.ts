@@ -1,5 +1,5 @@
 import { fetch } from "expo/fetch";
-import { ApiError, authHeaders, reportUnauthorized } from "./api";
+import { ApiError, authHeaders, reportGate, reportUnauthorized } from "./api";
 import { API_URL } from "./config";
 import { NdjsonParser } from "./ndjson";
 import type { ChatEvent } from "./types";
@@ -35,6 +35,7 @@ export async function streamChat(input: SendInput, onEvent: (e: ChatEvent) => vo
   }
   if (!res.ok || !res.body) {
     const body = (await res.json().catch(() => null)) as { error?: string; message?: string } | null;
+    reportGate(res.status, body);
     const msg = res.status === 429 ? "You're sending messages quickly. Wait a moment." : res.status === 401 ? "Your session ended. Sign in again." : (body?.message ?? "Couldn't reach your agent. Try again.");
     throw new ApiError(res.status, msg);
   }

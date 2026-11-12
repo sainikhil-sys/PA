@@ -5,6 +5,7 @@ import * as React from "react";
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Sheet } from "@/components/sheet";
 import { ErrorState, IconButton, Row, Screen, Skeleton, Txt } from "@/components/ui";
+import { AnnouncementBanners, HomeNoticeCards } from "@/features/config/notices";
 import { ApprovalsWaitingCard, BriefingCard, MailCard, ScheduleCard, TasksCard } from "@/features/home/cards";
 import { relativeTime } from "@/features/home/format";
 import { useTabBarSpace } from "@/features/navigation/tab-bar";
@@ -80,6 +81,8 @@ export default function HomeScreen() {
             ) : null}
           </View>
         </View>
+
+        <AnnouncementBanners />
 
         <View style={{ gap: space.lg }}>
           <Txt variant="display" accessibilityRole="header" style={{ fontSize: 36, lineHeight: 42 }}>
@@ -184,6 +187,7 @@ export default function HomeScreen() {
 
         <View style={{ gap: space.md }}>
           <SectionTitle title="Today" />
+          <HomeNoticeCards />
           {failed ? (
             <ErrorState message={errorText(today.error)} onRetry={() => void today.refetch()} />
           ) : (

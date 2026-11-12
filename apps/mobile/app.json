@@ -72,7 +72,13 @@
       "./plugins/with-short-native-paths",
       "expo-image",
       "expo-status-bar",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Cowork uses Face ID to lock the admin console on this phone."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": false,

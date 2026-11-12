@@ -29,10 +29,11 @@ import * as React from "react";
 import { Linking, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { ConfirmSheet } from "@/components/sheet";
 import { ErrorState, Row, Screen, Skeleton, Txt } from "@/components/ui";
+import { useAdminMe } from "@/features/admin/api";
 import { useTabBarSpace } from "@/features/navigation/tab-bar";
 import { ListSection } from "@/features/settings/parts";
 import { errorText } from "@/lib/api";
-import { PRIVACY_URL, SUPPORT_EMAIL, TERMS_URL, WEB_URL } from "@/lib/config";
+import { PRIVACY_URL, SUPPORT_EMAIL, TERMS_URL } from "@/lib/config";
 import { useMe } from "@/lib/queries";
 import { useSession } from "@/lib/session";
 import { useThemePreference } from "@/theme/preference";
@@ -50,6 +51,7 @@ function memberSince(iso: string | undefined): string | null {
 export default function ProfileTab() {
   const chevron = <CaretRightIcon size={18} color={color.subtle} />;
   const me = useMe();
+  const adminMe = useAdminMe();
   const signOut = useSession((s) => s.signOut);
   const appearance = useThemePreference((s) => s.preference);
   const bottom = useTabBarSpace();
@@ -79,7 +81,7 @@ export default function ProfileTab() {
     <Screen>
       <ScrollView
         contentContainerStyle={{ paddingBottom: bottom, gap: space.xxl }}
-        refreshControl={<RefreshControl refreshing={me.isRefetching} onRefresh={() => void me.refetch()} tintColor={color.accentText} colors={[color.accentText]} progressBackgroundColor={color.surface2} />}
+        refreshControl={<RefreshControl refreshing={me.isRefetching} onRefresh={() => void Promise.all([me.refetch(), adminMe.refetch()])} tintColor={color.accentText} colors={[color.accentText]} progressBackgroundColor={color.surface2} />}
       >
         <View style={{ paddingHorizontal: space.lg, paddingTop: space.md, gap: space.lg }}>
           <Txt variant="title" accessibilityRole="header" style={{ fontSize: 26, lineHeight: 32 }}>
@@ -149,15 +151,10 @@ export default function ProfileTab() {
           <Row icon={PlugsConnectedIcon} title="Connected services" detail="Gmail, Calendar and more" onPress={go("/settings/integrations")} right={chevron} />
         </ListSection>
 
-        {d?.isAdmin ? (
+        {/* Shown only when the server answers GET /api/admin/me; the app never decides admin status itself. */}
+        {adminMe.isSuccess ? (
           <ListSection title="Admin">
-            <Row
-              icon={ShieldStarIcon}
-              title="Admin console"
-              detail="Opens the console on the website. Sign in there with this email if asked."
-              onPress={() => void WebBrowser.openBrowserAsync(`${WEB_URL}/console`)}
-              right={chevron}
-            />
+            <Row icon={ShieldStarIcon} title="Admin console" detail="Users, feature flags, maintenance and more" onPress={go("/admin")} right={chevron} />
           </ListSection>
         ) : null}
 
