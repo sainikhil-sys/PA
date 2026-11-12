@@ -65,6 +65,21 @@ const schema = z.object({
   FIREBASE_SERVICE_ACCOUNT: z.string().optional(),
   NEXT_PUBLIC_FIREBASE_CONFIG: z.string().optional(),
   NEXT_PUBLIC_FIREBASE_VAPID_KEY: z.string().optional(),
+  // Realtime delivery (Supabase Realtime, Broadcast only; Postgres stays the source of truth)
+  SUPABASE_URL: z.string().optional(),
+  /** Public key the app connects with; the per-user token decides what it may hear. */
+  SUPABASE_ANON_KEY: z.string().optional(),
+  /** SECRET: publishes events from the server. */
+  SUPABASE_SERVICE_ROLE_KEY: z.string().optional(),
+  /** SECRET: signs the short-lived per-user channel tokens (Project settings > API > JWT secret). */
+  SUPABASE_JWT_SECRET: z.string().optional(),
+  // Media storage (Cloudflare R2, S3-compatible, private bucket)
+  R2_ACCOUNT_ID: z.string().optional(),
+  R2_ACCESS_KEY_ID: z.string().optional(),
+  R2_SECRET_ACCESS_KEY: z.string().optional(),
+  R2_BUCKET: z.string().optional(),
+  /** "on" turns maintenance mode on (lib/maintenance.ts reads it directly; any other value is off). */
+  MAINTENANCE_MODE: z.string().optional(),
   // Platform
   VERCEL: z.string().optional(),
   VERCEL_ENV: z.string().optional(),
