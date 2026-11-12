@@ -59,7 +59,7 @@ export default function DeleteAccountScreen() {
       <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={{ padding: space.lg, paddingBottom: space.xxxl, gap: space.xxl }} keyboardShouldPersistTaps="handled">
           <View style={{ gap: space.md }}>
-            <Txt variant="body">Deleting your account removes all of this from Cowork. It can't be undone.</Txt>
+            <Txt variant="body">{"Deleting your account removes all of this from Cowork. It can't be undone."}</Txt>
             <View style={{ backgroundColor: color.surface, borderRadius: radius.card, borderWidth: 1, borderColor: color.border, padding: space.lg, gap: space.sm }}>
               {DELETED.map((d) => (
                 <View key={d} style={{ flexDirection: "row", gap: space.sm }}>

@@ -10,6 +10,10 @@ export function appRoute(href: string | null | undefined): Href | null {
   if (!href || !href.startsWith("/")) return null;
   if (href === "/" || href.startsWith("/?")) return "/";
   if (/^\/chat\/[\w-]+$/.test(href)) return href as Href;
+  // Chats (person-to-person): a conversation, the list, or friend requests.
+  if (/^\/dm\/[\w-]+$/.test(href)) return href as Href;
+  if (href === "/chats") return "/chats";
+  if (href === "/people" || href.startsWith("/people?")) return "/people";
   if (href === "/approvals" || href.startsWith("/approvals?")) return "/approvals";
   if (href === "/tasks" || href.startsWith("/tasks?")) {
     const task = id(href, "task");

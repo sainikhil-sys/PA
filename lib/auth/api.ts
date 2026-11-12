@@ -1,6 +1,7 @@
 import "server-only";
 import { isMaintenanceExempt, maintenanceBlock, maintenanceResponse, updateRequiredResponse } from "@/lib/config/enforce";
 import type { User } from "@/lib/db/schema";
+import { maintenanceOn, maintenanceResponse } from "@/lib/maintenance";
 import { rateLimit, rateLimitResponse } from "@/lib/security/ratelimit";
 import { errorJson, isSameOrigin } from "@/lib/security/request";
 import { getOwner } from "./session";
@@ -11,6 +12,7 @@ import { getOwner } from "./session";
  * minimum app build (426, app requests only).
  */
 export async function apiGuard(req: Request): Promise<{ user: User } | { response: Response }> {
+  if (maintenanceOn()) return { response: maintenanceResponse() };
   if (req.method !== "GET" && req.method !== "HEAD" && !isSameOrigin(req)) return { response: errorJson(403, "forbidden") };
   const user = await getOwner();
   if (!user) return { response: errorJson(401, "unauthorized") };

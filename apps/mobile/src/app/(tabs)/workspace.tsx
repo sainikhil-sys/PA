@@ -1,5 +1,5 @@
 import { router, type Href } from "expo-router";
-import { CalendarDotsIcon, CaretRightIcon, CheckSquareIcon, FileTextIcon, NotebookIcon, SealCheckIcon, type Icon } from "phosphor-react-native";
+import { CalendarDotsIcon, CaretRightIcon, CheckSquareIcon, FileTextIcon, LinkSimpleIcon, NotebookIcon, NotePencilIcon, PlusSquareIcon, SealCheckIcon, UploadSimpleIcon, type Icon } from "phosphor-react-native";
 import * as React from "react";
 import { RefreshControl, ScrollView, View } from "react-native";
 import { CountBadge, Divider, Row, Screen, SectionHeader, Txt } from "@/components/ui";
@@ -24,6 +24,15 @@ export default function WorkspaceTab() {
   const open = tasks.data?.length;
   const pending = me.data?.pendingApprovals ?? 0;
   const groups: { title: string; items: Place[] }[] = [
+    {
+      title: "Capture",
+      items: [
+        { key: "new-task", icon: PlusSquareIcon, title: "New task", detail: "In plain words, like \"call the bank tomorrow 10am\"", href: "/tasks?add=1" },
+        { key: "new-note", icon: NotePencilIcon, title: "New note", detail: "Your assistant can search it", href: "/notes/new" },
+        { key: "link", icon: LinkSimpleIcon, title: "Save a link", detail: "Keep a page with its title and summary", href: "/notes?link=1" },
+        { key: "upload", icon: UploadSimpleIcon, title: "Add a document", detail: "PDF, Word, text or Markdown, up to 4 MB", href: "/settings/documents" },
+      ],
+    },
     {
       title: "Plan",
       items: [

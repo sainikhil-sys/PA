@@ -28,7 +28,9 @@ export default function ChatScreen() {
 
   const [speakReplies, setSpeakReplies] = React.useState(Boolean(intent?.listen));
   const speakRef = React.useRef(speakReplies);
-  speakRef.current = speakReplies;
+  React.useEffect(() => {
+    speakRef.current = speakReplies;
+  }, [speakReplies]);
   const speaker = useSpeaker();
 
   const chat = useChat(isNew ? undefined : params.id, {
@@ -53,15 +55,14 @@ export default function ChatScreen() {
   });
 
   // Load stored history once; later refetches never overwrite the live conversation.
-  const hydrated = React.useRef(false);
-  React.useEffect(() => {
-    if (!hydrated.current && history.data) {
-      hydrated.current = true;
-      chat.hydrate(history.data);
-    }
-  }, [history.data, chat]);
+  // Set during render (React's pattern for state derived from a first load), not in an effect.
+  const [hydrated, setHydrated] = React.useState(false);
+  if (!hydrated && history.data) {
+    setHydrated(true);
+    chat.hydrate(history.data);
+  }
 
-  const ready = isNew || hydrated.current || Boolean(history.data);
+  const ready = isNew || hydrated || Boolean(history.data);
 
   // An in-app intent runs once: send the chosen prompt, or start listening after the tap on the orb.
   const intentDone = React.useRef(false);
@@ -134,7 +135,7 @@ export default function ChatScreen() {
         <Skeleton rows={4} height={64} />
       </View>
     );
-  } else if (!isNew && history.isError && !history.data && !hydrated.current) {
+  } else if (!isNew && history.isError && !history.data && !hydrated) {
     body = notFound ? (
       <EmptyState icon={ChatCircleIcon} title="Chat not found" body="This chat no longer exists." action={<Button label="Back to chats" compact onPress={() => router.replace("/assistant")} />} />
     ) : (
@@ -169,7 +170,7 @@ export default function ChatScreen() {
     );
   }
 
-  const showComposer = isNew || Boolean(history.data) || hydrated.current;
+  const showComposer = isNew || Boolean(history.data) || hydrated;
 
   return (
     <Screen edges={["top"]}>
@@ -250,7 +251,8 @@ export default function ChatScreen() {
           </View>
         ) : null}
       </KeyboardAvoidingView>
-      <ReportSheet messageId={reportId} onClose={() => setReportId(null)} />
+      {/* Keyed so each report starts from an empty form. */}
+      <ReportSheet key={reportId ?? "closed"} messageId={reportId} onClose={() => setReportId(null)} />
       {chat.conversationId.current ? <ChatMenu open={menuOpen} onClose={() => setMenuOpen(false)} conversationId={chat.conversationId.current} title={title} /> : null}
     </Screen>
   );

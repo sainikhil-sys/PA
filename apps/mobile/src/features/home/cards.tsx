@@ -82,7 +82,7 @@ export function ScheduleCard({ today, loading }: { today: Today | undefined; loa
         <Skeleton rows={3} height={44} />
       ) : !today.calendarConnected ? (
         <View style={{ gap: space.md }}>
-          <Quiet>Google Calendar isn't connected, so your events don't show here.</Quiet>
+          <Quiet>{"Google Calendar isn't connected, so your events don't show here."}</Quiet>
           <Button
             label="Connect on the website"
             icon={ArrowSquareOutIcon}

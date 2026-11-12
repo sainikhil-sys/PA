@@ -152,7 +152,7 @@ export default function PhoneScreen() {
             </Txt>
           </View>
           <Txt variant="body">
-            When you link this phone, Cowork sends your agent the app name, title and text of the notifications that appear here, such as calls and messages, plus this phone's battery level and whether it is charging.
+            {"When you link this phone, Cowork sends your agent the app name, title and text of the notifications that appear here, such as calls and messages, plus this phone's battery level and whether it is charging."}
           </Txt>
           <Txt variant="bodyMuted">Nothing is sent until you allow Notification access for Cowork in Android settings.</Txt>
           <Txt variant="bodyMuted">Notifications are kept for 3 days, then deleted.</Txt>
@@ -166,7 +166,7 @@ export default function PhoneScreen() {
           ) : !status.available ? (
             <View style={{ backgroundColor: color.surface, borderRadius: radius.card, borderWidth: 1, borderColor: color.border, padding: space.lg, gap: space.sm }}>
               <StatusLine ok={false} warn label="Not available in this version of the app" />
-              <Txt variant="small">This build of Cowork doesn't include Phone link, so nothing is sent from this phone. You can still unlink other phones below.</Txt>
+              <Txt variant="small">{"This build of Cowork doesn't include Phone link, so nothing is sent from this phone. You can still unlink other phones below."}</Txt>
             </View>
           ) : (
             <View style={{ backgroundColor: color.surface, borderRadius: radius.card, borderWidth: 1, borderColor: color.border, padding: space.lg, gap: space.md }}>

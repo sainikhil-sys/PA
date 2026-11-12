@@ -258,3 +258,26 @@ Decisions (user, 2026-11-12):
 Built: tokens on app and web (`apps/mobile/src/theme/tokens.ts`, `app/globals.css`), `accentText` / `--primary-text` for orange text, Chat and Create moved into `(tabs)`, the floating translucent tab bar (system glass on iOS 26, translucent material without blur on Android), browser and native colours (`app/layout.tsx`, `app/manifest.ts`, `apps/mobile/app.json`, the unsubscribe page, the Android notification channel), `tests/unit/design-tokens.test.ts`. Details: `docs/DESIGN_SYSTEM.md`.
 
 Next phase (proposed, needs approval): the dashboard layout inspired by the Nixtio reference (inspiration only).
+
+---
+
+# Master build prompt: first slice, Chats and App lock (2026-11-12)
+
+The user pasted an all-in-one brief (social messaging, nearby and local-network discovery, offline P2P, university and public anonymous rooms, communities, stories, calls, AI workspace, admin, App lock, icons). It is several months of work; this pass delivers the two pieces everything else depends on, both real end to end. Uncommitted Assignment Writer work from session `local_aeafd3c8` is left untouched.
+
+Built (code complete, typechecked, linted, unit tested; **not yet run on the phone**, and migration `0013` is **not applied to production**):
+- **Navigation fix**: tabs are Home, Chats (people), Assistant (AI), Workspace, Profile. Create is gone: its AI entries are on Assistant, its capture entries in Workspace. AI conversations never appear in Chats and vice versa.
+- **Chats** (`lib/social/*`, `app/api/social/*`, migration `0013_social_chats`, app `(tabs)/chats`, `dm/*`, `people/*`): opt-in profile with handle (email never shown), search by handle or name (respects "findable"), friend requests (send, accept, decline, cancel, remove), block and unblock (hides both ways, ends friendship), direct chats between friends, groups (owner/admin/member, add, remove, rename, leave, owner hand-over), text messages with reply, edit (24 h), delete for everyone, six icon reactions, read and delivery marks (respecting read-receipt settings both ways), typing, presence for friends only, message search, mute, reports with a snapshot for moderators, push with name only unless the person opts into previews. Offline outbox on the phone: sending, waiting (auto-retry) and failed states, idempotent client ids, nothing dropped.
+- **Realtime is polling**, honestly: an open chat refreshes every 3 s, the list every 8 s, only while the screen is focused and the app is in the foreground. Upgrade path: SSE or WebSockets on Vercel Functions.
+- **App lock** (`features/lock/*`, `settings/app-lock`): biometrics with device-credential fallback, 4 or 6 digit PIN (PBKDF2-SHA256, 60k rounds, salted, in SecureStore), lockout waits, timeout policies, fresh-launch lock, recents cover, optional FLAG_SECURE. Needs a native rebuild (expo-local-authentication, expo-crypto, expo-screen-capture).
+
+Not built yet (each needs its own phase): media and voice messages (needs object storage, decision pending), communities, university and public anonymous rooms (needs audience decision D7 and moderation tooling), stories, nearby and local-network discovery and offline P2P (see the Connect feasibility doc; needs a second Android phone), calls (needs a WebRTC/TURN provider), admin review screen for `user_reports`, launcher icon variants, end-to-end encryption (Chats is not E2E and says so).
+
+## Second pass (2026-11-12, evening): verification, Appearance, offline Chats
+
+- **Migration 0013 applied to production** (user approved). 8 tables, RLS on, 14 migrations recorded.
+- **Two-account API test**: 52 checks against a local server with its own local database (`chats` on the local Postgres, test-mode sign-in for two `.test` accounts). It found and fixed two bugs: the chat list failed (a Date passed as a raw SQL parameter), and a taken handle returned 500 instead of "That handle is taken". It also tightened a rule: sending in a direct chat now needs a current friendship (ex-friends can read the history, not send).
+- **Production does not serve `/api/social/*` yet** (not deployed). A phone build on the new app code shows Chats as unavailable until the server code is pushed; the app now says so instead of "Something went wrong".
+- **Appearance**: 8 real launcher icons on Android (activity aliases from `plugins/with-app-icons.js`, switched by the local module `modules/app-icon`; the screen shows only what Android reports after the switch). "Mint" is replaced by "Orange" (no green). Haptics on or off and an in-app Reduce motion switch, applied everywhere (`lib/feedback.ts`, `theme/motion.ts`, `ReducedMotionConfig`). Text size keeps following the phone. Needs a native rebuild.
+- **Offline Chats**: the chat list, friends, profile and opened chats are kept on the phone (TanStack persister, 7 days, cleared on sign-out), so Chats opens without a connection; unsent messages already wait in the outbox.
+- Ownership since the user's split: this session owns `apps/mobile` and the Chats server code; the backend and web session owns realtime, media, Spaces, Moments, Anonymous, Explore, Calls and moderation tooling (`docs/COWORK_SOCIAL_AUDIT.md`, steps B1 to B10). The app's parts of those phases follow their server steps.

@@ -65,6 +65,8 @@ export const users = pgTable("users", {
   onboardedAt: ts("onboarded_at"),
   /** Set by an admin: the account can't sign in and background work skips it. */
   disabledAt: ts("disabled_at"),
+  /** Date of birth ("YYYY-MM-DD"), set once. Decides teen protections (lib/safety/age.ts); never shown to others. */
+  birthDate: date("birth_date", { mode: "string" }),
   createdAt: createdAt(),
 });
 
@@ -1417,6 +1419,179 @@ export const traceSpans = pgTable(
   (t) => [index("trace_spans_user_started_idx").on(t.userId, t.startedAt), index("trace_spans_run_idx").on(t.runId)],
 );
 
+// ---------- Social: people, friends, person-to-person chats (Chats tab) ----------
+/**
+ * Opting in to Chats. A person without a row can't be found, added or messaged. The handle is
+ * public to other Cowork users; the email address never is.
+ */
+export const socialProfiles = pgTable(
+  "social_profiles",
+  {
+    userId: uuid("user_id")
+      .primaryKey()
+      .references(() => users.id, { onDelete: "cascade" }),
+    /** Lowercase, 3 to 24 of a-z 0-9 _ . (see lib/social/rules.ts). */
+    handle: text("handle").notNull(),
+    displayName: text("display_name").notNull(),
+    /** Others can find this person by handle search. Off: only people who already know them (friends). */
+    searchable: boolean("searchable").notNull().default(true),
+    /** Friends see "Active now" while the app is open. */
+    showPresence: boolean("show_presence").notNull().default(true),
+    /** Others see when their messages were read. Off also hides others' read marks from this person. */
+    readReceipts: boolean("read_receipts").notNull().default(true),
+    /** Lock-screen notifications show the message text. Off by default: name only. */
+    pushPreview: boolean("push_preview").notNull().default(false),
+    lastActiveAt: ts("last_active_at"),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [uniqueIndex("social_profiles_handle_idx").on(t.handle)],
+);
+
+/**
+ * One row per pair of people: a pending request or an accepted friendship. `userLow` < `userHigh`
+ * (uuid order) so a pair can only have one row; `requesterId` says who asked. Declined and
+ * cancelled requests are deleted.
+ */
+export const friendships = pgTable(
+  "friendships",
+  {
+    id: id(),
+    userLow: uuid("user_low")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    userHigh: uuid("user_high")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    requesterId: uuid("requester_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    status: text("status").$type<"pending" | "accepted">().notNull().default("pending"),
+    createdAt: createdAt(),
+    respondedAt: ts("responded_at"),
+  },
+  (t) => [uniqueIndex("friendships_pair_idx").on(t.userLow, t.userHigh), index("friendships_high_idx").on(t.userHigh, t.status)],
+);
+
+/** A block hides both people from each other and stops direct messages either way. */
+export const userBlocks = pgTable(
+  "user_blocks",
+  {
+    blockerId: uuid("blocker_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    blockedId: uuid("blocked_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    createdAt: createdAt(),
+  },
+  (t) => [primaryKey({ columns: [t.blockerId, t.blockedId] }), index("user_blocks_blocked_idx").on(t.blockedId)],
+);
+
+/** A person-to-person conversation: `direct` (two people) or `group`. Never mixed with AI chats. */
+export const dmThreads = pgTable(
+  "dm_threads",
+  {
+    id: id(),
+    kind: text("kind").$type<"direct" | "group">().notNull(),
+    /** Groups only. */
+    title: text("title"),
+    createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
+    /** Direct only: "<low uuid>:<high uuid>", so a pair has exactly one direct thread. */
+    directKey: text("direct_key"),
+    lastMessageAt: ts("last_message_at"),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("dm_threads_direct_idx").on(t.directKey), index("dm_threads_last_idx").on(t.lastMessageAt)],
+);
+
+export const dmMembers = pgTable(
+  "dm_members",
+  {
+    threadId: uuid("thread_id")
+      .notNull()
+      .references(() => dmThreads.id, { onDelete: "cascade" }),
+    userId: userId(),
+    role: text("role").$type<"owner" | "admin" | "member">().notNull().default("member"),
+    joinedAt: ts("joined_at").notNull().defaultNow(),
+    /** Set when the person leaves or is removed; they keep no access after it. */
+    leftAt: ts("left_at"),
+    /** Highest message seq this person's app has received. */
+    deliveredSeq: bigint("delivered_seq", { mode: "number" }).notNull().default(0),
+    /** Highest message seq this person has seen on screen. */
+    readSeq: bigint("read_seq", { mode: "number" }).notNull().default(0),
+    typingAt: ts("typing_at"),
+    mutedAt: ts("muted_at"),
+  },
+  (t) => [primaryKey({ columns: [t.threadId, t.userId] }), index("dm_members_user_idx").on(t.userId)],
+);
+
+export const dmMessages = pgTable(
+  "dm_messages",
+  {
+    id: id(),
+    /** Global, increasing: the cursor for "messages since" polling and for read and delivery marks. */
+    seq: bigint("seq", { mode: "number" }).generatedAlwaysAsIdentity().notNull(),
+    threadId: uuid("thread_id")
+      .notNull()
+      .references(() => dmThreads.id, { onDelete: "cascade" }),
+    senderId: uuid("sender_id").references(() => users.id, { onDelete: "set null" }),
+    /** Made on the phone before sending, so a retried send never creates a second message. */
+    clientId: text("client_id").notNull(),
+    kind: text("kind").$type<"text" | "system">().notNull().default("text"),
+    body: text("body").notNull(),
+    replyToId: uuid("reply_to_id"),
+    editedAt: ts("edited_at"),
+    /** Deleted for everyone: the body is cleared and the row stays as a "Message deleted" marker. */
+    deletedAt: ts("deleted_at"),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index("dm_messages_thread_seq_idx").on(t.threadId, t.seq),
+    uniqueIndex("dm_messages_client_idx").on(t.senderId, t.clientId),
+    index("dm_messages_body_fts_idx").using("gin", sql`to_tsvector('simple', ${t.body})`),
+  ],
+);
+
+/** One reaction per person per kind per message. Kinds are a fixed set drawn as icons (no emoji). */
+export const dmReactions = pgTable(
+  "dm_reactions",
+  {
+    messageId: uuid("message_id")
+      .notNull()
+      .references(() => dmMessages.id, { onDelete: "cascade" }),
+    userId: userId(),
+    kind: text("kind").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [primaryKey({ columns: [t.messageId, t.userId, t.kind] })],
+);
+
+/** Reports of people or messages, reviewed in the admin console. */
+export const userReports = pgTable(
+  "user_reports",
+  {
+    id: id(),
+    reporterId: uuid("reporter_id").references(() => users.id, { onDelete: "set null" }),
+    targetUserId: uuid("target_user_id").references(() => users.id, { onDelete: "set null" }),
+    threadId: uuid("thread_id").references(() => dmThreads.id, { onDelete: "set null" }),
+    messageId: uuid("message_id").references(() => dmMessages.id, { onDelete: "set null" }),
+    reason: text("reason").notNull(),
+    details: text("details"),
+    /** Copy of the reported message text at report time, so deleting it later doesn't erase evidence. */
+    snapshot: text("snapshot"),
+    status: text("status").$type<"open" | "actioned" | "dismissed">().notNull().default("open"),
+    reviewedBy: uuid("reviewed_by").references(() => users.id, { onDelete: "set null" }),
+    reviewedAt: ts("reviewed_at"),
+    createdAt: createdAt(),
+  },
+  (t) => [index("user_reports_status_idx").on(t.status, t.createdAt)],
+);
+
+export type SocialProfile = typeof socialProfiles.$inferSelect;
+export type DmThread = typeof dmThreads.$inferSelect;
+export type DmMember = typeof dmMembers.$inferSelect;
+export type DmMessage = typeof dmMessages.$inferSelect;
 export type TraceSpan = typeof traceSpans.$inferSelect;
 export type User = typeof users.$inferSelect;
 export type Session = typeof sessions.$inferSelect;

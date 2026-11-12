@@ -30,7 +30,7 @@ export default function Profile() {
   const qc = useQueryClient();
   const me = useMe();
   const setOnboarding = useSession((s) => s.setOnboarding);
-  const timezone = React.useMemo(detectedTimeZone, []);
+  const timezone = React.useMemo(() => detectedTimeZone(), []);
   const [busy, setBusy] = React.useState<"save" | "skip" | null>(null);
   const [serverError, setServerError] = React.useState<string | null>(null);
   const { control, handleSubmit, reset, formState } = useForm<Form>({ resolver: zodResolver(schema), defaultValues: { name: "" } });
@@ -46,21 +46,23 @@ export default function Profile() {
     router.replace("/onboarding/privacy");
   };
 
-  const save = handleSubmit(async ({ name }) => {
-    if (inflight.current) return;
-    inflight.current = true;
-    setBusy("save");
-    setServerError(null);
-    try {
-      await api<{ ok: true }>("/api/mobile/me", { method: "PATCH", body: { ...(name ? { name } : {}), ...(timezone ? { timezone } : {}) } });
-      void qc.invalidateQueries({ queryKey: keys.me });
-      await next();
-    } catch (err) {
-      inflight.current = false;
-      setServerError(errorText(err));
-      setBusy(null);
-    }
-  });
+  const save = () =>
+    // handleSubmit runs in the press handler, not during render (React Compiler rule).
+    handleSubmit(async ({ name }) => {
+      if (inflight.current) return;
+      inflight.current = true;
+      setBusy("save");
+      setServerError(null);
+      try {
+        await api<{ ok: true }>("/api/mobile/me", { method: "PATCH", body: { ...(name ? { name } : {}), ...(timezone ? { timezone } : {}) } });
+        void qc.invalidateQueries({ queryKey: keys.me });
+        await next();
+      } catch (err) {
+        inflight.current = false;
+        setServerError(errorText(err));
+        setBusy(null);
+      }
+    })();
 
   const skip = async () => {
     if (inflight.current) return;
@@ -123,7 +125,7 @@ export default function Profile() {
       {me.isError ? (
         <View style={{ flexDirection: "row", alignItems: "center", gap: space.sm, flexWrap: "wrap" }}>
           <Txt variant="small" style={{ flex: 1 }} accessibilityLiveRegion="polite">
-            Couldn't load your profile. {errorText(me.error)}
+            {`Couldn't load your profile. ${errorText(me.error)}`}
           </Txt>
           <Button label="Try again" compact onPress={() => void me.refetch()} style={{ minHeight: 48 }} accessibilityLabel="Try loading your profile again" />
         </View>

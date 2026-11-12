@@ -1,0 +1,7 @@
+{
+  "name": "app-icon",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Switches Cowork's launcher icon between the variants added by plugins/with-app-icons.js (Android only).",
+  "main": "index.ts"
+}

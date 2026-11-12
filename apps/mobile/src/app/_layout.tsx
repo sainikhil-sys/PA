@@ -1,6 +1,6 @@
 import { HankenGrotesk_400Regular, HankenGrotesk_500Medium, HankenGrotesk_600SemiBold } from "@expo-google-fonts/hanken-grotesk";
 import { Newsreader_400Regular } from "@expo-google-fonts/newsreader";
-import { QueryClientProvider } from "@tanstack/react-query";
+import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import { useFonts } from "expo-font";
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider, usePathname } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
@@ -9,12 +9,15 @@ import { StatusBar } from "expo-status-bar";
 import * as React from "react";
 import { View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { ReducedMotionConfig, ReduceMotion } from "react-native-reanimated";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { Launch } from "@/components/launch";
 import { useAdminLifecycle } from "@/features/admin/lifecycle";
 import { GateOverlay, gateCovers } from "@/features/config/gate-overlay";
 import { useClientConfigSync, useGate } from "@/features/config/use-client-config";
+import { LockGate } from "@/features/lock/gate";
 import { PushRouter } from "@/features/notifications/push-router";
+import { cachePersister, persistOptions } from "@/lib/persist";
 import { queryClient } from "@/lib/queries";
 import { useSession } from "@/lib/session";
 import { useScheme, useThemePreference } from "@/theme/preference";
@@ -40,6 +43,8 @@ export default function RootLayout() {
   const loadTheme = useThemePreference((s) => s.load);
   const themeLoaded = useThemePreference((s) => s.loaded);
   const scheme = useScheme();
+  // The opening animation plays once per launch, over the app, until it hands over.
+  const [launched, setLaunched] = React.useState(false);
   // Before anything renders: every `color.x` read below uses this scheme.
   setScheme(scheme);
   // Client configuration (cached copy first, then the server) and the update or maintenance screen.
@@ -65,35 +70,52 @@ export default function RootLayout() {
 
   React.useEffect(() => {
     // A sign-out (or expired session) clears cached data from the previous account.
-    if (status === "signedOut") queryClient.clear();
+    if (status === "signedOut") {
+      queryClient.clear();
+      // The offline copy of Chats belongs to the account that signed out.
+      void cachePersister.removeClient();
+    }
   }, [status]);
 
   // A font that fails to load falls back to the system face rather than holding the splash screen.
   const fontsReady = fontsLoaded || Boolean(fontError);
   const ready = fontsReady && status !== "restoring" && themeLoaded;
-  // The system splash (one image) hands over to the launch view as soon as text can draw; the launch
-  // view stays only until the session and settings are restored, then fades out.
+  // The system splash (one image) hands over to the launch animation as soon as text can draw. The
+  // app mounts underneath once the session and settings are restored; the animation finishes, then
+  // fades into it.
   React.useEffect(() => {
     if (fontsReady && themeLoaded) void SplashScreen.hideAsync();
   }, [fontsReady, themeLoaded]);
+  const onLaunched = React.useCallback(() => setLaunched(true), []);
   if (!fontsReady || !themeLoaded) return null;
-  if (!ready) {
-    return (
-      <View style={{ flex: 1, backgroundColor: color.bg }}>
-        <Launch />
-      </View>
-    );
-  }
 
   const signedIn = status === "signedIn";
   const onboarded = onboarding === "done";
 
   return (
+    // The launch view keeps its place in this tree, so it does not restart when the app mounts.
+    <View style={{ flex: 1, backgroundColor: color.bg }}>
+      {ready ? (
+        // App lock sits over the mounted app; its lock screen follows the launch animation.
+        <LockGate launched={launched} scheme={scheme}>
+          <App scheme={scheme} signedIn={signedIn} onboarded={onboarded} />
+        </LockGate>
+      ) : null}
+      {launched ? null : <Launch ready={ready} onDone={onLaunched} />}
+    </View>
+  );
+}
+
+function App({ scheme, signedIn, onboarded }: { scheme: Scheme; signedIn: boolean; onboarded: boolean }) {
+  // Settings > Appearance > Reduce motion: every Reanimated animation follows it, on top of the phone's setting.
+  const motion = useThemePreference((st) => st.motion);
+  return (
     // Keyed on the scheme: a theme change re-mounts the app so every screen redraws in the new palette
     // (screens read colours during render; the React Compiler would otherwise keep the old ones).
     <GestureHandlerRootView key={scheme} style={{ flex: 1, backgroundColor: color.bg }}>
+      <ReducedMotionConfig mode={motion === "reduce" ? ReduceMotion.Always : ReduceMotion.System} />
       <SafeAreaProvider>
-        <QueryClientProvider client={queryClient}>
+        <PersistQueryClientProvider client={queryClient} persistOptions={persistOptions}>
           <ThemeProvider value={navTheme(scheme)}>
             <StatusBar style={scheme === "dark" ? "light" : "dark"} />
             <View style={{ flex: 1 }} importantForAccessibility={covered ? "no-hide-descendants" : "auto"}>
@@ -116,6 +138,8 @@ export default function RootLayout() {
                   <Stack.Screen name="agenda" />
                   <Stack.Screen name="meeting/[id]" />
                   <Stack.Screen name="notes" />
+                  <Stack.Screen name="dm" />
+                  <Stack.Screen name="people" />
                   <Stack.Screen name="admin" />
                 </Stack.Protected>
               </Stack>
@@ -124,7 +148,7 @@ export default function RootLayout() {
             {/* After the Stack, so the navigator is mounted before a cold-start tap navigates. */}
             {signedIn && onboarded ? <PushRouter /> : null}
           </ThemeProvider>
-        </QueryClientProvider>
+        </PersistQueryClientProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

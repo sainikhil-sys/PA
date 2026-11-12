@@ -1,4 +1,3 @@
-import * as Haptics from "expo-haptics";
 import { WarningCircleIcon, type Icon } from "phosphor-react-native";
 import * as React from "react";
 import {
@@ -17,6 +16,7 @@ import {
 } from "react-native";
 import { SafeAreaView, type Edge } from "react-native-safe-area-context";
 import { color, elevation, font, radius, space, TOUCH, type } from "@/theme/tokens";
+import { feedback } from "@/lib/feedback";
 
 /** Full-screen container on the near-black background. */
 export function Screen({ children, edges = ["top"], style }: { children: React.ReactNode; edges?: Edge[]; style?: StyleProp<ViewStyle> }) {
@@ -64,7 +64,7 @@ export function Button({
       accessibilityState={{ disabled: Boolean(off), busy: Boolean(loading) }}
       disabled={off}
       onPress={() => {
-        void Haptics.selectionAsync().catch(() => {});
+        feedback.selection();
         onPress?.();
       }}
       style={({ pressed }) => [

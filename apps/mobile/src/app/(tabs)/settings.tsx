@@ -9,6 +9,7 @@ import {
   ChatTextIcon,
   DeviceMobileIcon,
   FileTextIcon,
+  FingerprintIcon,
   InfoIcon,
   LifebuoyIcon,
   ListChecksIcon,
@@ -105,7 +106,7 @@ export default function ProfileTab() {
               <OutlineButton label="Edit profile" icon={PencilSimpleIcon} onPress={go("/settings/account")} />
               {d.stats ? (
                 <View style={{ flexDirection: "row", borderTopWidth: StyleSheet.hairlineWidth, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: color.border, paddingVertical: space.lg }}>
-                  <Stat value={d.stats.chats} label="Chats" tint={color.accentText} onPress={go("/assistant")} />
+                  <Stat value={d.stats.chats} label="AI chats" tint={color.accentText} onPress={go("/assistant")} />
                   <Stat value={d.stats.notes} label="Notes" tint={color.accentText} onPress={go("/notes")} />
                   <Stat value={d.stats.documents} label="Documents" tint={color.text} onPress={go("/settings/documents")} />
                 </View>
@@ -136,6 +137,7 @@ export default function ProfileTab() {
           <Row icon={UserCircleIcon} title="Account" onPress={go("/settings/account")} right={chevron} />
           <Row icon={BellIcon} title="Notifications" onPress={go("/settings/notifications")} right={chevron} />
           <Row icon={LockSimpleIcon} title="Permissions" onPress={go("/settings/permissions")} right={chevron} />
+          <Row icon={FingerprintIcon} title="App lock" onPress={go("/settings/app-lock")} right={chevron} />
           <Row
             icon={CircleHalfIcon}
             title="Appearance"

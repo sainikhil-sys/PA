@@ -14,6 +14,10 @@ export type Me = {
   onboarded: boolean;
   /** The server's answer; the app never decides this. Older servers omit it (no admin entry). */
   isAdmin?: boolean;
+  /** False until the person gives their date of birth (13+). Older servers omit it: never ask then. */
+  birthDateSet?: boolean;
+  /** Set by the server from the date of birth; teens get protective defaults. */
+  ageGroup?: "teen" | "adult" | null;
   pendingApprovals: number;
   unreadNotifications: number;
 };

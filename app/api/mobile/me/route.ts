@@ -9,6 +9,7 @@ import { logActivity } from "@/lib/db/queries/activity";
 import { listNotifications } from "@/lib/db/queries/notifications";
 import { getSettings, updateSettings } from "@/lib/db/queries/settings";
 import { fail, noStore, readJson } from "@/lib/mobile/http";
+import { ageGroup, todayIn } from "@/lib/safety/age";
 
 export const dynamic = "force-dynamic";
 
@@ -53,6 +54,10 @@ export async function GET(req: Request) {
       timezone: s.timezone,
       agentName: s.agent.name,
       onboarded: Boolean(u.onboardedAt),
+      /** False until the person gives a date of birth (PUT /api/mobile/me/birthdate); the app asks before social features. */
+      birthDateSet: Boolean(u.birthDate),
+      /** "teen" (13 to 17) gets protective defaults; null until a date of birth is on file. The date itself is never sent. */
+      ageGroup: ageGroup(u.birthDate, todayIn(s.timezone)),
       /** True when the account holds an active admin role. The app only shows the console entry; the console re-checks on every request. */
       isAdmin: Boolean(await getAdminRole(u)),
       pendingApprovals: pending,

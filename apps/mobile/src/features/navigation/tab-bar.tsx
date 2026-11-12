@@ -1,14 +1,15 @@
-import * as Haptics from "expo-haptics";
 import { GlassView, isLiquidGlassAvailable } from "expo-glass-effect";
 import { Image } from "expo-image";
 import type { Tabs } from "expo-router";
-import { BriefcaseIcon, ChatCircleIcon, HouseSimpleIcon, PlusSquareIcon, type Icon } from "phosphor-react-native";
+import { BriefcaseIcon, ChatsCircleIcon, HouseSimpleIcon, SparkleIcon, type Icon } from "phosphor-react-native";
 import * as React from "react";
 import { AccessibilityInfo, Keyboard, Platform, Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
-import Animated, { useAnimatedStyle, useReducedMotion, withTiming } from "react-native-reanimated";
+import Animated, { useAnimatedStyle, withTiming } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useMe } from "@/lib/queries";
 import { color, currentScheme, font, motion, radius, space } from "@/theme/tokens";
+import { feedback } from "@/lib/feedback";
+import { useReduceMotion } from "@/theme/motion";
 
 /** Props Expo Router passes to a custom tab bar (its type isn't exported publicly). */
 type BottomTabBarProps = Parameters<NonNullable<React.ComponentProps<typeof Tabs>["tabBar"]>>[0];
@@ -25,8 +26,8 @@ export function useTabBarSpace() {
   return BAR_HEIGHT + BAR_GAP + Math.max(insets.bottom, space.sm) + space.lg;
 }
 
-const ICONS: Record<string, Icon> = { index: HouseSimpleIcon, assistant: ChatCircleIcon, create: PlusSquareIcon, workspace: BriefcaseIcon };
-const LABELS: Record<string, string> = { index: "Home", assistant: "Chat", create: "Create", workspace: "Workspace", settings: "Profile" };
+const ICONS: Record<string, Icon> = { index: HouseSimpleIcon, chats: ChatsCircleIcon, assistant: SparkleIcon, workspace: BriefcaseIcon };
+const LABELS: Record<string, string> = { index: "Home", chats: "Chats", assistant: "Assistant", workspace: "Workspace", settings: "Profile" };
 
 /** Item width: fills the bar on narrow phones (at least 56) and stops growing at 72. */
 function itemWidth(screen: number, count: number) {
@@ -68,7 +69,7 @@ function useKeyboardOpen() {
 export function FloatingTabBar({ state, emitter, navigateToTab }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
   const { width: screen } = useWindowDimensions();
-  const reduceMotion = useReducedMotion();
+  const reduceMotion = useReduceMotion();
   const reduceTransparency = useReduceTransparency();
   const keyboardOpen = useKeyboardOpen();
   const me = useMe();
@@ -98,7 +99,7 @@ export function FloatingTabBar({ state, emitter, navigateToTab }: BottomTabBarPr
         const onPress = () => {
           const event = emitter.emit({ type: "tabPress", target: route.key, canPreventDefault: true });
           if (!focused && !event.defaultPrevented) {
-            void Haptics.selectionAsync().catch(() => {});
+            feedback.selection();
             navigateToTab(route.key);
           }
         };

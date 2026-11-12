@@ -1,4 +1,3 @@
-import * as Haptics from "expo-haptics";
 import { router, type Href } from "expo-router";
 import { ArrowRightIcon, BellIcon, CaretRightIcon, ChatCircleIcon, CheckSquareIcon, DotsThreeIcon, FadersIcon, MagnifyingGlassIcon, MicrophoneIcon, NotePencilIcon, type Icon } from "phosphor-react-native";
 import * as React from "react";
@@ -13,6 +12,7 @@ import { errorText } from "@/lib/api";
 import { setChatIntent } from "@/lib/intent";
 import { useConversations, useMe, useToday } from "@/lib/queries";
 import { color, font, radius, space, TOUCH } from "@/theme/tokens";
+import { feedback } from "@/lib/feedback";
 
 /** What the search filter can narrow to (matches the groups on the Search screen). */
 const SEARCH_KINDS: { kind: string; label: string }[] = [
@@ -59,7 +59,7 @@ export default function HomeScreen() {
     },
     { key: "task", icon: CheckSquareIcon, label: "New task", go: () => router.push("/tasks?add=1") },
     { key: "note", icon: NotePencilIcon, label: "New note", go: () => router.push("/notes/new") },
-    { key: "more", icon: DotsThreeIcon, label: "More", go: () => router.push("/create") },
+    { key: "more", icon: DotsThreeIcon, label: "More", go: () => router.push("/workspace") },
   ];
 
   return (
@@ -138,7 +138,7 @@ export default function HomeScreen() {
               accessibilityRole="button"
               accessibilityLabel={q.label}
               onPress={() => {
-                void Haptics.selectionAsync().catch(() => {});
+                feedback.selection();
                 q.go();
               }}
               style={({ pressed }) => ({ alignItems: "center", gap: space.sm, width: 64, opacity: pressed ? 0.7 : 1 })}
@@ -154,7 +154,7 @@ export default function HomeScreen() {
         </View>
 
         <View>
-          <SectionTitle title="Recent chats" onSeeAll={() => router.push("/assistant")} />
+          <SectionTitle title="Recent with your assistant" onSeeAll={() => router.push("/assistant")} />
           {chats.isPending ? (
             <Skeleton rows={3} height={56} />
           ) : chats.isError && !chats.data ? (

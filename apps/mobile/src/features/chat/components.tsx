@@ -277,15 +277,7 @@ export function ReportSheet({ messageId, onClose }: { messageId: string | null; 
   const [busy, setBusy] = React.useState(false);
   const [err, setErr] = React.useState<string | null>(null);
   const [sent, setSent] = React.useState(false);
-
-  React.useEffect(() => {
-    if (messageId) {
-      setReason(null);
-      setNote("");
-      setErr(null);
-      setSent(false);
-    }
-  }, [messageId]);
+  // The parent keys this sheet on messageId, so every report starts from an empty form.
 
   const submit = async () => {
     if (!messageId || !reason) return;

@@ -1,8 +1,9 @@
 import * as React from "react";
 import { Pressable, View } from "react-native";
-import Animated, { cancelAnimation, Easing, useAnimatedStyle, useReducedMotion, useSharedValue, withRepeat, withTiming } from "react-native-reanimated";
+import Animated, { cancelAnimation, Easing, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from "react-native-reanimated";
 import Svg, { Circle, Defs, RadialGradient, Stop } from "react-native-svg";
 import { color } from "@/theme/tokens";
+import { useReduceMotion } from "@/theme/motion";
 
 export type OrbState = "idle" | "listening" | "thinking" | "speaking";
 
@@ -18,7 +19,7 @@ const LABEL: Record<OrbState, string> = {
  * listening. With reduced motion on, it stays still and only its label changes.
  */
 export function Orb({ size = 168, state = "idle", onPress }: { size?: number; state?: OrbState; onPress?: () => void }) {
-  const reduced = useReducedMotion();
+  const reduced = useReduceMotion();
   const pulse = useSharedValue(0);
 
   React.useEffect(() => {

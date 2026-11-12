@@ -24,7 +24,8 @@
         "android.permission.READ_EXTERNAL_STORAGE",
         "android.permission.WRITE_EXTERNAL_STORAGE",
         "android.permission.SYSTEM_ALERT_WINDOW",
-        "android.permission.READ_PHONE_STATE"
+        "android.permission.READ_PHONE_STATE",
+        "android.permission.READ_MEDIA_IMAGES"
       ],
       "allowBackup": false,
       "predictiveBackGestureEnabled": true
@@ -70,13 +71,14 @@
       "./plugins/with-release-signing",
       "expo-sharing",
       "./plugins/with-short-native-paths",
+      "./plugins/with-app-icons",
       "expo-image",
       "expo-status-bar",
       "expo-web-browser",
       [
         "expo-local-authentication",
         {
-          "faceIDPermission": "Cowork uses Face ID to lock the admin console on this phone."
+          "faceIDPermission": "Cowork uses Face ID to unlock the app when you turn on App lock, and to lock the admin console on this phone."
         }
       ]
     ],
