@@ -1,11 +1,12 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { MAINTENANCE_OPEN_PATHS, maintenanceOn } from "@/lib/maintenance";
 
 /**
  * Edge middleware: sets a per-request CSP nonce and bounces requests without a
  * session cookie to /login. The cookie is fully validated (DB lookup + allowlist)
  * server-side in requireOwner(); this is only a fast first gate.
  */
-const PUBLIC_PATHS = ["/login", "/home", "/privacy", "/terms", "/delete-account", "/pair"];
+const PUBLIC_PATHS = ["/login", "/home", "/privacy", "/terms", "/delete-account", "/pair", "/help", "/maintenance"];
 
 function buildCsp(nonce: string, local: boolean): string {
   const dev = process.env.NODE_ENV !== "production";
@@ -35,6 +36,17 @@ export function middleware(req: NextRequest) {
   const hasSession = req.cookies.has("__Host-pa_session") || req.cookies.has("pa_session");
   const isPublic = PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 
+  const maintenance = maintenanceOn();
+  if (!maintenance && pathname === "/maintenance") return NextResponse.redirect(new URL("/", req.nextUrl.origin));
+  if (maintenance && !MAINTENANCE_OPEN_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`))) {
+    // Every other page (and server action) shows the maintenance page, with the usual CSP.
+    return withCsp(req, (headers) => {
+      const res = NextResponse.rewrite(new URL("/maintenance", req.nextUrl.origin), { request: { headers } });
+      res.headers.set("retry-after", "300");
+      return res;
+    });
+  }
+
   if (pathname === "/" && !hasSession) {
     // Visitors and crawlers land on the public home page, not a sign-in wall.
     return NextResponse.redirect(new URL("/home", req.nextUrl.origin));
@@ -45,13 +57,18 @@ export function middleware(req: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  return withCsp(req, (headers) => NextResponse.next({ request: { headers } }));
+}
+
+/** Adds a per-request CSP nonce to the request (for the page to read) and to the response. */
+function withCsp(req: NextRequest, respond: (headers: Headers) => NextResponse): NextResponse {
   const nonce = btoa(crypto.randomUUID());
   const local = req.nextUrl.hostname === "localhost" || req.nextUrl.hostname === "127.0.0.1";
   const csp = buildCsp(nonce, local);
   const headers = new Headers(req.headers);
   headers.set("x-nonce", nonce);
   headers.set("content-security-policy", csp);
-  const res = NextResponse.next({ request: { headers } });
+  const res = respond(headers);
   res.headers.set("content-security-policy", csp);
   return res;
 }
