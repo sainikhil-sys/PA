@@ -184,6 +184,8 @@ Legend: **W** working, **P** partial, **B** broken, **M** missing, **X** needs e
 - Age gate built: `PUT /api/mobile/me/birthdate`, `ageGroup` in `/api/mobile/me`, a date-of-birth step in web onboarding; under 13 deletes the account. Waits for the Chats commit (shared `schema.ts`).
 - B2 server side: `GET /api/realtime/token` and the publisher shipped (`9074b88`); every Chats write route sends its hint after the response (uncommitted with Chats). Off until the Supabase keys are set.
 
+- B3 and B4 server side shipped: migration `0016` (applied with approval), feeds, posts, comments, reactions, saves, follows, profiles, reports, uploads, text moderation with holds, Take down in the console. Verified on an in-memory Postgres with every migration applied (13 checks). Not done yet: website pages for the feed, image moderation (needs a vision-capable model), thumbnails, and removing R2 objects when posts or accounts are deleted.
+
 ## 12. Migration plan (backend and web; mobile phases are the mobile session's)
 
 Each step is reversible, keeps every existing feature, and uses Drizzle migrations reviewed before `pnpm db:migrate` (production).
