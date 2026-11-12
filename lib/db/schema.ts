@@ -1164,6 +1164,8 @@ export const socialProfiles = pgTable(
     readReceipts: boolean("read_receipts").notNull().default(true),
     /** Lock-screen notifications show the message text. Off by default: name only. */
     pushPreview: boolean("push_preview").notNull().default(false),
+    /** Followers need approval, and posts default to followers only. Always on for teens (13 to 17). */
+    privateAccount: boolean("private_account").notNull().default(false),
     lastActiveAt: ts("last_active_at"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
@@ -1299,6 +1301,8 @@ export const userReports = pgTable(
     targetUserId: uuid("target_user_id").references(() => users.id, { onDelete: "set null" }),
     threadId: uuid("thread_id").references(() => dmThreads.id, { onDelete: "set null" }),
     messageId: uuid("message_id").references(() => dmMessages.id, { onDelete: "set null" }),
+    postId: uuid("post_id").references(() => posts.id, { onDelete: "set null" }),
+    commentId: uuid("comment_id").references(() => comments.id, { onDelete: "set null" }),
     reason: text("reason").notNull(),
     details: text("details"),
     /** Copy of the reported message text at report time, so deleting it later doesn't erase evidence. */
@@ -1310,6 +1314,163 @@ export const userReports = pgTable(
   },
   (t) => [index("user_reports_status_idx").on(t.status, t.createdAt)],
 );
+
+// ---------- Media (B3): files in Cloudflare R2, rows here ----------
+
+/**
+ * One uploaded file. The bytes live in a private R2 bucket under `key`; the app uploads them
+ * directly with a short-lived signed link, then confirms. Nothing is readable until `status` is
+ * "ready" and moderation hasn't flagged it.
+ */
+export const media = pgTable(
+  "media",
+  {
+    id: id(),
+    userId: userId(),
+    kind: text("kind").$type<"image" | "video" | "audio">().notNull(),
+    contentType: text("content_type").notNull(),
+    /** Declared before upload; checked against the stored object on confirm. */
+    sizeBytes: integer("size_bytes").notNull(),
+    key: text("key").notNull(),
+    status: text("status").$type<"uploading" | "ready" | "removed">().notNull().default("uploading"),
+    moderation: text("moderation").$type<"pending" | "ok" | "flagged">().notNull().default("pending"),
+    width: integer("width"),
+    height: integer("height"),
+    durationMs: integer("duration_ms"),
+    createdAt: createdAt(),
+    readyAt: ts("ready_at"),
+  },
+  (t) => [uniqueIndex("media_key_idx").on(t.key), index("media_user_idx").on(t.userId, t.createdAt), index("media_status_idx").on(t.status, t.createdAt)],
+);
+
+// ---------- Social graph and posts (B4) ----------
+
+/**
+ * Following someone. Public profiles: accepted at once. Private profiles (all teens, and adults
+ * who choose it): a request the person accepts.
+ */
+export const follows = pgTable(
+  "follows",
+  {
+    followerId: uuid("follower_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    followeeId: uuid("followee_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    status: text("status").$type<"accepted" | "requested">().notNull().default("accepted"),
+    createdAt: createdAt(),
+  },
+  (t) => [primaryKey({ columns: [t.followerId, t.followeeId] }), index("follows_followee_idx").on(t.followeeId, t.status)],
+);
+
+/**
+ * A post. `visibility` decides who may see it; `status` is "held" while moderation reviews it
+ * (only the author sees it then) and "removed" when an admin takes it down.
+ */
+export const posts = pgTable(
+  "posts",
+  {
+    id: id(),
+    authorId: uuid("author_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    body: text("body").notNull().default(""),
+    visibility: text("visibility").$type<"public" | "followers" | "friends">().notNull().default("public"),
+    status: text("status").$type<"published" | "held" | "removed">().notNull().default("published"),
+    /** Kept up to date by the service, so feeds never count rows. */
+    commentCount: integer("comment_count").notNull().default(0),
+    reactionCount: integer("reaction_count").notNull().default(0),
+    createdAt: createdAt(),
+    editedAt: ts("edited_at"),
+    deletedAt: ts("deleted_at"),
+  },
+  (t) => [
+    index("posts_author_idx").on(t.authorId, t.createdAt),
+    index("posts_recent_idx").on(t.createdAt),
+    index("posts_body_fts_idx").using("gin", sql`to_tsvector('simple', ${t.body})`),
+  ],
+);
+
+/** Images or a video attached to a post, in order. */
+export const postMedia = pgTable(
+  "post_media",
+  {
+    postId: uuid("post_id")
+      .notNull()
+      .references(() => posts.id, { onDelete: "cascade" }),
+    mediaId: uuid("media_id")
+      .notNull()
+      .references(() => media.id, { onDelete: "cascade" }),
+    position: integer("position").notNull().default(0),
+  },
+  (t) => [primaryKey({ columns: [t.postId, t.mediaId] })],
+);
+
+/** A comment, or a reply to one (`parentId`, one level deep). */
+export const comments = pgTable(
+  "comments",
+  {
+    id: id(),
+    postId: uuid("post_id")
+      .notNull()
+      .references(() => posts.id, { onDelete: "cascade" }),
+    authorId: uuid("author_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    parentId: uuid("parent_id"),
+    body: text("body").notNull(),
+    status: text("status").$type<"published" | "held" | "removed">().notNull().default("published"),
+    createdAt: createdAt(),
+    editedAt: ts("edited_at"),
+    deletedAt: ts("deleted_at"),
+  },
+  (t) => [index("comments_post_idx").on(t.postId, t.createdAt), index("comments_author_idx").on(t.authorId)],
+);
+
+/** One reaction per person per kind per post (the same fixed, icon-drawn set as Chats). */
+export const postReactions = pgTable(
+  "post_reactions",
+  {
+    postId: uuid("post_id")
+      .notNull()
+      .references(() => posts.id, { onDelete: "cascade" }),
+    userId: userId(),
+    kind: text("kind").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [primaryKey({ columns: [t.postId, t.userId, t.kind] }), index("post_reactions_user_idx").on(t.userId)],
+);
+
+/** Posts someone saved for later. Private to them. */
+export const savedPosts = pgTable(
+  "saved_posts",
+  {
+    userId: userId(),
+    postId: uuid("post_id")
+      .notNull()
+      .references(() => posts.id, { onDelete: "cascade" }),
+    createdAt: createdAt(),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.postId] })],
+);
+
+/** "Not interested" and hidden posts: never shown to that person again. */
+export const hiddenPosts = pgTable(
+  "hidden_posts",
+  {
+    userId: userId(),
+    postId: uuid("post_id")
+      .notNull()
+      .references(() => posts.id, { onDelete: "cascade" }),
+    createdAt: createdAt(),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.postId] })],
+);
+
+export type Media = typeof media.$inferSelect;
+export type Post = typeof posts.$inferSelect;
+export type Comment = typeof comments.$inferSelect;
 
 export type SocialProfile = typeof socialProfiles.$inferSelect;
 export type DmThread = typeof dmThreads.$inferSelect;

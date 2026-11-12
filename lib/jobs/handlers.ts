@@ -1,6 +1,7 @@
 import "server-only";
 import { processBroadcast } from "@/lib/admin/broadcast";
 import { runAgentTask } from "@/lib/agents/run-task";
+import { recheckContent } from "@/lib/feed/posts";
 import { and, eq, gte, inArray, lte } from "drizzle-orm";
 import { classifyEmail } from "@/lib/agents/emailAgent";
 import { generateDailyBriefing } from "@/lib/agents/briefingAgent";
@@ -219,6 +220,8 @@ const HANDLERS: Record<JobType, (job: Job) => Promise<unknown>> = {
   reminders: deliverReminders,
   broadcast: broadcastJob,
   agent_task: (job) => runAgentTask(job.userId, String(job.payload.taskId)),
+  // Posts and comments published while the AI check was unavailable (lib/moderation/text.ts).
+  moderate_content: (job) => recheckContent(job.payload as { postId?: string; commentId?: string }),
 };
 
 /**

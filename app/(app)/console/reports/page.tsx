@@ -57,11 +57,20 @@ function ReportCard({ r }: { r: ReportRow }) {
           {r.targetDisabled ? <span className="text-danger"> (disabled)</span> : null}
         </dd>
         <dt className="text-muted">Reported by</dt>
-        <dd className="min-w-0 truncate">{r.reporterEmail ?? "Deleted account"}</dd>
+        <dd className="min-w-0 truncate">{r.reporterEmail ?? (r.details?.startsWith("Automatic check") ? "Automatic check" : "Deleted account")}</dd>
         {r.details ? (
           <>
             <dt className="text-muted">Their note</dt>
             <dd className="whitespace-pre-wrap">{r.details}</dd>
+          </>
+        ) : null}
+        {r.postId || r.commentId ? (
+          <>
+            <dt className="text-muted">{r.postId ? "Post" : "Comment"}</dt>
+            <dd className="whitespace-pre-wrap">
+              {r.snapshot ? <span className="block rounded-[10px] bg-surface px-2.5 py-1.5">{r.snapshot}</span> : <span className="text-muted">No text</span>}
+              {r.contentRemoved ? <span className="mt-1 block text-[12px] text-muted">Taken down or deleted</span> : null}
+            </dd>
           </>
         ) : null}
         {r.messageId ? (
@@ -85,7 +94,12 @@ function ReportCard({ r }: { r: ReportRow }) {
       </dl>
       {r.status === "open" ? (
         <div className="mt-3">
-          <ReportActions reportId={r.id} canRemoveMessage={Boolean(r.messageId && !r.messageDeleted)} canDisable={Boolean(r.targetId && !r.targetDisabled)} />
+          <ReportActions
+            reportId={r.id}
+            canRemoveMessage={Boolean(r.messageId && !r.messageDeleted)}
+            canRemoveContent={Boolean((r.postId || r.commentId) && !r.contentRemoved)}
+            canDisable={Boolean(r.targetId && !r.targetDisabled)}
+          />
         </div>
       ) : null}
     </li>

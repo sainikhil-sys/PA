@@ -1,6 +1,6 @@
 "use server";
 
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { ownerAction, UserFacingError } from "@/lib/auth/action";
@@ -14,7 +14,7 @@ import { logActivity } from "@/lib/db/queries/activity";
  */
 const resolveInput = z.object({
   reportId: z.string().uuid(),
-  outcome: z.enum(["dismiss", "remove_message", "disable_account"]),
+  outcome: z.enum(["dismiss", "remove_message", "remove_content", "disable_account"]),
 });
 
 const ALREADY = "Someone already reviewed this report.";
@@ -38,6 +38,19 @@ export const resolveReport = ownerAction(resolveInput, async ({ reportId, outcom
         .update(schema.dmMessages)
         .set({ body: "", deletedAt: new Date() })
         .where(and(eq(schema.dmMessages.id, report.messageId), isNull(schema.dmMessages.deletedAt)));
+    }
+    if (outcome === "remove_content") {
+      if (!report.postId && !report.commentId) throw new UserFacingError("This report isn't about a post or a comment.");
+      // Taken down for everyone; the author sees it as removed. A removed comment no longer counts.
+      if (report.postId) await tx.update(schema.posts).set({ status: "removed" }).where(eq(schema.posts.id, report.postId));
+      if (report.commentId) {
+        const [cm] = await tx
+          .update(schema.comments)
+          .set({ status: "removed" })
+          .where(and(eq(schema.comments.id, report.commentId), eq(schema.comments.status, "published")))
+          .returning({ postId: schema.comments.postId });
+        if (cm) await tx.update(schema.posts).set({ commentCount: sql`greatest(${schema.posts.commentCount} - 1, 0)` }).where(eq(schema.posts.id, cm.postId));
+      }
     }
     if (outcome === "disable_account") {
       if (!report.targetUserId) throw new UserFacingError("This report has no account to disable.");
