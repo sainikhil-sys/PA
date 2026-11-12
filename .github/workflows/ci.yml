@@ -33,6 +33,9 @@ jobs:
         run: pnpm typecheck
       - name: Lint
         run: pnpm lint
+      # Some unit tests load the app's config plugins and modules, which need its own packages.
+      - name: Install app packages for unit tests
+        run: npm ci --prefix apps/mobile --ignore-scripts
       - name: Unit tests
         run: pnpm test
 
