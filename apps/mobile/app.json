@@ -49,7 +49,7 @@
       [
         "expo-speech-recognition",
         {
-          "microphonePermission": "Cowork uses the microphone only while you tap to talk to your agent.",
+          "microphonePermission": "Cowork uses the microphone only while you talk: to your agent, and to people nearby in Connect voice messages, Walkie and calls.",
           "speechRecognitionPermission": "Cowork turns what you say into text so your agent can answer."
         }
       ],
@@ -80,11 +80,50 @@
         {
           "faceIDPermission": "Cowork uses Face ID to unlock the app when you turn on App lock, and to lock the admin console on this phone."
         }
+      ],
+      "expo-sqlite",
+      "expo-video",
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "Cowork uses the microphone only while you talk: to your agent, and to people nearby in Connect voice messages, Walkie and calls."
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Cowork uses the camera only when you take a photo or video to send to people nearby.",
+          "microphonePermission": "Cowork uses the microphone only while you talk: to your agent, and to people nearby in Connect voice messages, Walkie and calls.",
+          "recordAudioAndroid": true
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Cowork opens your photos only when you choose some to post or to send to people nearby.",
+          "cameraPermission": "Cowork uses the camera only when you take a photo or video to send to people nearby.",
+          "microphonePermission": "Cowork uses the microphone only while you talk: to your agent, and to people nearby in Connect voice messages, Walkie and calls."
+        }
       ]
     ],
     "experiments": {
       "typedRoutes": false,
       "reactCompiler": true
+    },
+    "ios": {
+      "infoPlist": {
+        "NSLocalNetworkUsageDescription": "Cowork Connect uses your local network to find phones near you and talk to them without internet.",
+        "NSBonjourServices": [
+          "_coworkp2p._tcp",
+          "_coworkconnect._tcp"
+        ],
+        "NSMicrophoneUsageDescription": "Cowork uses the microphone only while you talk: to your agent, and to people nearby in Connect voice messages, Walkie and calls.",
+        "NSBluetoothAlwaysUsageDescription": "Cowork Connect uses Bluetooth to find people near you and chat with them without internet.",
+        "NSCameraUsageDescription": "Cowork uses the camera only when you take a photo or video to send to people nearby."
+      },
+      "entitlements": {
+        "com.apple.developer.networking.HotspotConfiguration": true
+      }
     }
   }
 }

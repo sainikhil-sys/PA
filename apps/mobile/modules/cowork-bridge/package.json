@@ -1,0 +1,10 @@
+{
+  "name": "cowork-bridge",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Cross-platform offline transports for Cowork Connect: hotspot and LAN (TCP + Bonjour/NSD) and Bluetooth LE.",
+  "license": "UNLICENSED",
+  "author": "Cowork",
+  "homepage": "https://github.com/expo/expo",
+  "main": "index.ts"
+}

@@ -3,6 +3,7 @@ import { Image } from "expo-image";
 import { router, type Href } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import {
+  BroadcastIcon,
   BellIcon,
   BrainIcon,
   CaretRightIcon,
@@ -149,6 +150,7 @@ export default function ProfileTab() {
               </View>
             }
           />
+          <Row icon={BroadcastIcon} title="People nearby" detail="Chat, share and call over Bluetooth and Wi-Fi, no internet needed" onPress={go("/connect")} right={chevron} />
           <Row icon={DeviceMobileIcon} title="Phone link" onPress={go("/settings/phone")} right={chevron} />
           <Row icon={PlugsConnectedIcon} title="Connected services" detail="Gmail, Calendar and more" onPress={go("/settings/integrations")} right={chevron} />
         </ListSection>

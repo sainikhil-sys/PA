@@ -1,0 +1,27 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+  xmlns:tools="http://schemas.android.com/tools">
+  <!-- Cowork Bridge: LocalOnlyHotspot + TCP/NSD on the local network, and Bluetooth LE. The Bluetooth and
+       Wi-Fi entries match the cowork-connect module exactly so the manifests merge without conflicts.
+       Location is only requested where Android requires it for Wi-Fi/Bluetooth scanning (API 29 to 32);
+       Cowork never reads a location. -->
+  <uses-permission android:name="android.permission.INTERNET" />
+  <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+  <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+  <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
+  <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
+  <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />
+  <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" android:maxSdkVersion="28" />
+  <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" android:maxSdkVersion="32" />
+  <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
+  <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+  <uses-permission android:name="android.permission.BLUETOOTH_SCAN" android:usesPermissionFlags="neverForLocation"
+    tools:targetApi="s" />
+  <!-- API 33+: covers LocalOnlyHotspot (instead of fine location). -->
+  <uses-permission android:name="android.permission.NEARBY_WIFI_DEVICES" android:usesPermissionFlags="neverForLocation"
+    tools:targetApi="tiramisu" />
+  <!-- Android 17+ (target SDK 37): sockets to and NSD on the local network. -->
+  <uses-permission android:name="android.permission.ACCESS_LOCAL_NETWORK" />
+
+  <uses-feature android:name="android.hardware.bluetooth_le" android:required="false" />
+  <uses-feature android:name="android.hardware.wifi" android:required="false" />
+</manifest>

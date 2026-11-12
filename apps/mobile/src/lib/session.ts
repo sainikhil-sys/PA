@@ -73,6 +73,8 @@ export const useSession = create<State>((set, get) => ({
     // receiving pushes for this account, so the next person to sign in on this phone inherits nothing.
     PhoneLink.clearLink();
     await forgetPushLocally().catch(() => {});
+    // Connect: disconnect everyone and delete offline chats, files, groups and call history.
+    await import("../features/connect/connect-reset").then((m) => m.resetConnect()).catch(() => {});
     await Promise.all([TOKEN_KEY, ONBOARDING_KEY, PHONE_DEVICE_KEY].map((k) => SecureStore.deleteItemAsync(k).catch(() => {})));
     set({ token: null, status: "signedOut", onboarding: "done" });
   },

@@ -1,0 +1,17 @@
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'me.antropic.cowork'
+version = '1.0.0'
+
+android {
+  namespace "expo.modules.coworkbridge"
+  defaultConfig {
+    versionCode 1
+    versionName '1.0.0'
+  }
+}
+
+// No third-party dependencies: LocalOnlyHotspot, NSD, sockets and Bluetooth LE are platform APIs.
