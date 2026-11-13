@@ -1986,6 +1986,102 @@ export const closeFriends = pgTable(
 
 export type Moment = typeof moments.$inferSelect;
 
+// ---------- Startup network ----------
+
+/**
+ * A person's professional presentation: headline, skills, what they're open to. Separate from
+ * users.role and users.bio (which belong to the private assistant). Shown on their profile only
+ * to the audience they choose. Skills are lowercase tags so matching is exact.
+ */
+export const proProfiles = pgTable(
+  "pro_profiles",
+  {
+    userId: uuid("user_id")
+      .primaryKey()
+      .references(() => users.id, { onDelete: "cascade" }),
+    headline: text("headline").notNull().default(""),
+    about: text("about").notNull().default(""),
+    skills: text("skills").array().notNull().default(sql`'{}'::text[]`),
+    interests: text("interests").array().notNull().default(sql`'{}'::text[]`),
+    /** What they're open to: co-founding, collaborating, mentoring others, finding a mentor. */
+    openTo: text("open_to").array().notNull().default(sql`'{}'::text[]`),
+    location: text("location").notNull().default(""),
+    links: jsonb("links").$type<{ label: string; url: string }[]>().notNull().default([]),
+    visibility: text("visibility").$type<"everyone" | "followers" | "hidden">().notNull().default("everyone"),
+    updatedAt: updatedAt(),
+  },
+  (t) => [index("pro_profiles_skills_idx").using("gin", t.skills), index("pro_profiles_open_idx").using("gin", t.openTo)],
+);
+
+/**
+ * A startup or idea. Its discussions, pitch sessions and files live in a linked private Space
+ * (created with it), so everything that works in Spaces works here.
+ */
+export const startups = pgTable(
+  "startups",
+  {
+    id: id(),
+    slug: text("slug").notNull(),
+    ownerId: uuid("owner_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    oneLiner: text("one_liner").notNull(),
+    description: text("description").notNull().default(""),
+    stage: text("stage").$type<"idea" | "prototype" | "launched" | "revenue">().notNull().default("idea"),
+    industry: text("industry").notNull().default(""),
+    /** Roles they're looking for, e.g. "technical co-founder". */
+    lookingFor: text("looking_for").array().notNull().default(sql`'{}'::text[]`),
+    skillsNeeded: text("skills_needed").array().notNull().default(sql`'{}'::text[]`),
+    spaceId: uuid("space_id").references(() => spaces.id, { onDelete: "set null" }),
+    visibility: text("visibility").$type<"public" | "private">().notNull().default("public"),
+    status: text("status").$type<"active" | "archived" | "removed">().notNull().default("active"),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    uniqueIndex("startups_slug_idx").on(t.slug),
+    index("startups_owner_idx").on(t.ownerId),
+    index("startups_skills_idx").using("gin", t.skillsNeeded),
+    index("startups_text_idx").using("gin", sql`to_tsvector('simple', ${t.name} || ' ' || ${t.oneLiner} || ' ' || ${t.industry})`),
+  ],
+);
+
+export const startupMembers = pgTable(
+  "startup_members",
+  {
+    startupId: uuid("startup_id")
+      .notNull()
+      .references(() => startups.id, { onDelete: "cascade" }),
+    userId: userId(),
+    role: text("role").$type<"founder" | "cofounder" | "member" | "mentor" | "advisor">().notNull().default("member"),
+    title: text("title").notNull().default(""),
+    joinedAt: createdAt(),
+  },
+  (t) => [primaryKey({ columns: [t.startupId, t.userId] }), index("startup_members_user_idx").on(t.userId)],
+);
+
+/** Someone asking to join as a co-founder, collaborator or mentor. The founders accept or decline. */
+export const startupInterests = pgTable(
+  "startup_interests",
+  {
+    id: id(),
+    startupId: uuid("startup_id")
+      .notNull()
+      .references(() => startups.id, { onDelete: "cascade" }),
+    userId: userId(),
+    kind: text("kind").$type<"cofounder" | "collaborate" | "mentor">().notNull(),
+    message: text("message").notNull().default(""),
+    status: text("status").$type<"pending" | "accepted" | "declined" | "withdrawn">().notNull().default("pending"),
+    createdAt: createdAt(),
+    respondedAt: ts("responded_at"),
+  },
+  (t) => [index("startup_interests_startup_idx").on(t.startupId, t.status), uniqueIndex("startup_interests_open_idx").on(t.startupId, t.userId).where(sql`status = 'pending'`)],
+);
+
+export type ProProfile = typeof proProfiles.$inferSelect;
+export type Startup = typeof startups.$inferSelect;
+
 export type Media = typeof media.$inferSelect;
 export type Post = typeof posts.$inferSelect;
 export type Comment = typeof comments.$inferSelect;
