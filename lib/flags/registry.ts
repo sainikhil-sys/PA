@@ -50,6 +50,13 @@ export const FLAG_DEFS: readonly FlagDef[] = [
     default: false,
     enforcedIn: "lib/startups/service.ts requireNetwork() (every startup and professional-profile action)",
   },
+  {
+    key: "network.business",
+    label: "Business network",
+    description: "Organizations, verification, supplier and buyer discovery, partnerships, requirements, quotes, deals with approvals, milestones and meetings. 18 and over.",
+    default: false,
+    enforcedIn: "lib/business/orgs.ts requireBusiness() (every business action)",
+  },
 ];
 
 export const FLAGS: ReadonlyMap<string, FlagDef> = new Map(FLAG_DEFS.map((f) => [f.key, f]));

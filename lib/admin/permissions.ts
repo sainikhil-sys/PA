@@ -31,6 +31,8 @@ export const PERMISSIONS = [
   "community.moderate",
   /** See which account wrote an anonymous post or comment (audited each time). */
   "anonymous.reveal",
+  /** Review business verification requests; suspend or restore organizations. */
+  "network.verify",
   "security.read",
   "security.policy",
   "roles.manage",

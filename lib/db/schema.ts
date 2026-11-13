@@ -2165,6 +2165,267 @@ export const startupInterests = pgTable(
 export type ProProfile = typeof proProfiles.$inferSelect;
 export type Startup = typeof startups.$inferSelect;
 
+// ---------- Business network ----------
+
+/**
+ * An organization: a company that buys, supplies or partners. Verified when someone with a sign-in
+ * email at its domain asks and an admin approves it in the console (decision N3). Only verified
+ * organizations can post requirements or send quotes.
+ */
+export const organizations = pgTable(
+  "organizations",
+  {
+    id: id(),
+    slug: text("slug").notNull(),
+    name: text("name").notNull(),
+    description: text("description").notNull().default(""),
+    industry: text("industry").notNull().default(""),
+    /** What it does on Cowork: buys, supplies, looks for partners (any of them). */
+    roles: text("roles").array().notNull().default(sql`'{}'::text[]`),
+    country: text("country").notNull().default(""),
+    city: text("city").notNull().default(""),
+    website: text("website").notNull().default(""),
+    /** The work-email domain it claims, e.g. "acme.com". */
+    emailDomain: text("email_domain").notNull(),
+    verification: text("verification").$type<"unverified" | "pending" | "verified" | "rejected">().notNull().default("unverified"),
+    verifiedAt: ts("verified_at"),
+    verifiedBy: uuid("verified_by").references(() => users.id, { onDelete: "set null" }),
+    status: text("status").$type<"active" | "suspended" | "removed">().notNull().default("active"),
+    createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [uniqueIndex("organizations_slug_idx").on(t.slug), index("organizations_verification_idx").on(t.verification, t.createdAt), index("organizations_roles_idx").using("gin", t.roles)],
+);
+
+/** People who act for an organization. Representatives can quote and message; admins also approve deals. */
+export const orgMembers = pgTable(
+  "org_members",
+  {
+    orgId: uuid("org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    userId: userId(),
+    role: text("role").$type<"owner" | "admin" | "representative">().notNull().default("representative"),
+    title: text("title").notNull().default(""),
+    createdAt: createdAt(),
+  },
+  (t) => [primaryKey({ columns: [t.orgId, t.userId] }), index("org_members_user_idx").on(t.userId)],
+);
+
+/** A verification request and its review (kept as history). */
+export const orgVerifications = pgTable(
+  "org_verifications",
+  {
+    id: id(),
+    orgId: uuid("org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    requestedBy: uuid("requested_by").references(() => users.id, { onDelete: "set null" }),
+    /** The requester's sign-in email at request time; its domain must match the organization's. */
+    email: text("email").notNull(),
+    note: text("note").notNull().default(""),
+    status: text("status").$type<"pending" | "approved" | "rejected">().notNull().default("pending"),
+    reviewNote: text("review_note"),
+    reviewedBy: uuid("reviewed_by").references(() => users.id, { onDelete: "set null" }),
+    reviewedAt: ts("reviewed_at"),
+    createdAt: createdAt(),
+  },
+  (t) => [index("org_verifications_status_idx").on(t.status, t.createdAt), uniqueIndex("org_verifications_open_idx").on(t.orgId).where(sql`status = 'pending'`)],
+);
+
+/** A partnership request from one organization to another. */
+export const orgPartnerships = pgTable(
+  "org_partnerships",
+  {
+    id: id(),
+    fromOrgId: uuid("from_org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    toOrgId: uuid("to_org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    message: text("message").notNull().default(""),
+    status: text("status").$type<"pending" | "accepted" | "declined">().notNull().default("pending"),
+    createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+    respondedAt: ts("responded_at"),
+  },
+  (t) => [uniqueIndex("org_partnerships_pair_idx").on(t.fromOrgId, t.toOrgId), index("org_partnerships_to_idx").on(t.toOrgId, t.status)],
+);
+
+/** A procurement requirement (request for quotes) posted by a verified buyer. */
+export const requirements = pgTable(
+  "requirements",
+  {
+    id: id(),
+    orgId: uuid("org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
+    title: text("title").notNull(),
+    description: text("description").notNull().default(""),
+    category: text("category").notNull().default(""),
+    quantity: text("quantity").notNull().default(""),
+    /** Optional budget the buyer chooses to show, in minor units. */
+    budgetMinor: bigint("budget_minor", { mode: "number" }),
+    currency: text("currency").notNull().default("USD"),
+    deadline: ts("deadline"),
+    status: text("status").$type<"open" | "closed" | "awarded" | "cancelled">().notNull().default("open"),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [index("requirements_org_idx").on(t.orgId, t.createdAt), index("requirements_open_idx").on(t.status, t.createdAt)],
+);
+
+/** A supplier's quote for a requirement. The current terms; every change is a quote_versions row. */
+export const quotes = pgTable(
+  "quotes",
+  {
+    id: id(),
+    requirementId: uuid("requirement_id")
+      .notNull()
+      .references(() => requirements.id, { onDelete: "cascade" }),
+    supplierOrgId: uuid("supplier_org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    status: text("status").$type<"submitted" | "shortlisted" | "accepted" | "rejected" | "withdrawn">().notNull().default("submitted"),
+    amountMinor: bigint("amount_minor", { mode: "number" }).notNull(),
+    currency: text("currency").notNull(),
+    deliveryDays: integer("delivery_days"),
+    terms: text("terms").notNull().default(""),
+    validUntil: ts("valid_until"),
+    version: integer("version").notNull().default(1),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [uniqueIndex("quotes_supplier_idx").on(t.requirementId, t.supplierOrgId), index("quotes_supplier_org_idx").on(t.supplierOrgId)],
+);
+
+export const quoteVersions = pgTable(
+  "quote_versions",
+  {
+    quoteId: uuid("quote_id")
+      .notNull()
+      .references(() => quotes.id, { onDelete: "cascade" }),
+    version: integer("version").notNull(),
+    amountMinor: bigint("amount_minor", { mode: "number" }).notNull(),
+    currency: text("currency").notNull(),
+    deliveryDays: integer("delivery_days"),
+    terms: text("terms").notNull().default(""),
+    /** Which side proposed these terms in the negotiation. */
+    proposedBy: text("proposed_by").$type<"buyer" | "supplier">().notNull(),
+    createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+  },
+  (t) => [primaryKey({ columns: [t.quoteId, t.version] })],
+);
+
+/** The conversation between buyer and supplier about one quote (and its deal). */
+export const quoteMessages = pgTable(
+  "quote_messages",
+  {
+    id: id(),
+    quoteId: uuid("quote_id")
+      .notNull()
+      .references(() => quotes.id, { onDelete: "cascade" }),
+    orgId: uuid("org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
+    body: text("body").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [index("quote_messages_quote_idx").on(t.quoteId, t.createdAt)],
+);
+
+/**
+ * A deal, opened when a buyer accepts a quote. It becomes "agreed" only after an admin of each
+ * organization approves the terms (an approval record with an audit trail, not a legal signature).
+ */
+export const deals = pgTable(
+  "deals",
+  {
+    id: id(),
+    quoteId: uuid("quote_id")
+      .notNull()
+      .references(() => quotes.id, { onDelete: "cascade" }),
+    buyerOrgId: uuid("buyer_org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    supplierOrgId: uuid("supplier_org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    amountMinor: bigint("amount_minor", { mode: "number" }).notNull(),
+    currency: text("currency").notNull(),
+    /** The quote version both sides are approving. */
+    termsVersion: integer("terms_version").notNull(),
+    status: text("status").$type<"awaiting_approval" | "agreed" | "in_progress" | "completed" | "cancelled">().notNull().default("awaiting_approval"),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [uniqueIndex("deals_quote_idx").on(t.quoteId), index("deals_buyer_idx").on(t.buyerOrgId), index("deals_supplier_idx").on(t.supplierOrgId)],
+);
+
+export const dealApprovals = pgTable(
+  "deal_approvals",
+  {
+    id: id(),
+    dealId: uuid("deal_id")
+      .notNull()
+      .references(() => deals.id, { onDelete: "cascade" }),
+    orgId: uuid("org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
+    termsVersion: integer("terms_version").notNull(),
+    decision: text("decision").$type<"approved" | "rejected">().notNull(),
+    note: text("note").notNull().default(""),
+    createdAt: createdAt(),
+  },
+  (t) => [index("deal_approvals_deal_idx").on(t.dealId, t.createdAt)],
+);
+
+export const dealMilestones = pgTable(
+  "deal_milestones",
+  {
+    id: id(),
+    dealId: uuid("deal_id")
+      .notNull()
+      .references(() => deals.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    dueDate: date("due_date", { mode: "string" }),
+    status: text("status").$type<"pending" | "done">().notNull().default("pending"),
+    doneAt: ts("done_at"),
+    createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+  },
+  (t) => [index("deal_milestones_deal_idx").on(t.dealId)],
+);
+
+export const dealMeetings = pgTable(
+  "deal_meetings",
+  {
+    id: id(),
+    dealId: uuid("deal_id")
+      .notNull()
+      .references(() => deals.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    startsAt: ts("starts_at").notNull(),
+    endsAt: ts("ends_at").notNull(),
+    /** A room, an address or a meeting link. */
+    location: text("location").notNull().default(""),
+    createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
+    cancelledAt: ts("cancelled_at"),
+    createdAt: createdAt(),
+  },
+  (t) => [index("deal_meetings_deal_idx").on(t.dealId, t.startsAt)],
+);
+
+export type Organization = typeof organizations.$inferSelect;
+export type Deal = typeof deals.$inferSelect;
+
 export type Media = typeof media.$inferSelect;
 export type Post = typeof posts.$inferSelect;
 export type Comment = typeof comments.$inferSelect;
