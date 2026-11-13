@@ -24,6 +24,10 @@ const schema = z.object({
   audience: z.enum(["all", "adults"]).optional(),
   /** A temporary Space: becomes read-only after this time. */
   expiresAt: z.coerce.date().nullish(),
+  /** Everyone posts under a pseudonym (adults only; needs the social.anonymous feature). */
+  anonymous: z.boolean().optional(),
+  /** University or organization Space: only accounts with an email at this domain can join. */
+  emailDomain: z.string().max(253).nullish(),
 });
 
 /** Create a Space; you become its owner. Under 18: private Spaces only. */

@@ -29,6 +29,8 @@ export function CreateSpace({ teen }: { teen: boolean }) {
   const [visibility, setVisibility] = React.useState(teen ? "private" : "public");
   const [joinPolicy, setJoinPolicy] = React.useState(teen ? "invite" : "open");
   const [audience, setAudience] = React.useState("all");
+  const [anonymous, setAnonymous] = React.useState(false);
+  const [emailDomain, setEmailDomain] = React.useState("");
   const [error, setError] = React.useState<string | null>(null);
   const [pending, start] = React.useTransition();
 
@@ -43,7 +45,7 @@ export function CreateSpace({ teen }: { teen: boolean }) {
     e.preventDefault();
     start(async () => {
       setError(null);
-      const r = await call<{ space: { slug: string } }>("/api/spaces", { body: { name, description, category, visibility, joinPolicy, audience } });
+      const r = await call<{ space: { slug: string } }>("/api/spaces", { body: { name, description, category, visibility, joinPolicy, audience: anonymous ? "adults" : audience, anonymous, emailDomain: emailDomain.trim() || null } });
       if (!r.ok) return setError(r.error);
       router.push(`/s/${r.data.space.slug}`);
     });
@@ -95,6 +97,19 @@ export function CreateSpace({ teen }: { teen: boolean }) {
             </select>
           </label>
         )}
+      </div>
+      {teen ? null : (
+        <label className="flex items-start gap-2 text-[13px]">
+          <input type="checkbox" className="mt-1" checked={anonymous} onChange={(e) => setAnonymous(e.target.checked)} />
+          <span>
+            Anonymous. Everyone posts under a pseudonym, never their name. Adults only; posts are still moderated.
+          </span>
+        </label>
+      )}
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="sdomain">Only people with an email at (optional)</Label>
+        <Input id="sdomain" placeholder="university.edu" value={emailDomain} onChange={(e) => setEmailDomain(e.target.value)} maxLength={253} />
+        <p className="text-[12px] text-muted">For a university or company Space. You need to be signed in with an email at that domain yourself.</p>
       </div>
       {teen ? <p className="text-[12px] text-muted">Under 18, the Spaces you create are private. Invite people with a link.</p> : null}
       <FieldError>{error}</FieldError>

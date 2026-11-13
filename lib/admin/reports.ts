@@ -48,6 +48,8 @@ export async function listReports(status: ReportStatus, limit = 100) {
       targetHandle: targetProfile.handle,
       targetDisabled: sql<boolean>`${target.disabledAt} is not null`,
       reviewerEmail: reviewer.email,
+      /** About a post or comment written under a pseudonym: who wrote it is hidden here (see maskAnonymous). */
+      anonymous: sql<boolean>`(coalesce(${schema.posts.anonIdentityId} is not null, false) or coalesce(${schema.comments.anonIdentityId} is not null, false))`,
     })
     .from(r)
     .leftJoin(reporter, eq(reporter.id, r.reporterId))
@@ -63,6 +65,14 @@ export async function listReports(status: ReportStatus, limit = 100) {
 }
 
 export type ReportRow = Awaited<ReturnType<typeof listReports>>[number];
+
+/**
+ * The console never shows who wrote an anonymous post in the list: an admin with anonymous.reveal
+ * uses the audited "Reveal author" action (lib/admin/ops/anonymous.ts) instead.
+ */
+export function maskAnonymous(rows: ReportRow[]): ReportRow[] {
+  return rows.map((r) => (r.anonymous ? { ...r, targetEmail: null, targetHandle: null } : r));
+}
 
 export async function reportCounts(): Promise<Record<ReportStatus, number>> {
   const rows = await db()

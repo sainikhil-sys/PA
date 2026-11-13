@@ -2,7 +2,8 @@ import Link from "next/link";
 import { ReportActions } from "@/components/admin/report-actions";
 import { requireAdmin } from "@/lib/admin/guard";
 import { can } from "@/lib/admin/permissions";
-import { listReports, REASON_LABELS, REPORT_STATUSES, reportCounts, type ReportRow, type ReportStatus } from "@/lib/admin/reports";
+import { RevealAuthor } from "@/components/admin/reveal-author";
+import { listReports, maskAnonymous, REASON_LABELS, REPORT_STATUSES, reportCounts, type ReportRow, type ReportStatus } from "@/lib/admin/reports";
 import { cn, timeAgo } from "@/lib/utils";
 
 const STATUS_LABEL: Record<ReportStatus, string> = { open: "Open", actioned: "Actioned", dismissed: "Dismissed" };
@@ -14,7 +15,9 @@ export default async function ConsoleReports({ searchParams }: { searchParams: P
   const mayDisable = can(me.adminRole, "users.suspend");
   const q = (await searchParams).status;
   const status: ReportStatus = REPORT_STATUSES.includes(q as ReportStatus) ? (q as ReportStatus) : "open";
-  const [reports, counts] = await Promise.all([listReports(status), reportCounts()]);
+  const mayReveal = can(me.adminRole, "anonymous.reveal");
+  const [rows, counts] = await Promise.all([listReports(status), reportCounts()]);
+  const reports = maskAnonymous(rows);
 
   return (
     <div className="flex flex-col gap-3">
@@ -33,7 +36,7 @@ export default async function ConsoleReports({ searchParams }: { searchParams: P
       {reports.length ? (
         <ul className="flex flex-col gap-2">
           {reports.map((r) => (
-            <ReportCard key={r.id} r={r} mayDisable={mayDisable} />
+            <ReportCard key={r.id} r={r} mayDisable={mayDisable} mayReveal={mayReveal} />
           ))}
         </ul>
       ) : (
@@ -43,8 +46,8 @@ export default async function ConsoleReports({ searchParams }: { searchParams: P
   );
 }
 
-function ReportCard({ r, mayDisable }: { r: ReportRow; mayDisable: boolean }) {
-  const who = r.targetHandle ? `@${r.targetHandle}` : (r.targetEmail ?? "Deleted account");
+function ReportCard({ r, mayDisable, mayReveal }: { r: ReportRow; mayDisable: boolean; mayReveal: boolean }) {
+  const who = r.anonymous ? "an anonymous author" : r.targetHandle ? `@${r.targetHandle}` : (r.targetEmail ?? "Deleted account");
   return (
     <li className="card rounded-[14px] border border-border bg-background p-3.5">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -56,7 +59,15 @@ function ReportCard({ r, mayDisable }: { r: ReportRow; mayDisable: boolean }) {
       <dl className="mt-2 grid gap-1 text-[13px] sm:grid-cols-[120px_1fr]">
         <dt className="text-muted">Reported account</dt>
         <dd className="min-w-0 truncate">
-          {r.targetEmail ?? "Deleted account"}
+          {r.anonymous ? (
+            mayReveal ? (
+              <RevealAuthor reportId={r.id} />
+            ) : (
+              <span className="text-muted">Anonymous author (only admins can reveal who it is)</span>
+            )
+          ) : (
+            (r.targetEmail ?? "Deleted account")
+          )}
           {r.targetDisabled ? <span className="text-danger"> (disabled)</span> : null}
         </dd>
         <dt className="text-muted">Reported by</dt>

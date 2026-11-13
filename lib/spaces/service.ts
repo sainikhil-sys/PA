@@ -7,6 +7,7 @@ import type { User } from "@/lib/db/schema";
 import { canSee, notHiddenBy } from "@/lib/feed/access";
 import { requireSocial } from "@/lib/feed/people";
 import { createPost, encodeCursor, getPost, type NewPost, PAGE } from "@/lib/feed/posts";
+import { anonymousOn, emailInDomain, identityFor, normalizeDomain } from "@/lib/anonymous/identity";
 import { SocialError } from "@/lib/social/service";
 
 /**
@@ -73,6 +74,7 @@ async function loadSpace(user: User, slugOrId: string) {
     .limit(1);
   if (!space || space.status === "removed") throw new SocialError(404, "That Space doesn't exist, or was removed.");
   const [me, teen] = await Promise.all([membership(space.id, user.id), viewerIsTeen(user)]);
+  if (space.anonymous && !(await anonymousOn(user))) throw new SocialError(404, "That Space doesn't exist, or was removed.");
   // Private Spaces you're not in (or haven't asked to join), adults-only Spaces for teens and Spaces
   // you're banned from all look the same as a Space that doesn't exist.
   const hidden = me?.status === "banned" || (space.audience === "adults" && teen) || (space.visibility === "private" && !me);
@@ -91,6 +93,8 @@ function view(space: Space, me: Membership, teen: boolean) {
     visibility: space.visibility,
     joinPolicy: space.joinPolicy,
     audience: space.audience,
+    anonymous: space.anonymous,
+    emailDomain: space.emailDomain,
     memberCount: space.memberCount,
     expiresAt: space.expiresAt?.toISOString() ?? null,
     archived: !isOpen(space),
@@ -110,6 +114,7 @@ export async function getSpace(user: User, slugOrId: string) {
 /** Public Spaces to discover: by name or description, optionally one category; biggest first. */
 export async function discoverSpaces(user: User, opts: { q?: string; category?: string; offset?: number } = {}) {
   const teen = await viewerIsTeen(user);
+  const anonOn = await anonymousOn(user);
   const q = (opts.q ?? "").trim().slice(0, 60);
   const offset = Math.min(Math.max(opts.offset ?? 0, 0), 200);
   const rows = await db()
@@ -120,6 +125,7 @@ export async function discoverSpaces(user: User, opts: { q?: string; category?: 
         eq(s.status, "active"),
         eq(s.visibility, "public"),
         teen ? eq(s.audience, "all") : undefined,
+        anonOn ? undefined : eq(s.anonymous, false),
         or(isNull(s.expiresAt), gt(s.expiresAt, new Date())),
         SPACE_CATEGORIES.includes(opts.category as (typeof SPACE_CATEGORIES)[number]) ? eq(s.category, opts.category as (typeof SPACE_CATEGORIES)[number]) : undefined,
         q ? or(ilike(s.name, `%${q.replace(/[%_\\]/g, "")}%`), ilike(s.description, `%${q.replace(/[%_\\]/g, "")}%`)) : undefined,
@@ -159,6 +165,10 @@ export type SpaceInput = {
   joinPolicy?: "open" | "request" | "invite";
   audience?: "all" | "adults";
   expiresAt?: Date | null;
+  /** Everyone appears under a pseudonym. Adults only; needs the social.anonymous flag. */
+  anonymous?: boolean;
+  /** University or organization Space: only accounts with an email at this domain can join. */
+  emailDomain?: string | null;
 };
 
 export async function createSpace(user: User, input: SpaceInput) {
@@ -172,6 +182,16 @@ export async function createSpace(user: User, input: SpaceInput) {
   if (me.group === "teen" && (input.visibility ?? "public") === "public") throw new SocialError(403, "Under 18, you can create private Spaces. Make it private, then invite people.");
   if (me.group === "teen" && input.audience === "adults") throw new SocialError(403, "That Space would be adults only.");
   if (input.expiresAt && input.expiresAt.getTime() <= Date.now() + 3600_000) throw new SocialError(400, "A temporary Space has to last at least an hour.");
+  if (input.anonymous) {
+    if (!(await anonymousOn(user))) throw new SocialError(403, "Anonymous Spaces aren't available yet.");
+    if (me.group === "teen") throw new SocialError(403, "Anonymous Spaces are for adults.");
+  }
+  let emailDomain: string | null = null;
+  if (input.emailDomain) {
+    emailDomain = normalizeDomain(input.emailDomain);
+    if (!emailDomain) throw new SocialError(400, "Enter a domain like university.edu.");
+    if (!emailInDomain(user.email, emailDomain)) throw new SocialError(403, `You can only create a Space for ${emailDomain} if you signed in with an email at that domain.`);
+  }
   const visibility = input.visibility ?? "public";
   const joinPolicy = visibility === "private" && input.joinPolicy === "open" ? "request" : (input.joinPolicy ?? (visibility === "private" ? "invite" : "open"));
   const created = await db().transaction(async (tx) => {
@@ -185,7 +205,10 @@ export async function createSpace(user: User, input: SpaceInput) {
         category: input.category ?? "interest",
         visibility,
         joinPolicy,
-        audience: input.audience ?? "all",
+        // Anonymous Spaces are adults only, whatever was chosen.
+        audience: input.anonymous ? "adults" : (input.audience ?? "all"),
+        anonymous: Boolean(input.anonymous),
+        emailDomain,
         createdBy: user.id,
         memberCount: 1,
         expiresAt: input.expiresAt ?? null,
@@ -236,6 +259,8 @@ export async function joinSpace(user: User, spaceId: string, inviteCode?: string
   if (!space || space.status === "removed") throw new SocialError(404, "That Space doesn't exist, or was removed.");
   if (!isOpen(space)) throw new SocialError(409, "This Space is closed to new members.");
   if (space.audience === "adults" && me.group === "teen") throw new SocialError(404, "That Space doesn't exist, or was removed.");
+  if (space.anonymous && !(await anonymousOn(user))) throw new SocialError(404, "That Space doesn't exist, or was removed.");
+  if (space.emailDomain && !emailInDomain(user.email, space.emailDomain)) throw new SocialError(403, `This Space is for people with an email at ${space.emailDomain}. Sign in with that email to join.`);
   const current = await membership(space.id, user.id);
   if (current?.status === "banned") throw new SocialError(403, "You can't join this Space.");
   if (current?.status === "active") return getSpace(user, space.id);
@@ -293,6 +318,7 @@ export async function listMembers(user: User, spaceId: string, status: "active" 
   const { space, me, teen } = await loadSpace(user, spaceId);
   if (!readable(space, me, teen)) throw new SocialError(403, "Join this Space to see who's in it.");
   if (status !== "active" && !isMod(me)) throw new SocialError(403, "Only the Space's owners and moderators can see that.");
+  if (space.anonymous && !isMod(me)) throw new SocialError(403, "In an anonymous Space, only moderators can see who's a member.");
   return db()
     .select({ userId: m.userId, role: m.role, status: m.status, joinedAt: m.joinedAt, handle: schema.socialProfiles.handle, name: schema.socialProfiles.displayName, avatarUrl: schema.users.avatarUrl })
     .from(m)
@@ -418,7 +444,8 @@ export async function postInSpace(user: User, spaceId: string, input: Omit<NewPo
   if (me?.status !== "active") throw new SocialError(403, "Join this Space to post in it.");
   if (!isOpen(space)) throw new SocialError(409, "This Space is read-only now.");
   if (input.kind === "announcement" && !isMod(me)) throw new SocialError(403, "Only owners and moderators can post announcements.");
-  return createPost(user, { ...input, mediaIds: input.mediaIds ?? [], visibility: "public", spaceId: space.id });
+  const anonIdentityId = space.anonymous ? (await identityFor(space.id, user.id)).id : null;
+  return createPost(user, { ...input, mediaIds: input.mediaIds ?? [], visibility: "public", spaceId: space.id, anonIdentityId });
 }
 
 /** Moderators: pin or unpin a post, or take it down in their Space. */

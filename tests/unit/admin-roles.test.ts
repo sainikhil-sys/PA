@@ -30,6 +30,8 @@ describe("admin permissions", () => {
     expect(can("support", "users.delete")).toBe(false);
     expect(can("analyst", "users.read")).toBe(false);
     expect(can("analyst", "analytics.read")).toBe(true);
+    // Seeing who wrote an anonymous post: admins and the owner, never moderators, support or analysts.
+    expect(ADMIN_ROLES.filter((r) => can(r, "anonymous.reveal"))).toEqual(["owner", "admin"]);
   });
 
   it("only uses permissions that exist", () => {

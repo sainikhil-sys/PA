@@ -8,6 +8,7 @@ import { moderateText, reasonFor, type TextVerdict } from "@/lib/moderation/text
 import { REACTIONS, type ReactionKind, type ReportReason } from "@/lib/social/rules";
 import { SocialError } from "@/lib/social/service";
 import { canSee, effectivelyPublic, inMySpaces, inPublicSpace, notHiddenBy } from "./access";
+import { identityFor } from "@/lib/anonymous/identity";
 import { requireSocial } from "./people";
 
 export const POST_MAX = 5000;
@@ -49,6 +50,8 @@ const postColumns = {
   pinnedAt: p.pinnedAt,
   spaceSlug: schema.spaces.slug,
   spaceName: schema.spaces.name,
+  anonIdentityId: p.anonIdentityId,
+  alias: schema.anonIdentities.alias,
   handle: sp.handle,
   name: sp.displayName,
   avatarUrl: u.avatarUrl,
@@ -64,10 +67,12 @@ type Row = {
   createdAt: Date;
   editedAt: Date | null;
   spaceId: string | null;
-  kind: "post" | "announcement" | "poll";
+  kind: "post" | "announcement" | "poll" | "question";
   pinnedAt: Date | null;
   spaceSlug: string | null;
   spaceName: string | null;
+  anonIdentityId: string | null;
+  alias: string | null;
   handle: string;
   name: string;
   avatarUrl: string | null;
@@ -79,7 +84,8 @@ function base() {
     .from(p)
     .innerJoin(u, eq(u.id, p.authorId))
     .innerJoin(sp, eq(sp.userId, p.authorId))
-    .leftJoin(schema.spaces, eq(schema.spaces.id, p.spaceId));
+    .leftJoin(schema.spaces, eq(schema.spaces.id, p.spaceId))
+    .leftJoin(schema.anonIdentities, eq(schema.anonIdentities.id, p.anonIdentityId));
 }
 
 export type PostView = Awaited<ReturnType<typeof present>>[number];
@@ -120,7 +126,7 @@ async function present(viewerId: string, rows: Row[]) {
   const savedSet = new Set(saved.map((s) => s.postId));
   return rows.map((r) => ({
     id: r.id,
-    author: { id: r.authorId, handle: r.handle, name: r.name, avatarUrl: r.avatarUrl },
+    author: authorView(r.anonIdentityId, r.alias, { id: r.authorId, handle: r.handle, name: r.name, avatarUrl: r.avatarUrl }),
     body: r.body,
     visibility: r.visibility,
     /** Only the author sees "held" (waiting for review). */
@@ -138,6 +144,15 @@ async function present(viewerId: string, rows: Row[]) {
     space: r.spaceId ? { id: r.spaceId, slug: r.spaceSlug!, name: r.spaceName! } : null,
     poll: pollView(polls.find((x) => x.postId === r.id), tallies.filter((t) => t.postId === r.id), myVotes.filter((v) => v.postId === r.id)),
   }));
+}
+
+/**
+ * Who wrote it, as clients see it. In an anonymous Space only the pseudonym: no account id, handle
+ * or photo ever leaves the server (`mine` still tells the author it's theirs).
+ */
+export function authorView(anonIdentityId: string | null, alias: string | null, real: { id: string; handle: string; name: string; avatarUrl: string | null }) {
+  if (anonIdentityId) return { id: null, handle: null, name: alias ?? "Anonymous", avatarUrl: null, anonymous: true as const };
+  return { ...real, anonymous: false as const };
 }
 
 function pollView(
@@ -168,7 +183,7 @@ export async function getPost(viewerId: string, postId: string) {
 
 /** People you follow, Spaces you're in, and your own posts, newest first. */
 export async function followingFeed(viewerId: string, cursor?: string | null) {
-  const following = sql`(${p.authorId} = ${viewerId} or ${inMySpaces(viewerId)} or exists (select 1 from ${schema.follows} f where f.follower_id = ${viewerId} and f.followee_id = ${p.authorId} and f.status = 'accepted'))`;
+  const following = sql`(${p.authorId} = ${viewerId} or ${inMySpaces(viewerId)} or (${p.spaceId} is null and exists (select 1 from ${schema.follows} f where f.follower_id = ${viewerId} and f.followee_id = ${p.authorId} and f.status = 'accepted')))`;
   const rows = await base()
     .where(and(following, canSee(viewerId), notHiddenBy(viewerId), before(decodeCursor(cursor))))
     .orderBy(desc(p.createdAt), desc(p.id))
@@ -231,7 +246,9 @@ export type NewPost = {
   mediaIds: string[];
   /** Set by lib/spaces after it checked membership and the Space's rules. */
   spaceId?: string | null;
-  kind?: "post" | "announcement" | "poll";
+  kind?: "post" | "announcement" | "poll" | "question";
+  /** Set by lib/spaces for anonymous Spaces. */
+  anonIdentityId?: string | null;
   poll?: { options: string[]; multiple?: boolean; closesAt?: Date | null } | null;
 };
 
@@ -261,7 +278,7 @@ export async function createPost(author: User, input: NewPost) {
   const verdict = text ? await moderateText(author.id, text) : ({ verdict: "ok" } as const);
   const [post] = await db()
     .insert(p)
-    .values({ authorId: author.id, body, visibility, spaceId: input.spaceId ?? null, kind, status: verdict.verdict === "flagged" ? "held" : "published" })
+    .values({ authorId: author.id, body, visibility, spaceId: input.spaceId ?? null, anonIdentityId: input.anonIdentityId ?? null, kind, status: verdict.verdict === "flagged" ? "held" : "published" })
     .returning({ id: p.id });
   if (input.poll) await db().insert(schema.postPolls).values({ postId: post!.id, options: input.poll.options, multiple: input.poll.multiple ?? false, closesAt: input.poll.closesAt ?? null });
   if (mediaIds.length) await db().insert(schema.postMedia).values(mediaIds.map((mediaId, position) => ({ postId: post!.id, mediaId, position })));
@@ -356,10 +373,11 @@ export async function listComments(viewerId: string, postId: string, cursor?: st
   await getPost(viewerId, postId);
   const after = decodeCursor(cursor);
   const rows = await db()
-    .select({ id: c.id, parentId: c.parentId, body: c.body, status: c.status, createdAt: c.createdAt, editedAt: c.editedAt, authorId: c.authorId, handle: sp.handle, name: sp.displayName, avatarUrl: u.avatarUrl })
+    .select({ id: c.id, parentId: c.parentId, body: c.body, status: c.status, createdAt: c.createdAt, editedAt: c.editedAt, authorId: c.authorId, handle: sp.handle, name: sp.displayName, avatarUrl: u.avatarUrl, anonIdentityId: c.anonIdentityId, alias: schema.anonIdentities.alias })
     .from(c)
     .innerJoin(u, eq(u.id, c.authorId))
     .innerJoin(sp, eq(sp.userId, c.authorId))
+    .leftJoin(schema.anonIdentities, eq(schema.anonIdentities.id, c.anonIdentityId))
     .where(
       and(
         eq(c.postId, postId),
@@ -377,7 +395,7 @@ export async function listComments(viewerId: string, postId: string, cursor?: st
       parentId: r.parentId,
       body: r.body,
       status: r.authorId === viewerId ? r.status : "published",
-      author: { id: r.authorId, handle: r.handle, name: r.name, avatarUrl: r.avatarUrl },
+      author: authorView(r.anonIdentityId, r.alias, { id: r.authorId, handle: r.handle, name: r.name, avatarUrl: r.avatarUrl }),
       mine: r.authorId === viewerId,
       createdAt: r.createdAt.toISOString(),
       editedAt: r.editedAt?.toISOString() ?? null,
@@ -388,7 +406,7 @@ export async function listComments(viewerId: string, postId: string, cursor?: st
 
 export async function addComment(author: User, postId: string, input: { body: string; parentId?: string | null }) {
   await requireSocial(author);
-  await getPost(author.id, postId);
+  const post = await getPost(author.id, postId);
   const body = input.body.trim();
   if (!body) throw new SocialError(400, "Write a comment first.");
   if (body.length > COMMENT_MAX) throw new SocialError(400, `Comments can be up to ${COMMENT_MAX} characters.`);
@@ -399,9 +417,15 @@ export async function addComment(author: User, postId: string, input: { body: st
     parentId = parent.parentId ?? parent.id; // one level of replies
   }
   const verdict = await moderateText(author.id, body);
+  // In an anonymous Space, comments carry the commenter's pseudonym for that Space.
+  let anonIdentityId: string | null = null;
+  if (post.space) {
+    const [space] = await db().select({ anonymous: schema.spaces.anonymous }).from(schema.spaces).where(eq(schema.spaces.id, post.space.id)).limit(1);
+    if (space?.anonymous) anonIdentityId = (await identityFor(post.space.id, author.id)).id;
+  }
   const [row] = await db()
     .insert(c)
-    .values({ postId, authorId: author.id, parentId, body, status: verdict.verdict === "flagged" ? "held" : "published" })
+    .values({ postId, authorId: author.id, parentId, body, anonIdentityId, status: verdict.verdict === "flagged" ? "held" : "published" })
     .returning({ id: c.id });
   if (verdict.verdict !== "flagged") await db().update(p).set({ commentCount: sql`${p.commentCount} + 1` }).where(eq(p.id, postId));
   await applyVerdict({ commentId: row!.id, authorId: author.id, text: body }, verdict);
@@ -426,7 +450,8 @@ export async function deleteComment(viewerId: string, commentId: string) {
 export async function reportContent(viewerId: string, input: { postId?: string | null; commentId?: string | null; reason: ReportReason; details?: string | null }) {
   if (input.postId) {
     const post = await getPost(viewerId, input.postId);
-    await db().insert(schema.userReports).values({ reporterId: viewerId, targetUserId: post.author.id, postId: post.id, reason: input.reason, details: input.details ?? null, snapshot: post.body.slice(0, 4000) });
+    const [row] = await db().select({ authorId: p.authorId }).from(p).where(eq(p.id, post.id)).limit(1);
+    await db().insert(schema.userReports).values({ reporterId: viewerId, targetUserId: row!.authorId, postId: post.id, reason: input.reason, details: input.details ?? null, snapshot: post.body.slice(0, 4000) });
     return;
   }
   if (input.commentId) {

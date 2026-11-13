@@ -1657,9 +1657,11 @@ export const posts = pgTable(
     /** Posted in a Space: the Space's rules decide who sees it, not `visibility`. */
     spaceId: uuid("space_id").references(() => spaces.id, { onDelete: "cascade" }),
     /** "announcement": only owners and moderators of the Space can post one. "poll": has a post_polls row. */
-    kind: text("kind").$type<"post" | "announcement" | "poll">().notNull().default("post"),
+    kind: text("kind").$type<"post" | "announcement" | "poll" | "question">().notNull().default("post"),
     /** Pinned to the top of its Space by an owner or moderator. */
     pinnedAt: ts("pinned_at"),
+    /** Written in an anonymous Space: shown as this pseudonym. The author is never sent to clients. */
+    anonIdentityId: uuid("anon_identity_id").references(() => anonIdentities.id, { onDelete: "set null" }),
     status: text("status").$type<"published" | "held" | "removed">().notNull().default("published"),
     /** Kept up to date by the service, so feeds never count rows. */
     commentCount: integer("comment_count").notNull().default(0),
@@ -1704,6 +1706,7 @@ export const comments = pgTable(
       .references(() => users.id, { onDelete: "cascade" }),
     parentId: uuid("parent_id"),
     body: text("body").notNull(),
+    anonIdentityId: uuid("anon_identity_id").references(() => anonIdentities.id, { onDelete: "set null" }),
     status: text("status").$type<"published" | "held" | "removed">().notNull().default("published"),
     createdAt: createdAt(),
     editedAt: ts("edited_at"),
@@ -1774,6 +1777,13 @@ export const spaces = pgTable(
     visibility: text("visibility").$type<"public" | "private">().notNull().default("public"),
     joinPolicy: text("join_policy").$type<"open" | "request" | "invite">().notNull().default("open"),
     audience: text("audience").$type<"all" | "adults">().notNull().default("all"),
+    /** Anonymous Space: every post and comment shows a per-Space pseudonym, never the account. Adults only. */
+    anonymous: boolean("anonymous").notNull().default(false),
+    /**
+     * Only accounts whose sign-in email is at this domain (or a subdomain) can join, e.g. "stanford.edu".
+     * Sign-in is by email code, so the account email is already proven.
+     */
+    emailDomain: text("email_domain"),
     status: text("status").$type<"active" | "archived" | "removed">().notNull().default("active"),
     createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
     memberCount: integer("member_count").notNull().default(0),
@@ -1872,6 +1882,28 @@ export const pollVotes = pgTable(
   },
   (t) => [primaryKey({ columns: [t.postId, t.userId, t.option] })],
 );
+
+/**
+ * A person's pseudonym in one anonymous Space ("Quiet Heron 42"). Stable inside that Space, different
+ * in every other Space, so posts can't be linked across Spaces. Which account a pseudonym belongs
+ * to is readable only by the server and, through an audited console action, by admins with
+ * anonymous.reveal.
+ */
+export const anonIdentities = pgTable(
+  "anon_identities",
+  {
+    id: id(),
+    spaceId: uuid("space_id")
+      .notNull()
+      .references(() => spaces.id, { onDelete: "cascade" }),
+    userId: userId(),
+    alias: text("alias").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("anon_identities_member_idx").on(t.spaceId, t.userId), uniqueIndex("anon_identities_alias_idx").on(t.spaceId, t.alias)],
+);
+
+export type AnonIdentity = typeof anonIdentities.$inferSelect;
 
 export type Space = typeof spaces.$inferSelect;
 export type SpaceMember = typeof spaceMembers.$inferSelect;

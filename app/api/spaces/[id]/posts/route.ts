@@ -13,7 +13,7 @@ export async function GET(req: Request, { params }: IdParams) {
 
 const schema = z.object({
   body: z.string().max(POST_MAX).default(""),
-  kind: z.enum(["post", "announcement"]).optional(),
+  kind: z.enum(["post", "announcement", "question"]).optional(),
   mediaIds: z.array(uuidSchema).max(10).optional(),
   poll: z
     .object({ options: z.array(z.string().max(80)).min(2).max(6), multiple: z.boolean().optional(), closesAt: z.coerce.date().nullish() })

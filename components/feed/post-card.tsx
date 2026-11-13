@@ -12,7 +12,8 @@ import { call } from "./api";
 
 export type FeedPost = {
   id: string;
-  author: { id: string; handle: string; name: string; avatarUrl: string | null };
+  /** Anonymous Spaces: id and handle are null and name is the pseudonym. */
+  author: { id: string | null; handle: string | null; name: string; avatarUrl: string | null; anonymous?: boolean };
   body: string;
   visibility: "public" | "followers" | "friends";
   status: "published" | "held" | "removed";
@@ -24,7 +25,7 @@ export type FeedPost = {
   mine: boolean;
   createdAt: string;
   editedAt: string | null;
-  kind?: "post" | "announcement" | "poll";
+  kind?: "post" | "announcement" | "poll" | "question";
   pinned?: boolean;
   space?: { id: string; slug: string; name: string } | null;
   poll?: {
@@ -37,6 +38,17 @@ export type FeedPost = {
 };
 
 const AUDIENCE = { public: "Everyone", followers: "Followers", friends: "Friends" } as const;
+
+/** A link to the author's profile, or plain text for a pseudonym (anonymous Spaces have no profiles). */
+export function AuthorLink({ handle, className, children }: { handle: string | null; className?: string; children: React.ReactNode }) {
+  return handle ? (
+    <Link href={`/u/${handle}`} className={className}>
+      {children}
+    </Link>
+  ) : (
+    <span className={className}>{children}</span>
+  );
+}
 
 /** One post: author, text, photos, and like / comment / save, plus hide, report or delete. */
 export function PostCard({ post, linkToPost = true, canModerate = false }: { post: FeedPost; linkToPost?: boolean; canModerate?: boolean }) {
@@ -104,18 +116,20 @@ export function PostCard({ post, linkToPost = true, canModerate = false }: { pos
   return (
     <article className="card rounded-[14px] border border-border bg-background p-4">
       <header className="flex items-center gap-3">
-        <Link href={`/u/${post.author.handle}`} className="flex min-w-0 items-center gap-3">
+        <AuthorLink handle={post.author.handle} className="flex min-w-0 items-center gap-3">
           <Avatar src={post.author.avatarUrl} name={post.author.name} size={36} />
           <span className="min-w-0">
             <span className="block truncate text-[14px] font-medium">{post.author.name}</span>
             <span className="block truncate text-[12px] text-muted">
-              @{post.author.handle} · {timeAgo(post.createdAt)}
+              {post.author.handle ? `@${post.author.handle}` : "Anonymous"} · {timeAgo(post.createdAt)}
               {post.editedAt ? " · edited" : ""} · {post.space ? `in ${post.space.name}` : AUDIENCE[post.visibility]}
             </span>
           </span>
-        </Link>
-        {post.pinned || post.kind === "announcement" ? (
-          <span className="ml-auto shrink-0 rounded-[8px] border border-border px-2 py-0.5 text-[11px] text-muted">{post.kind === "announcement" ? "Announcement" : "Pinned"}</span>
+        </AuthorLink>
+        {post.pinned || post.kind === "announcement" || post.kind === "question" ? (
+          <span className="ml-auto shrink-0 rounded-[8px] border border-border px-2 py-0.5 text-[11px] text-muted">
+            {post.kind === "announcement" ? "Announcement" : post.kind === "question" ? "Question" : "Pinned"}
+          </span>
         ) : null}
       </header>
       {post.space && !linkToPost ? (

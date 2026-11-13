@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import * as React from "react";
 import { toast } from "sonner";
@@ -8,13 +7,14 @@ import { Button } from "@/components/ui/button";
 import { FieldError, Textarea } from "@/components/ui/input";
 import { timeAgo } from "@/lib/utils";
 import { call } from "./api";
+import { AuthorLink } from "./post-card";
 
 export type FeedComment = {
   id: string;
   parentId: string | null;
   body: string;
   status: "published" | "held" | "removed";
-  author: { id: string; handle: string; name: string };
+  author: { id: string | null; handle: string | null; name: string; anonymous?: boolean };
   mine: boolean;
   createdAt: string;
 };
@@ -50,11 +50,11 @@ export function Comments({ postId, comments, postIsMine }: { postId: string; com
   const row = (c: FeedComment, reply = false) => (
     <li key={c.id} className={reply ? "ml-8" : undefined}>
       <p className="text-[13px]">
-        <Link href={`/u/${c.author.handle}`} className="font-medium">
+        <AuthorLink handle={c.author.handle} className="font-medium">
           {c.author.name}
-        </Link>{" "}
+        </AuthorLink>{" "}
         <span className="text-muted">
-          @{c.author.handle} · {timeAgo(c.createdAt)}
+          {c.author.handle ? `@${c.author.handle}` : "Anonymous"} · {timeAgo(c.createdAt)}
         </span>
       </p>
       <p className="whitespace-pre-wrap break-words text-[14px] leading-6">{c.body}</p>
@@ -92,7 +92,7 @@ export function Comments({ postId, comments, postIsMine }: { postId: string; com
       <div className="flex flex-col gap-2 border-t border-border pt-3">
         {replyTo ? (
           <p className="text-[12px] text-muted">
-            Replying to @{replyTo.author.handle}.{" "}
+            Replying to {replyTo.author.handle ? `@${replyTo.author.handle}` : replyTo.author.name}.{" "}
             <button type="button" className="underline" onClick={() => setReplyTo(null)}>
               Cancel
             </button>

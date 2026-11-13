@@ -29,6 +29,8 @@ export const PERMISSIONS = [
   "appearance.write",
   "notifications.send",
   "community.moderate",
+  /** See which account wrote an anonymous post or comment (audited each time). */
+  "anonymous.reveal",
   "security.read",
   "security.policy",
   "roles.manage",

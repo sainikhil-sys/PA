@@ -36,6 +36,13 @@ export const FLAG_DEFS: readonly FlagDef[] = [
     default: true,
     enforcedIn: null,
   },
+  {
+    key: "social.anonymous",
+    label: "Anonymous Spaces",
+    description: "Spaces where everyone posts and comments under a per-Space pseudonym. Adults only; identities are revealed to admins only through an audited action.",
+    default: false,
+    enforcedIn: "lib/spaces/service.ts (create, discover, open, join and post in anonymous Spaces) via lib/anonymous/identity.ts anonymousOn()",
+  },
 ];
 
 export const FLAGS: ReadonlyMap<string, FlagDef> = new Map(FLAG_DEFS.map((f) => [f.key, f]));
