@@ -162,6 +162,13 @@
       "when": 1794593638171,
       "tag": "0022_business",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1794593752377,
+      "tag": "0023_connect_on_spaces",
+      "breakpoints": true
     }
   ]
 }
