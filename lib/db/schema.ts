@@ -1905,6 +1905,89 @@ export const anonIdentities = pgTable(
 
 export type AnonIdentity = typeof anonIdentities.$inferSelect;
 
+/**
+ * A Space's shared notes (Connect). Updates send the version they edited; a stale version gets 409
+ * with the latest. Not used in anonymous Spaces (an editor's name would reveal who is there).
+ */
+export const spaceNotes = pgTable(
+  "space_notes",
+  {
+    id: id(),
+    spaceId: uuid("space_id")
+      .notNull()
+      .references(() => spaces.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    body: text("body").notNull().default(""),
+    version: integer("version").notNull().default(1),
+    createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
+    updatedBy: uuid("updated_by").references(() => users.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [index("space_notes_space_idx").on(t.spaceId, t.updatedAt)],
+);
+
+/**
+ * A room in a Space (Connect). kind: focus (shared study timer) | listen (listen together: a shared
+ * YouTube or Spotify link and a start time; no audio passes through Cowork).
+ * Timer: idle | running | paused; running rooms have endsAt, paused rooms keep remainingSec.
+ */
+export const spaceRooms = pgTable(
+  "space_rooms",
+  {
+    id: id(),
+    spaceId: uuid("space_id")
+      .notNull()
+      .references(() => spaces.id, { onDelete: "cascade" }),
+    kind: text("kind").$type<"focus" | "listen">().notNull(),
+    title: text("title").notNull(),
+    createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
+    timerStatus: text("timer_status").$type<"idle" | "running" | "paused">().notNull().default("idle"),
+    durationSec: integer("duration_sec").notNull().default(1500),
+    endsAt: ts("ends_at"),
+    remainingSec: integer("remaining_sec"),
+    mediaUrl: text("media_url"),
+    mediaKind: text("media_kind").$type<"youtube" | "spotify">(),
+    mediaStartAt: ts("media_start_at"),
+    updatedBy: uuid("updated_by").references(() => users.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [index("space_rooms_space_idx").on(t.spaceId, t.updatedAt)],
+);
+
+/** Who is in a room: written only while the person chose to show they are here. A time, never a location. */
+export const spaceRoomPresence = pgTable(
+  "space_room_presence",
+  {
+    roomId: uuid("room_id")
+      .notNull()
+      .references(() => spaceRooms.id, { onDelete: "cascade" }),
+    userId: userId(),
+    lastSeenAt: ts("last_seen_at").notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.roomId, t.userId] }), index("space_room_presence_seen_idx").on(t.lastSeenAt)],
+);
+
+/**
+ * Connect public keys (X25519, hex) registered with proof of the private key, so people who share a
+ * Space with you, or your friends, can recognise your phone when you meet offline.
+ */
+export const connectKeys = pgTable(
+  "connect_keys",
+  {
+    id: id(),
+    userId: userId(),
+    publicKey: text("public_key").notNull(),
+    label: text("label").notNull().default(""),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("connect_keys_key_idx").on(t.publicKey), index("connect_keys_user_idx").on(t.userId)],
+);
+
+export type SpaceNote = typeof spaceNotes.$inferSelect;
+export type SpaceRoom = typeof spaceRooms.$inferSelect;
+
 export type Space = typeof spaces.$inferSelect;
 export type SpaceMember = typeof spaceMembers.$inferSelect;
 export type SpaceEvent = typeof spaceEvents.$inferSelect;
