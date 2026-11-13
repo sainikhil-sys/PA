@@ -58,7 +58,7 @@ CREATE INDEX "space_notes_space_idx" ON "space_notes" USING btree ("space_id","u
 CREATE INDEX "space_room_presence_seen_idx" ON "space_room_presence" USING btree ("last_seen_at");--> statement-breakpoint
 CREATE INDEX "space_rooms_space_idx" ON "space_rooms" USING btree ("space_id","updated_at");--> statement-breakpoint
 -- Hand-written tail of the connect_on_spaces migration (connect_keys, space_notes, space_rooms,
--- space_room_presence). After regenerating the migration, add "--> statement-breakpoint" to the end
+-- space_room_presence). After regenerating the migration, add the statement-breakpoint marker to the end
 -- of its last generated line, then append this file unchanged.
 -- Row-level security on the new tables, like every other table since 0015.
 ALTER TABLE "connect_keys" ENABLE ROW LEVEL SECURITY;--> statement-breakpoint
