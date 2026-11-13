@@ -228,3 +228,54 @@ Each step is reversible, keeps every existing feature, and uses Drizzle migratio
 | 16 Web | | everything under `app/` | |
 | 17 Device | | | Expo modules per phase |
 | Admin and moderation | `lib/admin/*`, `lib/moderation/*` | `/console/*` | |
+
+
+---
+
+# Addendum: expanded brief (startup and business networks, events, live, intelligence), 2026-11-13
+
+The user pasted the "existing application upgrade" master instruction. It keeps the social platform above and adds modules. Stage 1 asks for an audit before code changes; the platform audit above and `docs/IMPLEMENTATION_LEDGER.md` (the running per-feature record) already cover what exists, so this addendum covers only what the new instruction adds. Classification: **W** working, **P** partial, **B** broken, **M** missing, **R** requires refactoring, **X** requires replacement.
+
+Release controls already in place and reused by every new module: feature flags (`lib/flags`, managed in `/console`), remote configuration and minimum app versions (`lib/config`), the admin audit log (migration 0017), CI on every push, and approved, additive migrations only (0013 to 0019 only add tables and nullable columns). Every new module below ships behind a flag that is off by default.
+
+| Brief area | Status | What exists to reuse | What's missing |
+|---|---|---|---|
+| Feed: text, image, video posts; comments, reactions; polls | P | `lib/feed` (posts, comments, reactions, saves, hidden, polls), uploads to R2 | Video posts need R2 configured; no transcoding |
+| Reposts and quote posts | M | posts table | A repost link, counts, feed rules |
+| Reels (short video feed) | M | media table, uploads | Needs R2 live, a vertical video feed, device compression |
+| Stories | W server, P app | `lib/moments` (B6) | App screens (mobile session) |
+| Following and discovery | P | follows, For You ranking | Explore and suggestions (B8) |
+| Unified account, personal profile | W | users, social_profiles, `/u/[handle]` | Profile photo upload, social bio |
+| Professional presentation | M | users.role (a private job title) | Public headline, skills, experience, links |
+| Anonymous participation (pseudonyms) | M | Spaces, moderation, reports | B7: per-Space pseudonyms, protected identity mapping |
+| Privacy and visibility | P | private account, Chats privacy, blocks, close friends | Per-section profile visibility |
+| Country, city, university communities | P | Spaces with categories (university, local) | Location fields, university verification by email domain |
+| Channels in communities | M | Space posts | Sub-channels per Space |
+| Anonymous discussions, questions, debates, university spaces | M | | B7 |
+| Anonymous audio participation | M | | Needs live rooms plus voice masking; later |
+| Private and group messaging | W | Chats (`lib/social`) | Realtime keys, media in chats |
+| Snaps, voice notes, media sharing | M | uploads | Needs R2; chat attachments |
+| Audio and video calls, live rooms, screen sharing, meeting controls | M | | Calls provider: LiveKit Cloud (decided) |
+| Startup ideas, co-founder and mentor discovery, project spaces, skill matching, pitch sessions | M | Spaces (project spaces), posts, follows | Startup profiles, ideas, skills, matching, pitch events |
+| Verified business profiles, organization accounts, representatives | M | admin console users, reports | Organizations, members with roles, verification |
+| Company, supplier and buyer discovery; partnerships | M | search patterns | Directory, categories, requests |
+| Procurement requirements, quotations, proposals, negotiation | M | | Requirements, versioned quotes, a thread per deal |
+| Deal status, milestones, agreements and approvals | M | jobs, notifications, audit log | Deal pipeline, approval workflow, audit trail |
+| Meeting scheduling | P | personal calendar (Google), meeting notes | Scheduling between people and organizations |
+| Public and private events, online and offline, RSVP | P | Space events with RSVP (B5) | Standalone events, registration, capacity, check-in, calendar files (.ics) |
+| Event check-in | M | | QR code check-in |
+| Translation, discussion summaries | M | `lib/ai/router.ts` (all AI calls) | Translate and summarize endpoints with usage limits |
+| AI-assisted discovery, collaboration recommendations | M | For You ranking, pgvector | Embedding-based matching (skills, interests) |
+| Meeting assistance | P | meeting notes, action items (existing assistant) | Shared meeting notes in calls |
+| Moderation assistance | P | AI text moderation and holds (B4) | Image moderation (vision model), reviewer suggestions |
+| Admin: console, versions, flags, remote config, users, moderation, analytics, audit, releases | W built, P business | Admin console (0017), reports queue | Business verification queue, social analytics |
+| Staging environment | M | Vercel preview deploys per branch | Separate staging database and URL |
+| Backup restoration test | M | Supabase daily backups | A tested restore procedure |
+
+## Decisions (user, 2026-11-13)
+
+- **N1 order:** Anonymous (B7, already approved), then Startup network, Business network, standalone Events, Explore (B8), Intelligence (translation, summaries). Calls and live rooms once LiveKit keys exist; Reels once video storage is live.
+- **N2 calls, live rooms, screen sharing:** LiveKit Cloud. Needs an account and its API key and secret.
+- **N3 business verification:** work-email domain check plus admin review in the console, with an audit trail. No new vendor.
+- **N4 agreements:** an approval workflow with an audit trail inside Cowork, described as not a legal signature (recommended; not asked separately).
+- **N5 staging:** yes. A second Supabase project as the staging database, used by Vercel preview deploys and for migration tests before production.
