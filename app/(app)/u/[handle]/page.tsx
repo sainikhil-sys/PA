@@ -7,6 +7,7 @@ import { Avatar } from "@/components/ui/misc";
 import { requireOwner } from "@/lib/auth/session";
 import { profilePosts } from "@/lib/feed/posts";
 import { profileView } from "@/lib/feed/profiles";
+import { proProfileFor, requireNetwork } from "@/lib/startups/service";
 import { SocialError } from "@/lib/social/service";
 
 export const metadata: Metadata = { title: "Profile" };
@@ -22,6 +23,10 @@ export default async function ProfilePage({ params, searchParams }: { params: Pr
   });
   if (!profile) notFound();
   const posts = profile.canSeePosts ? await profilePosts(user.id, profile.id, sp.cursor) : { items: [], next: null };
+  // The professional profile, when the startup network is on and they show it to this viewer.
+  const pro = await requireNetwork(user)
+    .then(() => proProfileFor(user.id, profile.id))
+    .catch(() => null);
 
   return (
     <div className="mx-auto flex max-w-[640px] flex-col gap-3">
@@ -41,6 +46,14 @@ export default async function ProfilePage({ params, searchParams }: { params: Pr
         </div>
         {profile.blocked ? <span className="text-[13px] text-muted">Blocked</span> : <FollowButton userId={profile.id} initial={profile.followState} />}
       </header>
+      {pro && (pro.headline || pro.skills.length || pro.about) ? (
+        <section aria-label="Professional profile" className="card flex flex-col gap-1.5 rounded-[14px] border border-border bg-background p-4 text-[14px]">
+          {pro.headline ? <p className="font-medium">{pro.headline}</p> : null}
+          {pro.about ? <p className="whitespace-pre-wrap leading-6 text-muted">{pro.about}</p> : null}
+          {pro.skills.length ? <p className="text-[13px]"><span className="text-muted">Skills:</span> {pro.skills.join(", ")}</p> : null}
+          {pro.location ? <p className="text-[13px] text-muted">{pro.location}</p> : null}
+        </section>
+      ) : null}
       {!profile.canSeePosts ? (
         <p className="rounded-[14px] border border-border p-4 text-[14px] text-muted">
           {profile.blocked ? "You blocked this person. Unblock them in Chats to see their posts." : "This account is private. Follow to ask to see their posts."}

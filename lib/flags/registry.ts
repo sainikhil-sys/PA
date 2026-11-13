@@ -43,6 +43,13 @@ export const FLAG_DEFS: readonly FlagDef[] = [
     default: false,
     enforcedIn: "lib/spaces/service.ts (create, discover, open, join and post in anonymous Spaces) via lib/anonymous/identity.ts anonymousOn()",
   },
+  {
+    key: "network.startups",
+    label: "Startup network",
+    description: "Professional profiles, startups and ideas with a team Space, co-founder and mentor requests, skill matching. 18 and over.",
+    default: false,
+    enforcedIn: "lib/startups/service.ts requireNetwork() (every startup and professional-profile action)",
+  },
 ];
 
 export const FLAGS: ReadonlyMap<string, FlagDef> = new Map(FLAG_DEFS.map((f) => [f.key, f]));

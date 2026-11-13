@@ -525,3 +525,19 @@ export async function rsvp(user: User, eventId: string, status: "going" | "maybe
     .values({ eventId, userId: user.id, status })
     .onConflictDoUpdate({ target: [schema.eventRsvps.eventId, schema.eventRsvps.userId], set: { status, updatedAt: new Date() } });
 }
+
+/**
+ * Adds someone to a Space as a member, used when another module already decided they belong (a
+ * startup accepting a co-founder into its team Space). Bans and adult-only rules still apply.
+ */
+export async function addSpaceMember(spaceId: string, userId: string) {
+  const [space] = await db().select().from(s).where(eq(s.id, spaceId)).limit(1);
+  if (!space || space.status === "removed") return;
+  const current = await membership(spaceId, userId);
+  if (current?.status === "banned" || current?.status === "active") return;
+  await db()
+    .insert(m)
+    .values({ spaceId, userId, role: "member", status: "active" })
+    .onConflictDoUpdate({ target: [m.spaceId, m.userId], set: { status: "active", joinedAt: new Date() } });
+  await bumpCount(spaceId, 1);
+}
